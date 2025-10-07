@@ -1,13 +1,32 @@
 // routes/adminRoutes.js
 import express from 'express';
 import { protect } from '../middlewares/auth.js';
-import { createStudent, uploadStudentsCSV } from '../controllers/adminController.js';
 import multer from 'multer';
+import {
+  createStudent,
+  uploadStudentsCSV,
+  listStudents,
+  exportStudentsCSV,
+  downloadTemplate
+} from '../controllers/adminController.js';
 
 const upload = multer({ dest: 'uploads/' });
 const router = express.Router();
 
-router.post('/students', protect(['admin']), createStudent);
+// create single student
+router.post('/createStudents', protect(['admin']), createStudent);
+
+// upload students CSV (multipart) - strict validation
 router.post('/students/upload', protect(['admin']), upload.single('file'), uploadStudentsCSV);
 
+// list students (paginated)
+router.get('/students', protect(['admin']), listStudents);
+
+// download exported CSV (admin's students)
+router.get('/students/export', protect(['admin']), exportStudentsCSV);
+
+// download template CSV
+router.get('/students/template', protect(['admin']), downloadTemplate);
+
 export default router;
+

@@ -1,4 +1,5 @@
-import { useState } from "react";
+// line 1
+import { useState, useEffect } from "react";
 import CreateStudent from "@/components/CreateStudent";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,14 +16,57 @@ import {
   Download,
   Upload
 } from "lucide-react";
+import { baseUrl } from "../constant/Url";
+// line ~25 after imports
+const API_BASE = baseUrl || "http://localhost:5000";
+
+
+// line ~44
+
+
 
 const AdminDashboard = () => {
-  const [stats] = useState({
-    totalStudents: 247,
-    activeExams: 3,
-    completedExams: 15,
-    violations: 2
-  });
+  // const [stats] = useState({
+  //   totalStudents: 247,
+  //   activeExams: 3,
+  //   completedExams: 15,
+  //   violations: 2
+  // });
+  const [recentStudents, setRecentStudents] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/students` , {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setRecentStudents(data.students || []);
+        console.log(data.students)
+      } catch (err) {
+        console.error("Failed to fetch students", err);
+      }
+    };
+    fetchStudents();
+  }, []);
+
+  
+
+  const [stats, setStats] = useState({ totalStudents: 0, activeExams: 0, completedExams: 0, violations: 0 });
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        
+        const res = await fetch(`${API_BASE}/api/admin/students` , {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setStats(prev => ({ ...prev, totalStudents: data.total || 0 }));
+      } catch(err) { console.error(err); }
+    };
+    fetchStats();
+  }, []);
+
 
   const [recentExams] = useState([
     { id: 1, title: "Computer Science Midterm", students: 45, date: "2024-01-15", status: "active" },
@@ -30,11 +74,11 @@ const AdminDashboard = () => {
     { id: 3, title: "Physics Quiz", students: 28, date: "2024-01-10", status: "completed" }
   ]);
 
-  const [recentStudents] = useState([
-    { id: 1, name: "John Smith", studentId: "CS2024001", email: "john@college.edu", status: "active" },
-    { id: 2, name: "Sarah Johnson", studentId: "CS2024002", email: "sarah@college.edu", status: "active" },
-    { id: 3, name: "Mike Chen", studentId: "CS2024003", email: "mike@college.edu", status: "inactive" }
-  ]);
+  // const [recentStudents] = useState([
+  //   { id: 1, name: "John Smith", studentId: "CS2024001", email: "john@college.edu", status: "active" },
+  //   { id: 2, name: "Sarah Johnson", studentId: "CS2024002", email: "sarah@college.edu", status: "active" },
+  //   { id: 3, name: "Mike Chen", studentId: "CS2024003", email: "mike@college.edu", status: "inactive" }
+  // ]);
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -183,10 +227,10 @@ const AdminDashboard = () => {
                   <div key={student.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div>
                       <p className="font-medium text-card-foreground">{student.name}</p>
-                      <p className="text-sm text-muted-foreground">{student.studentId} • {student.email}</p>
+                      <p className="text-sm text-muted-foreground">{student.rollNumber} • {student.email}</p>
                     </div>
-                    <Badge variant={student.status === "active" ? "default" : "secondary"}>
-                      {student.status}
+                    <Badge variant={student.online === "active" ? "default" : "secondary"}>
+                      {student.online ? "Active" : "Inactive"}
                     </Badge>
                   </div>
                 ))}
@@ -204,7 +248,7 @@ const AdminDashboard = () => {
                     <CardDescription>Create student accounts and manage access credentials. Only admins can create student logins.</CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline">
+                    <Button variant="outline" >
                       <Upload className="h-4 w-4 mr-2" />
                       Import Excel
                     </Button>
@@ -223,14 +267,16 @@ const AdminDashboard = () => {
                         </div>
                         <div>
                           <p className="font-medium text-card-foreground">{student.name}</p>
-                          <p className="text-sm text-muted-foreground">{student.studentId} • {student.email}</p>
+                          <p className="text-sm text-muted-foreground">{student.rollNumber} • {student.email}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge variant={student.status === "active" ? "default" : "secondary"}>
-                          {student.status}
+                        <Badge  variant={student.online === "active" ? "default" : "secondary"}>
+                          {student.online ? "Active" : "Inactive"}
                         </Badge>
-                        <Button variant="outline" size="sm">Edit</Button>
+                        <Button variant="outline" size="sm" 
+                        // onClick={() => window.openCreateStudentWithData(student)}
+                          >Edit</Button>
                         <Button variant="outline" size="sm">Reset Password</Button>
                       </div>
                     </div>
@@ -245,7 +291,18 @@ const AdminDashboard = () => {
                   </p>
                   <div className="flex gap-2">
                     <CreateStudent />
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={async () => {
+                          const res = await fetch(`${API_BASE}/api/admin/students/export`, {
+                            credentials: "include",
+                          });
+                          const blob = await res.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "students_export.csv";
+                          a.click();
+                        }}
+                        >
                       <Download className="h-4 w-4 mr-2" />
                       Export Student List
                     </Button>
