@@ -254,39 +254,39 @@ export const createExam = async (req, res) => {
     allQuestions = allQuestions.filter(q => q && q.question && q.question.toString().trim().length);
 
     // Minimum questions check
-    if (allQuestions.length < 60) {
-      return res.status(400).json({ message: `At least 60 questions are required. Found ${allQuestions.length}.` });
-    }
+    // if (allQuestions.length < 60) {
+    //   return res.status(400).json({ message: `At least 60 questions are required. Found ${allQuestions.length}.` });
+    // }
 
     // Deduplicate by question text (case-insensitive)
-    const seen = new Set();
-    const uniqueQuestions = [];
-    for (const q of allQuestions) {
-      const key = q.question?.toString().toLowerCase().trim();
-      if (key && !seen.has(key)) {
-        seen.add(key);
-        uniqueQuestions.push(q);
-      }
-    }
+    // const seen = new Set();
+    // const uniqueQuestions = [];
+    // for (const q of allQuestions) {
+    //   const key = q.question?.toString().toLowerCase().trim();
+    //   if (key && !seen.has(key)) {
+    //     seen.add(key);
+    //     uniqueQuestions.push(q);
+    //   }
+    // }
 
     // Ensure difficulty distribution: at least 20 easy, 20 medium, 20 hard
-    const easyQs = uniqueQuestions.filter(q => (q.mode || "").toString().toLowerCase() === "easy");
-    const mediumQs = uniqueQuestions.filter(q => (q.mode || "").toString().toLowerCase() === "medium");
-    const hardQs = uniqueQuestions.filter(q => (q.mode || "").toString().toLowerCase() === "hard");
+    // const easyQs = uniqueQuestions.filter(q => (q.mode || "").toString().toLowerCase() === "easy");
+    // const mediumQs = uniqueQuestions.filter(q => (q.mode || "").toString().toLowerCase() === "medium");
+    // const hardQs = uniqueQuestions.filter(q => (q.mode || "").toString().toLowerCase() === "hard");
 
-    if (easyQs.length < 20 || mediumQs.length < 20 || hardQs.length < 20) {
-      return res.status(400).json({
-        message: `Need at least 20 easy, 20 medium and 20 hard questions. Found easy=${easyQs.length}, medium=${mediumQs.length}, hard=${hardQs.length}.`
-      });
-    }
+    // if (easyQs.length < 20 || mediumQs.length < 20 || hardQs.length < 20) {
+    //   return res.status(400).json({
+    //     message: `Need at least 20 easy, 20 medium and 20 hard questions. Found easy=${easyQs.length}, medium=${mediumQs.length}, hard=${hardQs.length}.`
+    //   });
+    // }
 
     // Pick first 20 of each difficulty (so total 60). If you want random selection use shuffle logic.
-    const pick = (arr, n) => arr.slice(0, n);
-    const finalQuestionsSelected = [
-      ...pick(easyQs, 20),
-      ...pick(mediumQs, 20),
-      ...pick(hardQs, 20)
-    ];
+    // const pick = (arr, n) => arr.slice(0, n);
+    // const finalQuestionsSelected = [
+    //   ...pick(easyQs, 20),
+    //   ...pick(mediumQs, 20),
+    //   ...pick(hardQs, 20)
+    // ];
 
     // Assign marks based on mode (easy=1, medium=2, hard=3)
     // const questionsWithMarks = finalQuestionsSelected.map(q => {
@@ -297,13 +297,51 @@ export const createExam = async (req, res) => {
     //   type: q.type || "MCQ"
     //   return qObj;
     // });
-    const questionsWithMarks = finalQuestionsSelected.map(q => ({
+    // const questionsWithMarks = finalQuestionsSelected.map(q => ({
+    //   ...q.toObject(),
+    //   marks: q.mode === "easy" ? 1 : q.mode === "medium" ? 2 : 3,
+    //   type: (q.type || "mcq").toLowerCase()   
+    // }));
+    
+    // const totalMarks = questionsWithMarks.reduce((acc, q) => acc + (q.marks || 0), 0);
+    // --- Ensure minimum question coverage ---
+    if (allQuestions.length < 60) {
+      return res.status(400).json({
+        message: `At least 60 total questions are required. Found ${allQuestions.length}.`
+      });
+    }
+
+    // Deduplicate
+    const seen = new Set();
+    const uniqueQuestions = [];
+    for (const q of allQuestions) {
+      const key = q.question?.toString().toLowerCase().trim();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        uniqueQuestions.push(q);
+      }
+    }
+
+    // Group by difficulty
+    const easyQs = uniqueQuestions.filter(q => (q.mode || "").toLowerCase() === "easy");
+    const mediumQs = uniqueQuestions.filter(q => (q.mode || "").toLowerCase() === "medium");
+    const hardQs = uniqueQuestions.filter(q => (q.mode || "").toLowerCase() === "hard");
+
+    if (easyQs.length < 20 || mediumQs.length < 20 || hardQs.length < 20) {
+      return res.status(400).json({
+        message: `Each difficulty level must have at least 20 questions. Found easy=${easyQs.length}, medium=${mediumQs.length}, hard=${hardQs.length}.`
+      });
+    }
+
+    // ⚠️ Don't limit to 60 now — save all valid questions for this exam
+    const questionsWithMarks = uniqueQuestions.map(q => ({
       ...q.toObject(),
       marks: q.mode === "easy" ? 1 : q.mode === "medium" ? 2 : 3,
-      type: (q.type || "mcq").toLowerCase()   
+      type: (q.type || "mcq").toLowerCase()
     }));
-    
-    const totalMarks = questionsWithMarks.reduce((acc, q) => acc + (q.marks || 0), 0);
+
+    const totalMarks = 100;
+
 
     // Assign students parsing (createExam case)
     const parsedStudents = Array.isArray(assignStudents)
@@ -385,6 +423,64 @@ export const getExams = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch exams" });
   }
 };
+
+
+
+export const startExam = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const exam = await Exam.findById(examId);
+    if (!exam) return res.status(404).json({ message: "Exam not found" });
+
+    // Helper functions
+    const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+    const pick = (arr, n) => shuffle(arr).slice(0, n);
+
+    // Group questions by difficulty (case-insensitive)
+    const easyQs = exam.questions.filter(q => (q.mode || "").toLowerCase() === "easy");
+    const mediumQs = exam.questions.filter(q => (q.mode || "").toLowerCase() === "medium");
+    const hardQs = exam.questions.filter(q => (q.mode || "").toLowerCase() === "hard");
+
+    // Randomly pick 20 from each group
+    const selectedQs = [
+      ...pick(easyQs, Math.min(20, easyQs.length)),
+      ...pick(mediumQs, Math.min(20, mediumQs.length)),
+      ...pick(hardQs, Math.min(20, hardQs.length))
+    ];
+
+    // Shuffle full question order (so easy/medium/hard mix randomly)
+    const shuffledQuestions = shuffle(selectedQs).map(q => {
+      // Deep clone question object
+      const question = { ...q._doc };
+
+      // Randomize options (if available)
+      if (Array.isArray(question.options) && question.options.length > 1) {
+        question.options = shuffle(question.options);
+      }
+
+      // Remove correct answer field to avoid cheating
+      delete question.correctAnswer;
+
+      return question;
+    });
+
+    const totalMarks = selectedQs.reduce((acc, q) => acc + (q.marks || 0), 0);
+
+    return res.status(200).json({
+      examName: exam.examName,
+      questionCount: shuffledQuestions.length,
+      totalMarks,
+      questions: shuffledQuestions
+    });
+  } catch (err) {
+    console.error("Error starting exam:", err);
+    res.status(500).json({
+      message: "Server error while starting exam",
+      error: err.message
+    });
+  }
+};
+
 
 
 

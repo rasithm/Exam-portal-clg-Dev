@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCcw } from "lucide-react";
+import { RefreshCcw , LogOut } from "lucide-react";
 import { 
   Users, 
   FileText, 
@@ -205,9 +205,41 @@ const fetchQuestionSets = async () => {
                 Notification 
               </Button>
               <NotificationPopup open={showNotifications} onClose={() => setShowNotifications(false)} />
-              <Button variant="outline" >
+              <Button variant="outline" className="mr-2" >
                 <Settings className="h-4 w-4 mr-2" />
-                Settings
+                Settings 
+              </Button>
+              
+              <Button variant="outline" 
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/api/auth/admin/logout`, {
+                      method: "POST",
+                      credentials: "include",
+                    });
+
+                    if (!res.ok) throw new Error("Failed to log out");
+
+                    toast({
+                      title: "👋 Logged Out",
+                      description: "You have been logged out successfully.",
+                    });
+
+                    // Optional: redirect to login page
+                    setTimeout(() => {
+                      window.location.href = "/login";
+                    }, 1000);
+                  } catch (err) {
+                    console.error(err);
+                    toast({
+                      title: "Error",
+                      description: "Logout failed. Try again.",
+                      variant: "destructive",
+                    });
+                  }
+                }} >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
               </Button>
             </div>
             
@@ -498,10 +530,10 @@ const fetchQuestionSets = async () => {
                       <Download className="h-4 w-4 mr-2" />
                       Export Student List
                     </Button>
-                    <Button variant="outline" className="w-full">
+                    {/* <Button variant="outline" className="w-full">
                       <Calendar className="h-6 w-6 mr-2" />
                       More
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </CardContent>

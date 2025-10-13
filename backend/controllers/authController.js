@@ -80,3 +80,31 @@ export const studentLogin = async (req, res) => {
   });
   res.json({ message: 'Logged in', role: 'student', sessionId });
 };
+
+export const adminLogout = async (req, res) => {
+  try {
+    // Clear session cookie and deactivate current session if available
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.COOKIE_SECURE === "true",
+      sameSite: "lax",
+    });
+
+    // Optionally deactivate session
+    const token = req.cookies?.token;
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      await Session.updateMany(
+        { userId: decoded.id, role: decoded.role },
+        { $set: { active: false } }
+      );
+    }
+
+    return res.json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error("Error in adminLogout:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+

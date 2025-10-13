@@ -1,14 +1,25 @@
 // C:\Users\nazeer\Downloads\Exam-portal\Exam-portal\backend\models\Exam.js
 import mongoose from "mongoose";
 
+// const questionSchema = new mongoose.Schema({
+//   type: { type: String, enum: ["mcq", "descriptive", "coding"], required: true },
+//   question: { type: String, required: true },
+//   options: [String],              
+//   correctAnswer: String,          
+//   maxWords: Number,               
+//   language: String                
+// });
 const questionSchema = new mongoose.Schema({
   type: { type: String, enum: ["mcq", "descriptive", "coding"], required: true },
   question: { type: String, required: true },
-  options: [String],              // for MCQ
-  correctAnswer: String,          // index or text
-  maxWords: Number,               // for descriptive
-  language: String                // for coding
+  options: [String],
+  correctAnswer: String,
+  maxWords: Number,
+  language: String,
+  mode: { type: String, enum: ["easy", "medium", "hard"], required: true },
+  marks: { type: Number, default: 1 }
 });
+
 
 const examSchema = new mongoose.Schema({
   examName: { type: String, required: true },
