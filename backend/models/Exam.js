@@ -11,11 +11,22 @@ const questionSchema = new mongoose.Schema({
 });
 
 const examSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  duration: { type: Number, default: 120 }, // in minutes
-  collegeTag: { type: String, required: true }, // link to admin’s college
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: true },
+  examName: { type: String, required: true },
+  fileName: String,
+  category: String,
+  subcategory: { type: String, required: true },
+  questionSets: [{ type: mongoose.Schema.Types.ObjectId, ref: "QuestionSet" }],
   questions: [questionSchema],
+  totalMarks: Number,
+  startDateTime: Date,
+  endDateTime: Date,
+  duration: Number,
+  assignStudents: [String],
+  reassignAllowed: Boolean,
+  instructions: String,
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: true },
+  collegeTag: String,
 }, { timestamps: true });
+
 
 export default mongoose.model("Exam", examSchema);

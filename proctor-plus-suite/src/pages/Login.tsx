@@ -9,6 +9,7 @@ import { GraduationCap, Shield, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
 
+
 const Login = () => {
   const [adminCredentials, setAdminCredentials] = useState({
     email: "",
@@ -247,7 +248,7 @@ const Login = () => {
                 <Button
                   variant="link"
                   className="p-0 h-auto font-medium"
-                  onClick={() => navigate("/setup")}
+                  onClick={() => navigate("/forgot-password")}
                 >
                   Forget Password
                 </Button>

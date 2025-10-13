@@ -1,10 +1,13 @@
+//C:\Users\nazeer\Downloads\Exam-portal\Exam-portal\proctor-plus-suite\src\pages\AdminDashboard.tsx
 // line 1
 import { useState, useEffect } from "react";
 import CreateStudent from "@/components/CreateStudent";
+import CreateExam from "@/components/CreateExam";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RefreshCcw } from "lucide-react";
 import { 
   Users, 
   FileText, 
@@ -14,16 +17,22 @@ import {
   AlertTriangle,
   Plus,
   Download,
-  Upload
+  Upload,
+  Bell 
 } from "lucide-react";
+import io from "socket.io-client";
+import NotificationPopup from "@/components/NotificationPopup";
+import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
 // line ~25 after imports
 const API_BASE = baseUrl || "http://localhost:5000";
 
 
+
 // line ~44
 
-
+const socket = io(API_BASE);
 
 const AdminDashboard = () => {
   // const [stats] = useState({
@@ -32,7 +41,85 @@ const AdminDashboard = () => {
   //   completedExams: 15,
   //   violations: 2
   // });
+  const { toast } = useToast();
   const [recentStudents, setRecentStudents] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [examData, setExamData] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [QuestionData, setQuestionData] = useState([]);
+  const [activeTab, setActiveTab] = useState("files"); // "files" or "exams"
+  // const fetchExams = async () => {
+  //   try {
+  //     const res = await axios.get("/api/admin/exams/all");
+  //     setExams(res.data);
+  //     toast.success("Exam data refreshed");
+  //   } catch (err) {
+  //     console.error("Error fetching exams:", err);
+  //     toast.error("Failed to fetch exams");
+  //   }
+  // };
+
+
+  const fetchExams = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/exams/list`, {
+      credentials: "include", // important for cookies
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Server Error ${res.status}: ${text.slice(0, 80)}`);
+    }
+
+    const data = await res.json();
+    setExamData(data);
+  } catch (err: any) {
+    console.error("Error fetching exams:", err);
+    toast({ title: "Error", description: err.message, variant: "destructive" });
+  }
+};
+
+const handleRefreshExams = async () => {
+  setLoading(true);
+  try {
+    await fetchExams();
+    toast({
+      title: "✅ Refreshed",
+      description: "Exam list updated successfully",
+    });
+  } catch (err) {
+    console.error("Error refreshing exams:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const fetchQuestionSets = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/questions/list`, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Server Error ${res.status}: ${text.slice(0, 80)}`);
+    }
+
+    const data = await res.json();
+    setQuestionData(data);
+  } catch (err: any) {
+    console.error("Error fetching question sets:", err);
+    toast({ title: "Error", description: err.message, variant: "destructive" });
+  }
+};
+
+
+
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -49,6 +136,11 @@ const AdminDashboard = () => {
     };
     fetchStudents();
   }, []);
+  useEffect(() => {
+    fetchExams();
+    fetchQuestionSets();
+  }, []);
+
 
   
 
@@ -66,13 +158,30 @@ const AdminDashboard = () => {
     };
     fetchStats();
   }, []);
+  const fetchStats = async () => {
+      try {
+        
+        const res = await fetch(`${API_BASE}/api/admin/students` , {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setStats(prev => ({ ...prev, totalStudents: data.total || 0 }));
+      } catch(err) { console.error(err); }
+    };
+   const handleRefreshStudent = async () => {
+      await fetchStats();
+      toast({
+        title: "🔁 Refreshed",
+        description: "Students list updated",
+      });
+    };
 
 
-  const [recentExams] = useState([
-    { id: 1, title: "Computer Science Midterm", students: 45, date: "2024-01-15", status: "active" },
-    { id: 2, title: "Mathematics Final", students: 32, date: "2024-01-12", status: "completed" },
-    { id: 3, title: "Physics Quiz", students: 28, date: "2024-01-10", status: "completed" }
-  ]);
+  // const [recentExams] = useState([
+  //   { id: 1, title: "Computer Science Midterm", students: 45, date: "2024-01-15", status: "active" },
+  //   { id: 2, title: "Mathematics Final", students: 32, date: "2024-01-12", status: "completed" },
+  //   { id: 3, title: "Physics Quiz", students: 28, date: "2024-01-10", status: "completed" }
+  // ]);
 
   // const [recentStudents] = useState([
   //   { id: 1, name: "John Smith", studentId: "CS2024001", email: "john@college.edu", status: "active" },
@@ -90,10 +199,18 @@ const AdminDashboard = () => {
               <h1 className="text-2xl font-bold text-card-foreground">Admin Dashboard</h1>
               <p className="text-muted-foreground">Manage students, exams, and monitor system activity</p>
             </div>
-            <Button variant="outline">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
+            <div>
+              <Button variant="outline" className="mr-2"  onClick={() => setShowNotifications(true)}>
+                <Bell  className="h-6 w-6 mr-2" />
+                Notification 
+              </Button>
+              <NotificationPopup open={showNotifications} onClose={() => setShowNotifications(false)} />
+              <Button variant="outline" >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </div>
+            
           </div>
         </div>
       </header>
@@ -162,7 +279,7 @@ const AdminDashboard = () => {
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Recent Exams */}
-              <Card className="shadow-card">
+              {/* <Card className="shadow-card">
                 <CardHeader>
                   <CardTitle>Recent Exams</CardTitle>
                   <CardDescription>Latest examination activities</CardDescription>
@@ -179,12 +296,73 @@ const AdminDashboard = () => {
                       </Badge>
                     </div>
                   ))}
-                  <Button variant="outline" className="w-full">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Schedule New Exam
-                  </Button>
+                  <div className="flex justify-evenly">
+                    <Button variant="outline" className="w-full mr-1">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Schedule New Exam
+                    </Button>
+                    <Button variant="outline" className="w-full">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      More
+                    </Button>
+                  </div>
+                  
+                  
+                </CardContent>
+              </Card> */}
+              <Card className="shadow-card">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Recent Exams</CardTitle>
+                      <CardDescription>Latest examination activities</CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleRefreshExams}
+                      disabled={loading}
+                    >
+                      <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                      {loading ? "Refreshing..." : "Refresh"}
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {examData.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">No exams available</p>
+                  ) : (
+                    examData.map((exam, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 "
+                      >
+                        <div>
+                          <p className="font-medium text-card-foreground uppercase">{exam.title || exam.fileName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {exam.category} • {exam.subcategory || "N/A"}
+                          </p>
+                        </div>
+                        <Badge variant={exam.status === "active" ? "default" : "secondary"}>
+                          {exam.status || "General"}
+                        </Badge>
+                      </div>
+
+                    ))
+                  )}
+                  <div className="flex justify-evenly">
+                    <Button variant="outline" className="w-full mr-1">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Schedule New Exam
+                    </Button>
+                    {/* <Button variant="outline" className="w-full">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      More
+                    </Button> */}
+                  </div>
                 </CardContent>
               </Card>
+
 
               {/* Admin Info Card */}
               <Card className="shadow-card border-primary">
@@ -221,6 +399,7 @@ const AdminDashboard = () => {
               <CardHeader>
                 <CardTitle>Recent Students</CardTitle>
                 <CardDescription>Student accounts you've created recently</CardDescription>
+
               </CardHeader>
               <CardContent className="space-y-4">
                 {recentStudents.map((student) => (
@@ -234,7 +413,15 @@ const AdminDashboard = () => {
                     </Badge>
                   </div>
                 ))}
-                <CreateStudent />
+                <div className="flex justify-between">
+                  <CreateStudent />
+                  {/* <Button variant="outline" className="w-full">
+                      <Calendar className="h-6 w-6 mr-2" />
+                      More
+                    </Button> */}
+                </div>
+                
+                
               </CardContent>
             </Card>
           </TabsContent>
@@ -248,10 +435,15 @@ const AdminDashboard = () => {
                     <CardDescription>Create student accounts and manage access credentials. Only admins can create student logins.</CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Import Excel
-                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 flex items-center gap-2"
+                      onClick={handleRefreshStudent}
+                        disabled={loading}
+                          >
+                                <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                                {loading ? "Refreshing..." : "Refresh"}
+                              </Button>
                     <CreateStudent />
                   </div>
                 </div>
@@ -306,6 +498,10 @@ const AdminDashboard = () => {
                       <Download className="h-4 w-4 mr-2" />
                       Export Student List
                     </Button>
+                    <Button variant="outline" className="w-full">
+                      <Calendar className="h-6 w-6 mr-2" />
+                      More
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -320,24 +516,82 @@ const AdminDashboard = () => {
                     <CardTitle>Exam Management</CardTitle>
                     <CardDescription>Create, schedule, and manage examinations</CardDescription>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Import Questions
-                    </Button>
-                    <Button variant="hero">
+                  {/* <div className=""> */}
+                    {/* <Button
+                                variant="outline"
+                                className="flex-1 flex items-center gap-2"
+                                onClick={handleRefresh}
+                                disabled={loading}
+                              >
+                                <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                                {loading ? "Refreshing..." : "Refresh"}
+                              </Button> */}
+                    {/* <Button variant="hero">
                       <Plus className="h-4 w-4 mr-2" />
                       Create Exam
-                    </Button>
-                  </div>
+                    </Button> */}
+                    {/* <CreateExam /> */}
+                  {/* </div> */}
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <div className="text-center">
+                  <Tabs defaultValue="exams" className="space-y-6">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="exams">Exams</TabsTrigger>
+                      <TabsTrigger value="files">Files</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="exams">
+                      <div className="flex justify-end mb-3">
+                        <Button
+                          variant="outline"
+                          onClick={handleRefreshExams}
+                          disabled={loading}
+                          className="mr-2 h-13"
+                        >
+                          <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                          {loading ? "Refreshing..." : "Refresh"}
+                        </Button>
+                        <CreateExam />
+                      </div>
+
+                      <div className="space-y-4">
+                        {examData.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-4">No exams found</p>
+                        ) : (
+                          examData.map((exam, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                            >
+                              <div>
+                                <p className="font-medium text-card-foreground">{exam.fileName}</p>
+                                <p className="text-sm text-muted-foreground ">
+                                  {exam.category} • {exam.subcategory}
+                                </p>
+                              </div>
+                              <Badge variant="secondary">
+                                {exam.collegeTag || "General"}
+                              </Badge>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="files">
+                      <div className="py-6 text-center text-muted-foreground">
+                        File upload and management coming soon...
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+
+                  {/* {!activeTab === "files" ? (<FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-card-foreground mb-2">Exam Creation</h3>
                   <p className="text-muted-foreground mb-4">Design secure exams with multiple question types and anti-cheating measures</p>
-                  <Button variant="hero">Create Your First Exam</Button>
+                  <Button variant="hero">Create Your First Exam</Button>)} */}
+                  
                 </div>
               </CardContent>
             </Card>

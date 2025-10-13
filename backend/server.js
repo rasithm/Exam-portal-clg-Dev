@@ -16,7 +16,8 @@ import adminRoutes from './routes/adminRoutes.js';
 import { initSocket } from './sockets/socketManager.js';
 import { protect } from "./middlewares/auth.js";
 import examRoutes from "./routes/examRoutes.js";
-
+import questionRoutes from "./routes/questionRoutes.js";
+// import { initSocket } from "./sockets/socketManager.js";
 const app = express();
 const server = http.createServer(app);
 
@@ -37,17 +38,29 @@ app.use(limiter);
 app.use('/api/creator', creatorRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin',protect(['admin', 'creator']) ,adminRoutes);
-app.use("/api/exam", examRoutes);
+app.use("/api/admin/exams", examRoutes);
+app.use("/api/admin/questions", protect(["admin"]), questionRoutes);
 
 // basic health
 app.get('/api/health', (req,res) => res.json({ ok: true }));
+// Error handler (last middleware)
+app.use((err, req, res, next) => {
+  console.error("Unexpected error:", err);
+  res.status(err.status || 500).json({
+    message: err.message || "Internal Server Error",
+  });
+});
 
+let io;
 // DB + sockets
 const PORT = process.env.PORT || 5000;
 connectDB().then(() => {
-  const io = initSocket(server, process.env.FRONTEND_URL || 'http://localhost:5173');
+  io = initSocket(server, process.env.FRONTEND_URL || 'http://localhost:5173');
   server.listen(PORT, () => console.log(`Server running on ${PORT}`));
 }).catch(err => {
   console.error('DB connection failed', err);
   process.exit(1);
 });
+
+
+export {io};

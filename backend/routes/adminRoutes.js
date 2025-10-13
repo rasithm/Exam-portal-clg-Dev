@@ -9,6 +9,8 @@ import {
   exportStudentsCSV,
   downloadTemplate
 } from '../controllers/adminController.js';
+import { getNotifications, acceptQuestionFile, rejectQuestionFile } from '../controllers/notificationController.js';
+
 
 const upload = multer({ dest: 'uploads/' });
 const router = express.Router();
@@ -27,6 +29,10 @@ router.get('/students/export', protect(['admin']), exportStudentsCSV);
 
 // download template CSV
 router.get('/students/template', protect(['admin']), downloadTemplate);
+
+router.get('/notifications', getNotifications);
+router.post('/notifications/accept', acceptQuestionFile);
+router.post('/notifications/reject', rejectQuestionFile);
 
 export default router;
 
