@@ -1,4 +1,5 @@
-import { useState } from "react";
+//C:\Users\nazeer\Downloads\Exam-portal\Exam-portal\proctor-plus-suite\src\pages\StudentDashboard.tsx
+import { useState , useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,73 +15,215 @@ import {
   Calendar,
   User
 } from "lucide-react";
+import axios from "axios";
+import { toast } from "sonner";
+import { baseUrl } from "../constant/Url";
+const API_BASE = baseUrl || "http://localhost:5000";
 
 const StudentDashboard = () => {
+
   const navigate = useNavigate();
+  const [studentInfo, setStudentInfo] = useState<any>(null);
+  const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
+  const [recentExams, setRecentExams] = useState<any[]>([]);
+  const [averageScore, setAverageScore] = useState(0);
+  const [warningCount, setWarningCount] = useState(0);
+
+  // ✅ Fetch exams for this student
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/student/dashboard`, {
+          withCredentials: true,
+        });
+        const data = res.data;
+
+        setStudentInfo(data.student);
+        setUpcomingExams(data.upcomingExams);
+        setRecentExams(data.completedExams);
+
+        const avg =
+          data.completedExams.length > 0
+            ? Math.round(
+                data.completedExams.reduce(
+                  (acc, exam) => acc + (exam.score / exam.totalMarks) * 100,
+                  0
+                ) / data.completedExams.length
+              )
+            : 0;
+        setAverageScore(avg);
+      } catch (err: any) {
+        console.error("Dashboard load error:", err);
+        toast.error("Failed to load student data.");
+        setStudentInfo({ name: "Guest", studentId: "-", department: "-" });
+      }
+    };
+
+    fetchDashboardData();
+  }, [navigate]);
   
-  const [studentInfo] = useState({
-    name: "John Smith",
-    studentId: "CS2024001",
-    email: "john@college.edu",
-    department: "Computer Science"
-  });
 
-  const [upcomingExams] = useState([
-    {
-      id: 1,
-      title: "Data Structures Final",
-      subject: "Computer Science",
-      date: "2024-01-20",
-      time: "10:00 AM",
-      duration: 120,
-      status: "upcoming",
-      description: "Comprehensive final examination covering all data structures topics"
-    },
-    {
-      id: 2,
-      title: "Mathematics Quiz",
-      subject: "Mathematics",
-      date: "2024-01-18",
-      time: "2:00 PM",
-      duration: 60,
-      status: "upcoming",
-      description: "Quiz on calculus and linear algebra"
+
+  // ✅ Security — Disable Right-Click, Shortcuts, Tab Switch, Extensions
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey ||
+        [123, 73, 74, 85, 67, 86, 88, 83].includes(e.keyCode)
+      ) {
+        e.preventDefault();
+        toast.warning("Keyboard shortcuts are disabled during your session!");
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setWarningCount((prev) => prev + 1);
+        toast.warning("Tab switch detected!");
+      }
+    };
+
+    const handleCopyPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      toast.warning("Copy-Paste disabled!");
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("visibilitychange", handleVisibility);
+    document.addEventListener("copy", handleCopyPaste);
+    document.addEventListener("paste", handleCopyPaste);
+
+    // Detect Browser Extensions / AI Tools
+    setTimeout(() => {
+      const suspicious = [
+        "ChatGPT",
+        "Copilot",
+        "AIPRM",
+        "Merlin",
+        "Grammarly",
+        "Compose AI",
+      ];
+      const extensions = document.querySelectorAll("iframe, script");
+      extensions.forEach((el) => {
+        suspicious.forEach((tool) => {
+          if (el.outerHTML.includes(tool)) {
+            toast.error("Unauthorized browser extension detected!");
+            navigate("/login");
+          }
+        });
+      });
+    }, 2000);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      document.removeEventListener("copy", handleCopyPaste);
+      document.removeEventListener("paste", handleCopyPaste);
+    };
+  }, [navigate]);
+
+  // ✅ Redirect after repeated violations
+  useEffect(() => {
+    if (warningCount >= 3) {
+      toast.error("Multiple security violations detected!");
+      navigate("/login");
     }
-  ]);
+  }, [warningCount, navigate]);
 
-  const [recentExams] = useState([
-    {
-      id: 3,
-      title: "Database Systems Midterm",
-      subject: "Computer Science",
-      date: "2024-01-10",
-      score: 85,
-      totalMarks: 100,
-      status: "completed"
-    },
-    {
-      id: 4,
-      title: "Operating Systems Quiz",
-      subject: "Computer Science", 
-      date: "2024-01-08",
-      score: 92,
-      totalMarks: 100,
-      status: "completed"
-    }
-  ]);
-
-  const handleStartExam = (examId: number) => {
+  const handleStartExam = (examId: string) => {
     navigate(`/exam/${examId}`);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "upcoming": return "default";
-      case "completed": return "secondary";
-      case "in-progress": return "warning";
-      default: return "secondary";
+      case "upcoming":
+        return "default";
+      case "completed":
+        return "secondary";
+      case "in-progress":
+        return "warning";
+      default:
+        return "secondary";
     }
   };
+  // const navigate = useNavigate();
+  
+  // const [studentInfo] = useState({
+  //   name: "John Smith",
+  //   studentId: "CS2024001",
+  //   email: "john@college.edu",
+  //   department: "Computer Science"
+  // });
+
+  // const [upcomingExams] = useState([
+  //   {
+  //     id: 1,
+  //     title: "Data Structures Final",
+  //     subject: "Computer Science",
+  //     date: "2024-01-20",
+  //     time: "10:00 AM",
+  //     duration: 120,
+  //     status: "upcoming",
+  //     description: "Comprehensive final examination covering all data structures topics"
+  //   },
+  //   {
+  //     id: 2,
+  //     title: "Mathematics Quiz",
+  //     subject: "Mathematics",
+  //     date: "2024-01-18",
+  //     time: "2:00 PM",
+  //     duration: 60,
+  //     status: "upcoming",
+  //     description: "Quiz on calculus and linear algebra"
+  //   }
+  // ]);
+
+  // const [recentExams] = useState([
+  //   {
+  //     id: 3,
+  //     title: "Database Systems Midterm",
+  //     subject: "Computer Science",
+  //     date: "2024-01-10",
+  //     score: 85,
+  //     totalMarks: 100,
+  //     status: "completed"
+  //   },
+  //   {
+  //     id: 4,
+  //     title: "Operating Systems Quiz",
+  //     subject: "Computer Science", 
+  //     date: "2024-01-08",
+  //     score: 92,
+  //     totalMarks: 100,
+  //     status: "completed"
+  //   }
+  // ]);
+
+  // const handleStartExam = (examId: number) => {
+  //   navigate(`/exam/${examId}`);
+  // };
+
+
+  // const getStatusColor = (status: string) => {
+  //   switch (status) {
+  //     case "upcoming": return "default";
+  //     case "completed": return "secondary";
+  //     case "in-progress": return "warning";
+  //     default: return "secondary";
+  //   }
+  // };
+  if (!studentInfo) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Loading your dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -94,7 +237,7 @@ const StudentDashboard = () => {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="font-medium text-card-foreground">{studentInfo.studentId}</p>
+                <p className="font-medium text-card-foreground capitalize">{studentInfo.name}</p>
                 <p className="text-sm text-muted-foreground">{studentInfo.department}</p>
               </div>
               <div className="p-2 rounded-full bg-primary-light">
@@ -157,7 +300,7 @@ const StudentDashboard = () => {
               </CardTitle>
               <CardDescription>Scheduled examinations requiring your attention</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 max-h-[450px] overflow-y-auto scrollbar-thin">
               {upcomingExams.map((exam) => (
                 <div key={exam.id} className="p-4 rounded-lg border bg-card">
                   <div className="flex items-start justify-between mb-3">

@@ -17,6 +17,7 @@ import { initSocket } from './sockets/socketManager.js';
 import { protect } from "./middlewares/auth.js";
 import examRoutes from "./routes/examRoutes.js";
 import questionRoutes from "./routes/questionRoutes.js";
+import studentRoutes from "./routes/studentRoutes.js"
 // import { initSocket } from "./sockets/socketManager.js";
 const app = express();
 const server = http.createServer(app);
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin',protect(['admin', 'creator']) ,adminRoutes);
 app.use("/api/admin/exams", examRoutes);
 app.use("/api/admin/questions", protect(["admin"]), questionRoutes);
+app.use("/api/student", protect(["student"]), studentRoutes);
 
 // basic health
 app.get('/api/health', (req,res) => res.json({ ok: true }));

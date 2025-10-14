@@ -1,14 +1,7 @@
 // C:\Users\nazeer\Downloads\Exam-portal\Exam-portal\backend\models\Exam.js
 import mongoose from "mongoose";
 
-// const questionSchema = new mongoose.Schema({
-//   type: { type: String, enum: ["mcq", "descriptive", "coding"], required: true },
-//   question: { type: String, required: true },
-//   options: [String],              
-//   correctAnswer: String,          
-//   maxWords: Number,               
-//   language: String                
-// });
+
 const questionSchema = new mongoose.Schema({
   type: { type: String, enum: ["mcq", "descriptive", "coding"], required: true },
   question: { type: String, required: true },

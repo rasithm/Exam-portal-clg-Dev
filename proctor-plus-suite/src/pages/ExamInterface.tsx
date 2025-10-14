@@ -1,3 +1,4 @@
+//C:\Users\nazeer\Downloads\Exam-portal\Exam-portal\proctor-plus-suite\src\pages\ExamInterface.tsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,72 @@ const ExamInterface = () => {
       }
     ]
   });
+
+  const [warningCount, setWarningCount] = useState(0);
+
+  useEffect(() => {
+    // Disable right-click
+    const disableContextMenu = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener("contextmenu", disableContextMenu);
+
+    // Disable keyboard shortcuts (Ctrl, F12, etc.)
+    const disableShortcuts = (e: KeyboardEvent) => {
+      if (
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey ||
+        [123, 73, 74, 85, 67, 86, 88, 83].includes(e.keyCode) // F12, Ctrl+I, Ctrl+Shift+I, etc.
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        alert("Shortcut keys are disabled during the exam!");
+      }
+    };
+    document.addEventListener("keydown", disableShortcuts);
+
+    // Detect tab switch or minimize
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setWarningCount(prev => prev + 1);
+        alert("Tab switch detected! Please stay on the exam window.");
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Disable copy, paste, cut
+    const disableCopyPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      alert("Copy-Paste is disabled!");
+    };
+    document.addEventListener("copy", disableCopyPaste);
+    document.addEventListener("paste", disableCopyPaste);
+    document.addEventListener("cut", disableCopyPaste);
+
+    // Optional: warn on leaving the page
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "Exam in progress — leaving will end the session!";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener("contextmenu", disableContextMenu);
+      document.removeEventListener("keydown", disableShortcuts);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("copy", disableCopyPaste);
+      document.removeEventListener("paste", disableCopyPaste);
+      document.removeEventListener("cut", disableCopyPaste);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (warningCount >= 3) {
+      alert("Multiple focus changes detected! Your exam will be auto-submitted.");
+      // Auto submit or logout student
+      // submitExam();
+    }
+  }, [warningCount]);
 
   // Timer effect
   useEffect(() => {
@@ -143,6 +210,26 @@ const ExamInterface = () => {
       navigate("/student/dashboard");
     }, 3000);
   };
+  const goFullScreen = () => {
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    }
+  };
+  goFullScreen();
+
+  useEffect(() => {
+    const tabId = Math.random().toString(36).substr(2, 9);
+    localStorage.setItem("examTab", tabId);
+    const checkTab = setInterval(() => {
+      if (localStorage.getItem("examTab") !== tabId) {
+        alert("Multiple tabs detected! Closing...");
+        window.close();
+      }
+    }, 1000);
+    return () => clearInterval(checkTab);
+  }, []);
+
+
 
   const handleManualSubmit = () => {
     setExamSubmitted(true);

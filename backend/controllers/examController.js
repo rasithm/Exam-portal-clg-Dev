@@ -75,11 +75,7 @@ export const createExam = async (req, res) => {
       return res.status(400).json({ message: "End time must be after start time." });
     }
 
-    // Check examName uniqueness in the same collegeTag (case-insensitive)
-    // const existingExam = await Exam.findOne({
-    //   examName: new RegExp(`^${examName}$`, "i"),
-    //   collegeTag: req.user.collegeTag
-    // });
+    
     if (normalizedCategory.toLowerCase() !== "re-assign-exam" && category !== "re-Assign-Exam") {
       const existingExam = await Exam.findOne({
         examName: new RegExp(`^${examName}$`, "i"),
@@ -96,57 +92,6 @@ export const createExam = async (req, res) => {
       return res.status(400).json({ message: "Invalid duration. Must be a positive integer (minutes)." });
     }
 
-    
-    // if (normalizedCategory.toLowerCase() === "re-assign-exam" ) {
-      
-    //   const targetExam = await Exam.findOne({
-    //     examName: new RegExp(`^${examName}$`, "i"),
-    //     collegeTag: req.user.collegeTag
-    //   });
-    //   if (!targetExam) {
-    //     return res.status(404).json({ message: "Original exam not found for reassignment." });
-    //   }
-
-      
-    //   const students = Array.isArray(assignStudents)
-    //     ? assignStudents.map(s => s.toString().trim()).filter(Boolean)
-    //     : (assignStudents ).toString().split(",").map(s => s.trim()).filter(Boolean);
-
-    //   if (!students.length) {
-    //     return res.status(400).json({ message: "Please specify student(s) for reassignment (comma separated or array)." });
-    //   }
-
-      
-    //   targetExam.reassignedStudents = students;
-    //   targetExam.reassignAllowed = true;
-    //   await targetExam.save();
-
-    //   io?.emit("examReassigned", {
-    //     examName: targetExam.examName,
-    //     students,
-    //     by: req.user.email,
-    //     collegeTag: req.user.collegeTag,
-    //   });
-
-    //   const nowTime = new Date();
-    //   const allExams = await Exam.find({ collegeTag: req.user.collegeTag });
-
-    //     const upcomingCount = allExams.filter(e => new Date(e.startDateTime) > nowTime).length;
-    //     const activeCount = allExams.filter(e => new Date(e.startDateTime) <= nowTime && new Date(e.endDateTime) >= nowTime).length;
-    //     const completedCount = allExams.filter(e => new Date(e.endDateTime) < nowTime).length;
-    //     const reassignCount = allExams.filter(e => (e.category || "").toLowerCase() === "re-assign-exam").length;
-
-    //     io?.emit("examStatsUpdated", {
-    //       collegeTag: req.user.collegeTag,
-    //       upcomingCount,
-    //       activeCount,
-    //       completedCount,
-    //       reassignCount
-    //     });
-
-
-    //   return res.json({ message: "Exam reassigned successfully.", reassignedStudents: students });
-    // }
     if (normalizedCategory.toLowerCase() === "re-assign-exam") {
       const targetExam = await Exam.findOne({
         examName: new RegExp(`^${examName}$`, "i"),
@@ -252,57 +197,6 @@ export const createExam = async (req, res) => {
     let allQuestions = qSets.flatMap(s => s.questions || []);
     // If there are any items with empty question, clean them
     allQuestions = allQuestions.filter(q => q && q.question && q.question.toString().trim().length);
-
-    // Minimum questions check
-    // if (allQuestions.length < 60) {
-    //   return res.status(400).json({ message: `At least 60 questions are required. Found ${allQuestions.length}.` });
-    // }
-
-    // Deduplicate by question text (case-insensitive)
-    // const seen = new Set();
-    // const uniqueQuestions = [];
-    // for (const q of allQuestions) {
-    //   const key = q.question?.toString().toLowerCase().trim();
-    //   if (key && !seen.has(key)) {
-    //     seen.add(key);
-    //     uniqueQuestions.push(q);
-    //   }
-    // }
-
-    // Ensure difficulty distribution: at least 20 easy, 20 medium, 20 hard
-    // const easyQs = uniqueQuestions.filter(q => (q.mode || "").toString().toLowerCase() === "easy");
-    // const mediumQs = uniqueQuestions.filter(q => (q.mode || "").toString().toLowerCase() === "medium");
-    // const hardQs = uniqueQuestions.filter(q => (q.mode || "").toString().toLowerCase() === "hard");
-
-    // if (easyQs.length < 20 || mediumQs.length < 20 || hardQs.length < 20) {
-    //   return res.status(400).json({
-    //     message: `Need at least 20 easy, 20 medium and 20 hard questions. Found easy=${easyQs.length}, medium=${mediumQs.length}, hard=${hardQs.length}.`
-    //   });
-    // }
-
-    // Pick first 20 of each difficulty (so total 60). If you want random selection use shuffle logic.
-    // const pick = (arr, n) => arr.slice(0, n);
-    // const finalQuestionsSelected = [
-    //   ...pick(easyQs, 20),
-    //   ...pick(mediumQs, 20),
-    //   ...pick(hardQs, 20)
-    // ];
-
-    // Assign marks based on mode (easy=1, medium=2, hard=3)
-    // const questionsWithMarks = finalQuestionsSelected.map(q => {
-      
-    //   const qObj = q.toObject ? q.toObject() : { ...q };
-    //   const mode = (qObj.mode || "").toString().toLowerCase();
-    //   qObj.marks = mode === "easy" ? 1 : mode === "medium" ? 2 : 3, 
-    //   type: q.type || "MCQ"
-    //   return qObj;
-    // });
-    // const questionsWithMarks = finalQuestionsSelected.map(q => ({
-    //   ...q.toObject(),
-    //   marks: q.mode === "easy" ? 1 : q.mode === "medium" ? 2 : 3,
-    //   type: (q.type || "mcq").toLowerCase()   
-    // }));
-    
     // const totalMarks = questionsWithMarks.reduce((acc, q) => acc + (q.marks || 0), 0);
     // --- Ensure minimum question coverage ---
     if (allQuestions.length < 60) {
