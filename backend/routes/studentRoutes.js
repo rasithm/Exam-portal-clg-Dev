@@ -1,3 +1,4 @@
+//Exam-portal\Exam-Portal\backend\routes\studentRoutes.js
 import express from "express";
 import { protect } from "../middlewares/auth.js";
 import Student from "../models/Student.js";

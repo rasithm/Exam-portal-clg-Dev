@@ -3,7 +3,7 @@
 import Exam from "../models/Exam.js";
 import QuestionSet from "../models/QuestionSet.js";
 import { io } from "../sockets/socketManager.js";
-
+import Student from "../models/Student.js";
 /**
  * Create Exam controller
  * Accepts fields in req.body:
@@ -102,12 +102,20 @@ export const createExam = async (req, res) => {
         return res.status(404).json({ message: "Original exam not found for reassignment." });
       }
 
-      const students = Array.isArray(assignStudents)
-        ? assignStudents.map(s => s.toString().trim()).filter(Boolean)
-        : (assignStudents || "").toString().split(",").map(s => s.trim()).filter(Boolean);
+      // If no assignStudents provided, allow reassign to all
+      let students = [];
+      if (!assignStudents || assignStudents.length === 0) {
+        // Fetch all students created by this admin
+        const allStudents = await Student.find({ admin: req.user._id }).select("rollNumber");
+        students = allStudents.map(s => s.rollNumber.toString().trim());
+      } else {
+        students = Array.isArray(assignStudents)
+          ? assignStudents.map(s => s.toString().trim()).filter(Boolean)
+          : (assignStudents || "").toString().split(",").map(s => s.trim()).filter(Boolean);
+      }
 
       if (!students.length) {
-        return res.status(400).json({ message: "Please specify student(s) for reassignment (comma separated or array)." });
+        return res.status(400).json({ message: "No students found for reassignment." });
       }
 
       // ✅ Merge reassigned students into main list (avoid duplicates)
@@ -138,6 +146,7 @@ export const createExam = async (req, res) => {
         collegeTag: req.user.collegeTag,
       });
 
+      // Dashboard stats update
       const nowTime = new Date();
       const allExams = await Exam.find({ collegeTag: req.user.collegeTag });
 
@@ -155,11 +164,12 @@ export const createExam = async (req, res) => {
       });
 
       return res.json({
-        message: "Exam reassigned successfully with extended end date (2 days).",
+        message: `Exam reassigned successfully (${students.length} students) with extended end date (2 days).`,
         updatedAssignStudents: updatedAssignList,
         extendedEndDate,
       });
     }
+
 
 
    
@@ -238,9 +248,19 @@ export const createExam = async (req, res) => {
 
 
     // Assign students parsing (createExam case)
-    const parsedStudents = Array.isArray(assignStudents)
-      ? assignStudents.map(s => s.toString().trim()).filter(Boolean)
-      : (assignStudents || "").toString().split(",").map(s => s.trim()).filter(Boolean);
+    // Assign students parsing (createExam case)
+    let parsedStudents = [];
+    if (!assignStudents || assignStudents.length === 0) {
+      // Auto-fetch all students created by this admin
+      const allStudents = await Student.find({ admin: req.user._id }).select("rollNumber");
+      parsedStudents = allStudents.map(s => s.rollNumber.toString().trim());
+    } else {
+      parsedStudents = Array.isArray(assignStudents)
+        ? assignStudents.map(s => s.toString().trim()).filter(Boolean)
+        : (assignStudents || "").toString().split(",").map(s => s.trim()).filter(Boolean);
+    }
+
+
 
     // Create exam doc
     const newExam = await Exam.create({

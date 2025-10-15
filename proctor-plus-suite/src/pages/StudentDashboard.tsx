@@ -129,7 +129,7 @@ const StudentDashboard = () => {
 
   // ✅ Redirect after repeated violations
   useEffect(() => {
-    if (warningCount >= 3) {
+    if (warningCount >= 10) {
       toast.error("Multiple security violations detected!");
       navigate("/login");
     }
@@ -305,19 +305,30 @@ const StudentDashboard = () => {
                 <div key={exam.id} className="p-4 rounded-lg border bg-card">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-card-foreground mb-1">{exam.title}</h3>
-                      <p className="text-sm text-muted-foreground mb-2">{exam.description}</p>
+                      <h3 className="font-semibold text-card-foreground mb-1 capitalize">{exam.title}</h3>
+                      <p className="text-sm text-muted-foreground mb-2">{exam.description || "Comprehensive final examination covering all data structures topics"}</p>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {exam.date}
+                          {exam.startDate}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          {exam.time}
+                          {exam.startTime}
                         </span>
                         <span>{exam.duration} mins</span>
                       </div>
+                      {/* <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {exam.endDate}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {exam.endTime}
+                        </span>
+                        
+                      </div> */}
                     </div>
                     <Badge variant={getStatusColor(exam.status)}>
                       {exam.status}
@@ -326,7 +337,7 @@ const StudentDashboard = () => {
                   
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-muted-foreground">
-                      Subject: {exam.subject}
+                      Subject: {exam.subcategory || exam.subject}
                     </span>
                     <Button 
                       variant="hero" 
@@ -363,7 +374,7 @@ const StudentDashboard = () => {
                 <div key={exam.id} className="p-4 rounded-lg border bg-card">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-card-foreground mb-1">{exam.title}</h3>
+                      <h3 className="font-semibold text-card-foreground mb-1 capitalize">{exam.title}</h3>
                       <p className="text-sm text-muted-foreground">{exam.subject} • {exam.date}</p>
                     </div>
                     <Badge variant="secondary">Completed</Badge>

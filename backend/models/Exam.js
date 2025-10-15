@@ -26,6 +26,7 @@ const examSchema = new mongoose.Schema({
   endDateTime: Date,
   duration: Number,
   assignStudents: [String],
+  reassignedStudents: [String],
   reassignAllowed: Boolean,
   instructions: String,
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: true },

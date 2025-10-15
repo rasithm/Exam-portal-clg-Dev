@@ -1,12 +1,5 @@
 //C:\Users\nazeer\Downloads\Exam-portal\Exam-portal\proctor-plus-suite\src\components\CreateExam.tsx
 import { useState, useEffect } from "react";
-// import {
-//   Button, Input, Label, Card, CardHeader, CardContent,
-//   Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-//   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-//   Textarea, Separator
-// } from "@/components/ui";
-// import { Button } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
