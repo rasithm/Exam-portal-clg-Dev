@@ -1,5 +1,5 @@
 //C:\Users\nazeer\Downloads\Exam-portal\Exam-portal\proctor-plus-suite\src\pages\ExamInterface.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect , useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+// import { toast } from "sonner";
 import { 
   Clock, 
   Shield, 
@@ -18,12 +19,14 @@ import {
   Flag
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { baseUrl } from "../constant/Url";
+const API_BASE = baseUrl || "http://localhost:5000";
 
 const ExamInterface = () => {
   const { examId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-
+  const startedRef = useRef(false);
   // Exam state
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(7200); // 2 hours in seconds
@@ -32,39 +35,79 @@ const ExamInterface = () => {
   const [examSubmitted, setExamSubmitted] = useState(false);
 
   // Sample exam data
-  const [examData] = useState({
-    title: "Data Structures Final Examination",
-    duration: 120,
-    totalQuestions: 25,
-    questions: [
-      {
-        id: 1,
-        type: "mcq",
-        question: "What is the time complexity of searching in a balanced binary search tree?",
-        options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
-        correctAnswer: 1
-      },
-      {
-        id: 2,
-        type: "mcq", 
-        question: "Which data structure follows the LIFO (Last In First Out) principle?",
-        options: ["Queue", "Stack", "Array", "Linked List"],
-        correctAnswer: 1
-      },
-      {
-        id: 3,
-        type: "descriptive",
-        question: "Explain the difference between DFS and BFS traversal algorithms. Provide examples of when each would be preferred.",
-        maxWords: 200
-      },
-      {
-        id: 4,
-        type: "coding",
-        question: "Write a function to reverse a linked list. Provide both iterative and recursive solutions.",
-        language: "javascript"
+  // Exam data from backend
+  const [examData, setExamData] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+
+  useEffect(() => {
+    if (startedRef.current) return; // ✅ prevent multiple calls
+    startedRef.current = true;
+    // Start session first, then fetch exam. This must be sequential.
+    const init = async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        // 1) start session
+        const startRes = await fetch(`${API_BASE}/api/student/exams/${examId}/start`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!startRes.ok) {
+          const txt = await startRes.text();
+          throw new Error(`Start failed: ${startRes.status} ${txt}`);
+        }
+        const startJson = await startRes.json();
+        // backend returns { message, sessionId, token } — store sessionId
+        const sid = startJson.sessionId || startJson.session?.id || startJson.sessionId;
+        if (!sid) {
+          // still continue but warn
+          console.warn("No sessionId returned from start", startJson);
+        } else {
+          setSessionId(sid);
+        }
+
+        // 2) fetch questions (only after start succeeded)
+        const res = await fetch(`${API_BASE}/api/student/exams/${examId}`, {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`GetExam failed: ${res.status} ${txt}`);
+        }
+        const data = await res.json();
+        // Ensure questions array exists
+        if (!data?.questions || !Array.isArray(data.questions) || data.questions.length === 0) {
+          throw new Error("No questions returned from server");
+        }
+
+        setExamData(data);
+        setTimeRemaining((data.duration || 120) * 60);
+        setLoading(false);
+      } catch (err: any) {
+        console.error("Init exam error:", err);
+        setLoadError(err.message || "Failed to start or load exam.");
+        setLoading(false);
+        toast({
+          title: "Error loading exam",
+          description: err.message || "Unable to fetch exam questions.",
+          variant: "destructive",
+        });
+        // navigate back after short pause (optional)
+        setTimeout(() => navigate("/student/dashboard"), 1200);
       }
-    ]
-  });
+    };
+
+    init();
+  }, [examId, navigate, toast]);
+
+  
+
 
   const [warningCount, setWarningCount] = useState(0);
 
@@ -83,16 +126,26 @@ const ExamInterface = () => {
       ) {
         e.preventDefault();
         e.stopPropagation();
-        alert("Shortcut keys are disabled during the exam!");
+        toast({
+          title: "Security Alert",
+          description: "Shortcut keys are disabled during the exam!",
+          variant: "destructive"
+        });
+        // alert("Shortcut keys are disabled during the exam!");
       }
     };
     document.addEventListener("keydown", disableShortcuts);
 
     // Detect tab switch or minimize
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.hidden && !examSubmitted) {
+        logEvent("TAB_SWITCH");
         setWarningCount(prev => prev + 1);
-        alert("Tab switch detected! Please stay on the exam window.");
+        toast({
+          title: "Security Alert",
+          description: "Tab Switching Detected — Logged",
+          variant: "destructive"
+        });
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -100,7 +153,11 @@ const ExamInterface = () => {
     // Disable copy, paste, cut
     const disableCopyPaste = (e: ClipboardEvent) => {
       e.preventDefault();
-      alert("Copy-Paste is disabled!");
+      toast({
+          title: "Security Alert",
+          description: "Copy-Paste disabled!",
+          variant: "destructive"
+        });
     };
     document.addEventListener("copy", disableCopyPaste);
     document.addEventListener("paste", disableCopyPaste);
@@ -182,8 +239,48 @@ const ExamInterface = () => {
     };
   }, [examSubmitted, toast]);
 
-  const handleAnswerChange = (questionId: number, answer: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: answer }));
+  // Save answer (uses sessionId and backend expected fields)
+  const handleAnswerChange = async (questionId: string, selectedIndex: string) => {
+    // update local UI state
+    setAnswers(prev => ({ ...prev, [questionId]: selectedIndex }));
+
+    // Send to backend using expected keys: sessionId, questionId, selectedOption
+    if (!sessionId) {
+      console.warn("No sessionId available for save; skipping save.");
+      return;
+    }
+
+    try {
+      await fetch(`${API_BASE}/api/student/exams/${examId}/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sessionId,
+          questionId,
+          selectedOption: selectedIndex
+        }),
+      });
+    } catch (err) {
+      console.error("Auto-save failed", err);
+    }
+  };
+
+  const logEvent = async (eventType: string) => {
+    if (!sessionId) {
+      console.warn("No sessionId for event; skipping log");
+      return;
+    }
+    try {
+      await fetch(`${API_BASE}/api/student/exams/${examId}/event`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ sessionId, eventType }),
+      });
+    } catch (err) {
+      console.error("Event log failed", err);
+    }
   };
 
   const handleQuestionFlag = (questionId: number) => {
@@ -207,15 +304,16 @@ const ExamInterface = () => {
     });
     
     setTimeout(() => {
-      navigate("/student/dashboard");
+      navigate("/student/exam/success");
     }, 3000);
   };
-  const goFullScreen = () => {
+  
+  useEffect(() => {
     if (document.documentElement.requestFullscreen) {
       document.documentElement.requestFullscreen();
     }
-  };
-  goFullScreen();
+  }, []);
+
 
   useEffect(() => {
     const tabId = Math.random().toString(36).substr(2, 9);
@@ -229,9 +327,30 @@ const ExamInterface = () => {
     return () => clearInterval(checkTab);
   }, []);
 
+  const submitToServer = async () => {
+    if (!sessionId) {
+      console.warn("No sessionId for submit; aborting");
+      return;
+    }
+    try {
+      await fetch(`${API_BASE}/api/student/exams/${examId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sessionId,
+          // optionally send answers if backend expects them; backend can read attempt from DB
+          answers,
+        }),
+      });
+    } catch (err) {
+      console.error("Submit error", err);
+    }
+  };
 
 
-  const handleManualSubmit = () => {
+  const handleManualSubmit = async() => {
+    await submitToServer();
     setExamSubmitted(true);
     toast({
       title: "Exam Submitted Successfully",
@@ -250,8 +369,16 @@ const ExamInterface = () => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const currentQ = examData.questions[currentQuestion];
-  const progress = ((currentQuestion + 1) / examData.questions.length) * 100;
+  if (loading) return <div className="p-8 text-center">Preparing exam...</div>;
+  if (loadError) return <div className="p-8 text-center text-danger">Error: {loadError}</div>;
+  if (!examData || !Array.isArray(examData.questions) || examData.questions.length === 0) {
+    return <div className="p-8 text-center">No questions available for this exam.</div>;
+  }
+
+
+  const clampedIndex = Math.max(0, Math.min(currentQuestion, examData.questions.length - 1));
+  const currentQ = examData.questions[clampedIndex];
+  const progress = ((clampedIndex + 1) / examData.questions.length) * 100;
 
   if (examSubmitted) {
     return (
@@ -324,13 +451,25 @@ const ExamInterface = () => {
             <Card className="shadow-card">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Badge variant="outline">
-                      {currentQ.type.toUpperCase()}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{currentQ.type.toUpperCase()}</Badge>
+
+                    {/* ✅ Difficulty Tag */}
+                    <Badge 
+                      className={
+                        currentQ.difficulty === "easy"
+                          ? "bg-green-100 text-green-700"
+                          : currentQ.difficulty === "medium"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700"
+                      }
+                    >
+                      {currentQ.difficulty.toUpperCase()}
                     </Badge>
+
                     Question {currentQuestion + 1}
-                  </CardTitle>
-                  
+                  </div>
+
                   <Button
                     variant="ghost"
                     size="sm"
@@ -341,6 +480,7 @@ const ExamInterface = () => {
                   </Button>
                 </div>
               </CardHeader>
+
               
               <CardContent className="space-y-6">
                 <div className="prose prose-sm max-w-none">
@@ -348,7 +488,7 @@ const ExamInterface = () => {
                 </div>
 
                 {/* MCQ Options */}
-                {currentQ.type === "mcq" && currentQ.options && (
+                {/* {currentQ.type === "mcq" && currentQ.options && (
                   <RadioGroup
                     value={answers[currentQ.id] || ""}
                     onValueChange={(value) => handleAnswerChange(currentQ.id, value)}
@@ -362,43 +502,25 @@ const ExamInterface = () => {
                       </div>
                     ))}
                   </RadioGroup>
+                )} */}
+                {currentQ.type === "mcq" && currentQ.options && (
+                  <RadioGroup
+                    value={answers[currentQ._id] || ""}
+                    onValueChange={(value) => handleAnswerChange(currentQ._id, value)}
+                  >
+                    {currentQ.options.map((option: string, index: number) => (
+                      <div key={index} className="flex items-center space-x-2 p-3 rounded-lg hover:bg-muted/50">
+                        <RadioGroupItem value={index.toString()} id={`option-${currentQ._id}-${index}`} />
+                        <Label htmlFor={`option-${currentQ._id}-${index}`} className="flex-1 cursor-pointer">
+                          {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
                 )}
 
                 {/* Descriptive Answer */}
-                {currentQ.type === "descriptive" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="descriptive-answer">Your Answer</Label>
-                    <Textarea
-                      id="descriptive-answer"
-                      placeholder="Type your detailed answer here..."
-                      value={answers[currentQ.id] || ""}
-                      onChange={(e) => handleAnswerChange(currentQ.id, e.target.value)}
-                      className="min-h-[200px]"
-                    />
-                    {currentQ.maxWords && (
-                      <p className="text-sm text-muted-foreground">
-                        Maximum {currentQ.maxWords} words
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Coding Question */}
-                {currentQ.type === "coding" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="code-answer">Your Code</Label>
-                    <Textarea
-                      id="code-answer"
-                      placeholder="Write your code here..."
-                      value={answers[currentQ.id] || ""}
-                      onChange={(e) => handleAnswerChange(currentQ.id, e.target.value)}
-                      className="min-h-[300px] font-mono text-sm"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Language: {currentQ.language}
-                    </p>
-                  </div>
-                )}
+                
               </CardContent>
             </Card>
 

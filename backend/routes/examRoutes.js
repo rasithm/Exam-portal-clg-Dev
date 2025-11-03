@@ -1,18 +1,22 @@
-// C:\Users\nazeer\Downloads\Exam-portal\Exam-portal\backend\routes\examRoutes.js
+// backend/routes/examRoutes.js
 import express from "express";
 import { protect } from "../middlewares/auth.js";
-import { createExam, getExams , startExam } from "../controllers/examController.js";
+import {
+  createExam,
+  listExams
+           // may be used for admin force-close (not exposed to student here)
+} from "../controllers/examController.js";
 
 const router = express.Router();
 
-// Admin creates exam
+/* ────────────────────────────────────────────────
+   ✅ ADMIN ROUTES
+   ──────────────────────────────────────────────── */
 router.post("/create", protect(["admin"]), createExam);
-router.get("/list", protect(["admin"]), getExams);
-router.get("/start/:examId", protect(["student"]), startExam);
-// Student fetches exams
-// router.get("/list", protect(["student"]), getExamsForStudent);
+router.get("/list", protect(["admin"]), listExams);
 
-// Student fetches one exam
-// router.get("/:id", protect(["student"]), getExamById);
+
 
 export default router;
+
+

@@ -4,6 +4,17 @@ import Exam from "../models/Exam.js";
 import QuestionSet from "../models/QuestionSet.js";
 import { io } from "../sockets/socketManager.js";
 import Student from "../models/Student.js";
+
+import ExamSession from "../models/ExamSession.js";
+import ExamEvent from "../models/ExamEvent.js";
+
+
+
+import ExamAttempt from "../models/ExamAttempt.js";
+
+import crypto from "crypto";
+
+import { v4 as uuidv4 } from "uuid";
 /**
  * Create Exam controller
  * Accepts fields in req.body:
@@ -326,7 +337,7 @@ export const createExam = async (req, res) => {
   }
 };
 
-export const getExams = async (req, res) => {
+export const listExams = async (req, res) => {
   try {
     const exams = await Exam.find({ collegeTag: req.user.collegeTag })
       .populate("createdBy", "email")
@@ -338,60 +349,180 @@ export const getExams = async (req, res) => {
   }
 };
 
-
-
+// 🚀 START EXAM — block multi-device
 export const startExam = async (req, res) => {
   try {
-    const { examId } = req.params;
-    const exam = await Exam.findById(examId);
-    if (!exam) return res.status(404).json({ message: "Exam not found" });
+    const student = req.user._id;
+    const exam = req.params.examId;
 
-    // Helper functions
-    const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
-    const pick = (arr, n) => shuffle(arr).slice(0, n);
+    const already = await ExamSession.findOne({ student, active: true });
+    if (already) return res.status(403).json({ message: "Active exam exists" });
 
-    // Group questions by difficulty (case-insensitive)
-    const easyQs = exam.questions.filter(q => (q.mode || "").toLowerCase() === "easy");
-    const mediumQs = exam.questions.filter(q => (q.mode || "").toLowerCase() === "medium");
-    const hardQs = exam.questions.filter(q => (q.mode || "").toLowerCase() === "hard");
+    const token = crypto.randomBytes(32).toString("hex");
 
-    // Randomly pick 20 from each group
-    const selectedQs = [
-      ...pick(easyQs, Math.min(20, easyQs.length)),
-      ...pick(mediumQs, Math.min(20, mediumQs.length)),
-      ...pick(hardQs, Math.min(20, hardQs.length))
-    ];
+    const end = new Date();
+    const examDoc = await Exam.findById(exam);
+    end.setMinutes(end.getMinutes() + examDoc.duration);
 
-    // Shuffle full question order (so easy/medium/hard mix randomly)
-    const shuffledQuestions = shuffle(selectedQs).map(q => {
-      // Deep clone question object
-      const question = { ...q._doc };
-
-      // Randomize options (if available)
-      if (Array.isArray(question.options) && question.options.length > 1) {
-        question.options = shuffle(question.options);
-      }
-
-      // Remove correct answer field to avoid cheating
-      delete question.correctAnswer;
-
-      return question;
+    const session = await ExamSession.create({
+      student,
+      exam,
+      sessionToken: token,
+      startTime: new Date(),
+      endTime: end,
+      active: true,
+      violations: 0,
     });
 
-    const totalMarks = selectedQs.reduce((acc, q) => acc + (q.marks || 0), 0);
-
-    return res.status(200).json({
-      examName: exam.examName,
-      questionCount: shuffledQuestions.length,
-      totalMarks,
-      questions: shuffledQuestions
-    });
+    return res.json({ message: "OK", sessionId: session._id, token });
   } catch (err) {
-    console.error("Error starting exam:", err);
-    res.status(500).json({
-      message: "Server error while starting exam",
-      error: err.message
+    return res.status(500).json({ error: "Start failed" });
+  }
+};
+
+
+
+// 🎯 GET QUESTIONS — shuffle once
+export const getExam = async (req, res) => {
+  try {
+    const examId = req.params.examId;
+    const student = req.user._id;
+
+    const session = await ExamSession.findOne({ student, exam: examId });
+    if (!session) return res.status(400).json({ message: "Start first" });
+
+    if (!session.active) return res.status(410).json({ message: "Session expired" });
+
+    const now = new Date();
+    if (now > session.endTime) {
+      await autoSubmit(session, "timeout");
+      return res.status(410).json({ message: "Time-up Auto-submitted" });
+    }
+
+    const exam = await Exam.findById(examId);
+    if (!exam) return res.status(404).json({ message: "Not found" });
+
+    // ✅ ONE-TIME SHUFFLE (Mode-A)
+    if (!session.shuffledQuestions?.length) {
+      const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+
+      const easy = shuffle(exam.questions.filter(q => q.mode === "easy")).slice(0, 20);
+      const med = shuffle(exam.questions.filter(q => q.mode === "medium")).slice(0, 20);
+      const hard = shuffle(exam.questions.filter(q => q.mode === "hard")).slice(0, 20);
+
+      const final = [...easy, ...med, ...hard];
+      session.shuffledQuestions = final.map(q => q._id);
+      await session.save();
+    }
+
+    const ordered = session.shuffledQuestions.map(id =>
+      exam.questions.find(q => q._id.toString() === id.toString())
+    );
+
+    const questions = ordered.map(q => ({
+      _id: q._id,
+      question: q.question,
+      options: [...q.options].sort(() => Math.random() - 0.5), // ✅ option shuffle
+      mode: q.mode,
+    }));
+
+    res.json({ examId, duration: exam.duration, questions });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 🛡️ RECORD CHEATING / VIOLATIONS
+export const recordEvent = async (req, res) => {
+  try {
+    const { sessionId, eventType } = req.body;
+    const student = req.user._id;
+
+    await ExamEvent.create({ student, examSessionId: sessionId, eventType });
+
+    const session = await ExamSession.findById(sessionId);
+    session.violations++;
+
+    if (session.violations >= 3) {
+      session.active = false;
+      await session.save();
+      return autoSubmit(session, "cheating", res);
+    }
+
+    await session.save();
+    res.json({ message: "Recorded" });
+
+  } catch {
+    res.status(500).json({ message: "Event error" });
+  }
+};
+
+// 📝 SAVE ANSWER — tax on change
+export const saveAnswer = async (req, res) => {
+  try {
+    const { sessionId, questionId, selectedOption } = req.body;
+    const student = req.user._id;
+
+    const session = await ExamSession.findById(sessionId);
+    if (!session.active) return res.status(410).json({ message: "Session over" });
+
+    let attempt = await ExamAttempt.findOne({ student, examSessionId: sessionId });
+    if (!attempt) attempt = await ExamAttempt.create({ student, examSessionId: sessionId, answers: [] });
+
+    const exist = attempt.answers.find(a => a.questionId.toString() === questionId);
+    if (exist) {
+      exist.changedAnswer = exist.selectedOption !== selectedOption;
+      exist.selectedOption = selectedOption;
+    } else {
+      attempt.answers.push({ questionId, selectedOption, changedAnswer: false });
+    }
+
+    await attempt.save();
+    res.json({ message: "Saved" });
+  } catch {
+    res.status(500).json({ message: "Save failed" });
+  }
+};
+
+// ✅ SUBMIT MANUAL
+export const submitExam = async (req, res) => endExam(req, res, "manual");
+
+// 🚨 AUTO SUBMIT
+const autoSubmit = async (session, reason, res) =>
+  endExam({ body: { sessionId: session._id, student: session.student }, forceReason: reason }, res, reason);
+
+// 🎯 FINAL EVALUATION
+export const endExam = async (req, res, defaultReason) => {
+  try {
+    const { sessionId, student } = req.body;
+    const reason = req.forceReason || defaultReason;
+
+    const session = await ExamSession.findById(sessionId);
+    session.active = false;
+    await session.save();
+
+    const exam = await Exam.findById(session.exam);
+    const attempt = await ExamAttempt.findOne({ student, examSessionId: sessionId });
+
+    let score = 0;
+    exam.questions.forEach(q => {
+      const a = attempt.answers.find(x => x.questionId.toString() === q._id.toString());
+      if (a && a.selectedOption === q.correctAnswer) {
+        let m = q.mode === "easy" ? 1 : q.mode === "medium" ? 2 : 3;
+        if (a.changedAnswer) m *= 0.8;   // ✅ -20% penalty
+        score += m;
+      }
     });
+
+    attempt.totalMarks = score;
+    attempt.percentage = score;
+    attempt.pass = score >= 40;
+    attempt.reason = reason;
+    await attempt.save();
+
+    res.json({ message: "Finished", score, reason });
+  } catch {
+    res.status(500).json({ message: "End error" });
   }
 };
 

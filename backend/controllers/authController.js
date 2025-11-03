@@ -108,3 +108,31 @@ export const adminLogout = async (req, res) => {
 };
 
 
+export const studentLogout = async (req, res) => {
+  try {
+    // Clear the JWT cookie safely
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.COOKIE_SECURE === "true",
+      sameSite: "lax",
+    });
+
+    // Deactivate the student's active session (if exists)
+    const token = req.cookies?.token;
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      await Session.updateMany(
+        { userId: decoded.id, role: decoded.role },
+        { $set: { active: false } }
+      );
+    }
+
+    return res.json({ message: "Student logged out securely" });
+  } catch (error) {
+    console.error("Error in studentLogout:", error);
+    res.status(500).json({ message: "Internal server error during logout" });
+  }
+};
+
+
+

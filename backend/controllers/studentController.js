@@ -20,25 +20,56 @@ export const getStudentDashboard = async (req, res) => {
     const now = new Date();
 
     // ✅ Prepare upcoming exams
+    // const upcomingExams = allExams
+    //   .filter((e) => new Date(e.startDateTime) > now)
+    //   .map((e) => ({
+    //     id: e._id,
+    //     title: e.examName,
+    //     category : e.category || "General",
+    //     subject: e.subcategory || "General",
+    //     startDate: e.startDateTime ? e.startDateTime.toISOString().split("T")[0] : "",
+    //     startTime: e.startDateTime
+    //       ? new Date(e.startDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    //       : "",
+    //     endDate: e.endDateTime ? e.endDateTime.toISOString().split("T")[0] : "",
+    //     endTime: e.endDateTime
+    //       ? new Date(e.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    //       : "",
+    //     duration: e.duration || 0,
+    //     status: "upcoming",
+    //     description: e.instructions || "",
+    //   }));
     const upcomingExams = allExams
-      .filter((e) => new Date(e.startDateTime) > now)
-      .map((e) => ({
+    .filter((e) => {
+      const start = new Date(e.startDateTime);
+      const end = new Date(e.endDateTime);
+      // Show if exam not ended yet
+      return end > now;
+    })
+    .map((e) => {
+      const start = new Date(e.startDateTime);
+      const end = new Date(e.endDateTime);
+      const status =
+        now >= start && now <= end ? "active" : "upcoming";
+
+      return {
         id: e._id,
         title: e.examName,
-        category : e.category || "General",
+        category: e.category || "General",
         subject: e.subcategory || "General",
         startDate: e.startDateTime ? e.startDateTime.toISOString().split("T")[0] : "",
         startTime: e.startDateTime
-          ? new Date(e.startDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          ? start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           : "",
         endDate: e.endDateTime ? e.endDateTime.toISOString().split("T")[0] : "",
         endTime: e.endDateTime
-          ? new Date(e.endDateTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          ? end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           : "",
         duration: e.duration || 0,
-        status: "upcoming",
+        status,
         description: e.instructions || "",
-      }));
+      };
+    });
 
     // ✅ Prepare completed exams
     const completedExams = (student.scores || [])

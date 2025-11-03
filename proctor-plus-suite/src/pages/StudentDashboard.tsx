@@ -15,10 +15,13 @@ import {
   Calendar,
   User
 } from "lucide-react";
+import { RefreshCcw , LogOut } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { baseUrl } from "../constant/Url";
 const API_BASE = baseUrl || "http://localhost:5000";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const StudentDashboard = () => {
 
@@ -28,6 +31,11 @@ const StudentDashboard = () => {
   const [recentExams, setRecentExams] = useState<any[]>([]);
   const [averageScore, setAverageScore] = useState(0);
   const [warningCount, setWarningCount] = useState(0);
+  // Modal state
+  const [showRules, setShowRules] = useState(false);
+  const [scrollEnd, setScrollEnd] = useState(false);
+  const [selectedExam, setSelectedExam] = useState<string | null>(null);
+
 
   // ✅ Fetch exams for this student
   useEffect(() => {
@@ -136,8 +144,11 @@ const StudentDashboard = () => {
   }, [warningCount, navigate]);
 
   const handleStartExam = (examId: string) => {
-    navigate(`/exam/${examId}`);
+    setSelectedExam(examId);
+    setShowRules(true);
+    setScrollEnd(false);
   };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -145,7 +156,7 @@ const StudentDashboard = () => {
         return "default";
       case "completed":
         return "secondary";
-      case "in-progress":
+      case "active":
         return "warning";
       default:
         return "secondary";
@@ -153,70 +164,7 @@ const StudentDashboard = () => {
   };
   // const navigate = useNavigate();
   
-  // const [studentInfo] = useState({
-  //   name: "John Smith",
-  //   studentId: "CS2024001",
-  //   email: "john@college.edu",
-  //   department: "Computer Science"
-  // });
-
-  // const [upcomingExams] = useState([
-  //   {
-  //     id: 1,
-  //     title: "Data Structures Final",
-  //     subject: "Computer Science",
-  //     date: "2024-01-20",
-  //     time: "10:00 AM",
-  //     duration: 120,
-  //     status: "upcoming",
-  //     description: "Comprehensive final examination covering all data structures topics"
-  //   },
-  //   {
-  //     id: 2,
-  //     title: "Mathematics Quiz",
-  //     subject: "Mathematics",
-  //     date: "2024-01-18",
-  //     time: "2:00 PM",
-  //     duration: 60,
-  //     status: "upcoming",
-  //     description: "Quiz on calculus and linear algebra"
-  //   }
-  // ]);
-
-  // const [recentExams] = useState([
-  //   {
-  //     id: 3,
-  //     title: "Database Systems Midterm",
-  //     subject: "Computer Science",
-  //     date: "2024-01-10",
-  //     score: 85,
-  //     totalMarks: 100,
-  //     status: "completed"
-  //   },
-  //   {
-  //     id: 4,
-  //     title: "Operating Systems Quiz",
-  //     subject: "Computer Science", 
-  //     date: "2024-01-08",
-  //     score: 92,
-  //     totalMarks: 100,
-  //     status: "completed"
-  //   }
-  // ]);
-
-  // const handleStartExam = (examId: number) => {
-  //   navigate(`/exam/${examId}`);
-  // };
-
-
-  // const getStatusColor = (status: string) => {
-  //   switch (status) {
-  //     case "upcoming": return "default";
-  //     case "completed": return "secondary";
-  //     case "in-progress": return "warning";
-  //     default: return "secondary";
-  //   }
-  // };
+  
   if (!studentInfo) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -243,7 +191,34 @@ const StudentDashboard = () => {
               <div className="p-2 rounded-full bg-primary-light">
                 <User className="h-6 w-6 text-primary" />
               </div>
+              <Button variant="outline" 
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/api/auth/student/logout`, {
+                      method: "POST",
+                      credentials: "include", // 🔒 Send HttpOnly cookie
+                    });
+
+                    if (!res.ok) throw new Error("Logout failed");
+
+                    toast.success("✅ Logged out securely!");
+                    setTimeout(() => {
+                      localStorage.clear(); // 🧹 remove any local traces
+                      sessionStorage.clear();
+                      navigate("/login");
+                    }, 800);
+                  } catch (err) {
+                    console.error("Logout Error:", err);
+                    toast.error("Logout failed. Please try again.");
+                  }
+                }}
+
+                >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
             </div>
+            
           </div>
         </div>
       </header>
@@ -316,9 +291,8 @@ const StudentDashboard = () => {
                           <Clock className="h-4 w-4" />
                           {exam.startTime}
                         </span>
-                        <span>{exam.duration} mins</span>
-                      </div>
-                      {/* <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                        {/* <span>{exam.duration} mins</span> */}
+                        <span> to </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {exam.endDate}
@@ -326,9 +300,22 @@ const StudentDashboard = () => {
                         <span className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
                           {exam.endTime}
+                        </span> 
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                        {/* <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {exam.endDate}
                         </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {exam.endTime}
                         
-                      </div> */}
+                        </span> */}
+                        <span>Duration : {exam.duration} mins</span>
+                        
+                      </div>
+                      
                     </div>
                     <Badge variant={getStatusColor(exam.status)}>
                       {exam.status}
@@ -422,6 +409,72 @@ const StudentDashboard = () => {
           </CardContent>
         </Card>
       </div>
+      {/* 🔒 Exam Rules Popup */}
+      <Dialog open={showRules} onOpenChange={setShowRules}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-primary">Exam Rules & Guidelines</DialogTitle>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[300px] pr-4">
+            <div
+              onScrollCapture={(e) => {
+                const el = e.currentTarget;
+                if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) {
+                  setScrollEnd(true);
+                }
+              }}
+              className="overflow-y-auto max-h-[300px] pr-2"
+            >
+              <ul className="list-disc pl-5 space-y-2 text-muted-foreground text-sm leading-relaxed">
+                <li>Ensure you have a stable internet connection before starting the exam.</li>
+                <li>Do not refresh, close, or switch tabs during the exam.</li>
+                <li>Copying, screenshots, or using external help (AI tools, phones) is strictly prohibited.</li>
+                <li>Do not open new applications while the exam is active.</li>
+                <li>The system monitors your tab switches and clipboard activity.</li>
+                <li>If multiple violations are detected, your exam will be automatically submitted.</li>
+                <li>Submit answers carefully before time runs out.</li>
+                <li>For any technical issues, contact your invigilator immediately.</li>
+                <li>Stay calm and do your best!</li>
+              </ul>
+            </div>
+          </ScrollArea>
+
+
+          <DialogFooter className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="secondary"
+              onClick={() => setShowRules(false)}
+            >
+              Reject
+            </Button>
+            <Button
+              variant="hero"
+              disabled={!scrollEnd}
+              onClick={() => {
+                if (selectedExam) navigate(`/exam/${selectedExam}`);
+                setShowRules(false);
+              }}
+              // onClick={async () => {
+              //   if (!selectedExam) return;
+              //   try {
+              //     await axios.post(`${API_BASE}/api/student/exam/start`, 
+              //       { examId: selectedExam },
+              //       { withCredentials: true }
+              //     );
+              //     navigate(`/exam/${selectedExam}`);
+              //   } catch(e) {
+              //     toast.error("Cannot start exam. Try again.");
+              //   }
+              //   setShowRules(false);
+              // }}
+            >
+              {scrollEnd ? "Accept & Start Exam" : "Scroll to Accept"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
