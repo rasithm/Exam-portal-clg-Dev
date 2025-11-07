@@ -50,6 +50,7 @@ const AdminDashboard = () => {
   const [students, setStudents] = useState([]);
   const [QuestionData, setQuestionData] = useState([]);
   const [activeTab, setActiveTab] = useState("files"); // "files" or "exams"
+  const [certificates, setCertificates] = useState<any[]>([]);
   // const fetchExams = async () => {
   //   try {
   //     const res = await axios.get("/api/admin/exams/all");
@@ -140,6 +141,38 @@ const fetchQuestionSets = async () => {
     fetchExams();
     fetchQuestionSets();
   }, []);
+
+  useEffect(() => {
+    const dummyCertificates = [
+      {
+        examName: "Mid-Term Examination",
+        studentName: "Mohamed Rasith",
+        studentRegNo: "21ITR024",
+        subject: "Web Development",
+        date: "2025-11-01",
+        percentage: 92,
+      },
+      {
+        examName: "Blockchain Fundamentals",
+        studentName: "Mohamed Rasith",
+        studentRegNo: "21ITR024",
+        subject: "Blockchain Technology",
+        date: "2025-10-10",
+        percentage: 87,
+      },
+      {
+        examName: "Database Management Test",
+        studentName: "Mohamed Rasith",
+        studentRegNo: "21ITR024",
+        subject: "Database Systems",
+        date: "2025-09-18",
+        percentage: 95,
+      },
+    ];
+
+    setCertificates(dummyCertificates);
+  }, []);
+
 
 
   
@@ -301,10 +334,11 @@ const fetchQuestionSets = async () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
             <TabsTrigger value="exams">Exams</TabsTrigger>
+            <TabsTrigger value="Certificates">Certificates</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
@@ -653,7 +687,96 @@ const fetchQuestionSets = async () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="Certificates">
+            <Card className="shadow-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Student Certifications</CardTitle>
+                    <CardDescription>
+                      Download completion and performance certificates
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => console.log("Exporting All Certificates...")}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export All
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <CardContent>
+                {/* ✅ Certificate Data State */}
+                {/* UseState added at top of file: */}
+                {/* const [certificates, setCertificates] = useState<any[]>([]); */}
+
+                {/* ✅ Fetch Dummy Data */}
+                {/* useEffect(() => { setCertificates(dummyCertificates); }, []); */}
+
+                <div className="space-y-4">
+                  {certificates.length === 0 ? (
+                    <div className="text-center py-12">
+                      <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-card-foreground mb-2">
+                        No Certificates Available
+                      </h3>
+                      <p className="text-muted-foreground mb-4">
+                        Certificates will appear here once exams are completed and evaluated.
+                      </p>
+                    </div>
+                  ) : (
+                    certificates.map((cert, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border"
+                      >
+                        {/* Left Section */}
+                        <div>
+                          <p className="font-semibold text-card-foreground text-base">
+                            {cert.examName}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {cert.subject} •{" "}
+                            {new Date(cert.date).toLocaleDateString("en-IN")}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            <span className="font-medium">{cert.studentName}</span>{" "}
+                            ({cert.studentRegNo})
+                          </p>
+                        </div>
+
+                        {/* Right Section */}
+                        <div className="flex items-center gap-4">
+                          <Badge
+                            variant={cert.percentage >= 90 ? "default" : "secondary"}
+                            className="text-sm px-3 py-1"
+                          >
+                            {cert.percentage}%
+                          </Badge>
+                          <Button
+                            variant="hero"
+                            onClick={() =>
+                              console.log(`Downloading ${cert.examName} Certificate`)
+                            }
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+
         </Tabs>
+        
       </div>
     </div>
   );

@@ -43,8 +43,8 @@ export const createFirstAdmin = async (req, res) => {
     }
 
     // Check if admin already exists
-    const exists = await Admin.findOne({ collegeTag });
-    if (exists) return res.status(400).json({ message: 'Admin already exists for this college' });
+    // const exists = await Admin.findOne({ collegeTag });
+    // if (exists) return res.status(400).json({ message: 'Admin already exists for this college' });
 
     const hashed = await bcrypt.hash(adminPassword, 10);
     const admin = await Admin.create({

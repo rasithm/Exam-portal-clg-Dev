@@ -30,9 +30,10 @@ const ExamInterface = () => {
   // Exam state
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(7200); // 2 hours in seconds
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [examSubmitted, setExamSubmitted] = useState(false);
+  const [showReenter, setShowReenter] = useState(false);
 
   // Sample exam data
   // Exam data from backend
@@ -40,7 +41,8 @@ const ExamInterface = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-
+  
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   useEffect(() => {
     if (startedRef.current) return; // ✅ prevent multiple calls
@@ -58,9 +60,23 @@ const ExamInterface = () => {
         });
 
         if (!startRes.ok) {
-          const txt = await startRes.text();
-          throw new Error(`Start failed: ${startRes.status} ${txt}`);
+          const errText = await startRes.text();
+          const errMsg = JSON.parse(errText).message || "Unknown error";
+
+          if (errMsg.includes("Active exam exists")) {
+            toast({
+              title: "Exam Already Active",
+              description: "You already have an active session for this exam. Please continue it on your original device or browser.",
+              variant: "destructive",
+            });
+            navigate("/student/dashboard");
+            return;
+          }
+
+          throw new Error(`Start failed: ${startRes.status} ${errText}`);
+          console.log(`Start failed: ${startRes.status} ${errText}`)
         }
+
         const startJson = await startRes.json();
         // backend returns { message, sessionId, token } — store sessionId
         const sid = startJson.sessionId || startJson.session?.id || startJson.sessionId;
@@ -72,14 +88,51 @@ const ExamInterface = () => {
         }
 
         // 2) fetch questions (only after start succeeded)
+        await new Promise(resolve => setTimeout(resolve, 1500));
         const res = await fetch(`${API_BASE}/api/student/exams/${examId}`, {
           credentials: "include",
         });
 
+        // if (!res.ok) {
+        //   const txt = await res.text();
+        //   throw new Error(`GetExam failed: ${res.status} ${txt}`);
+        // }
         if (!res.ok) {
           const txt = await res.text();
-          throw new Error(`GetExam failed: ${res.status} ${txt}`);
+          const msg = (() => {
+            try {
+              return JSON.parse(txt).message;
+            } catch {
+              return txt;
+            }
+          })();
+
+          if (res.status === 410) {
+            // Try one retry in case it was a temporary timing sync issue
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const retry = await fetch(`${API_BASE}/api/student/exams/${examId}`, { credentials: "include" });
+            if (retry.ok) {
+              const retryData = await retry.json();
+              setExamData(retryData);
+              setTimeRemaining((retryData.duration || 120) * 60);
+              setLoading(false);
+              return;
+            }
+
+            // If still failed, show toast
+            toast({
+              title: "Session Expired",
+              description: "Your exam session has expired. Please contact your instructor.",
+              variant: "destructive",
+            });
+            navigate("/student/dashboard");
+            return;
+          }
+
+
+          throw new Error(`GetExam failed: ${res.status} ${msg}`);
         }
+
         const data = await res.json();
         // Ensure questions array exists
         if (!data?.questions || !Array.isArray(data.questions) || data.questions.length === 0) {
@@ -106,7 +159,29 @@ const ExamInterface = () => {
     init();
   }, [examId, navigate, toast]);
 
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      if (!document.fullscreenElement && !examSubmitted) {
+        setShowReenter(true);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullScreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullScreenChange);
+  }, [examSubmitted]);
+
+  const handleReEnterFullscreen = () => {
+    document.documentElement.requestFullscreen().catch(() => {
+      console.warn("Fullscreen re-entry failed");
+    });
+    setShowReenter(false);
+  };
+
   
+
+
+
+
 
 
   const [warningCount, setWarningCount] = useState(0);
@@ -295,6 +370,60 @@ const ExamInterface = () => {
     });
   };
 
+  useEffect(() => {
+    if (!sessionId) return;
+    const interval = setInterval(async () => {
+      try {
+        await fetch(`${API_BASE}/api/student/exams/${examId}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ sessionId, answers }),
+        });
+        setLastSaved(new Date());
+      } catch {}
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [sessionId, answers, examId]);
+
+  // Add this top-right of header:
+  {lastSaved && (
+    <p className="text-xs text-muted-foreground">
+      Auto-saved at {lastSaved.toLocaleTimeString()}
+    </p>
+  )}
+
+  // ✅ Auto-save progress every 5 seconds
+  // useEffect(() => {
+  //   if (!sessionId) return;
+  //   const interval = setInterval(async () => {
+  //     try {
+  //       await fetch(`${API_BASE}/api/student/exams/${examId}/save`, {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         credentials: "include",
+  //         body: JSON.stringify({
+  //           sessionId,
+  //           answers,
+  //         }),
+  //       });
+  //       toast({
+  //         title: "Progress Saved",
+  //         description: "Your answers were auto-saved.",
+  //         variant: "default",
+  //       });
+  //     } catch (err) {
+  //       toast({
+  //         title: "Auto-Save Failed",
+  //         description: "Connection issue — answers not saved.",
+  //         variant: "destructive",
+  //       });
+  //     }
+  //   }, 20000);
+
+  //   return () => clearInterval(interval);
+  // }, [sessionId, answers, examId, toast]);
+
   const handleAutoSubmit = () => {
     setExamSubmitted(true);
     toast({
@@ -304,7 +433,7 @@ const ExamInterface = () => {
     });
     
     setTimeout(() => {
-      navigate("/student/exam/success");
+      navigate("/student/exam/result");
     }, 3000);
   };
   
@@ -349,7 +478,22 @@ const ExamInterface = () => {
   };
 
 
-  const handleManualSubmit = async() => {
+  const handleManualSubmit = async () => {
+    if (!examData || !examData.questions) return;
+
+    const unanswered = examData.questions.filter(
+      (q) => !answers[q._id]
+    );
+
+    if (unanswered.length > 0) {
+      toast({
+        title: "Incomplete Exam",
+        description: `${unanswered.length} question(s) are not answered.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     await submitToServer();
     setExamSubmitted(true);
     toast({
@@ -358,9 +502,10 @@ const ExamInterface = () => {
     });
     
     setTimeout(() => {
-      navigate("/student/dashboard");
+      navigate("/student/exam/result");
     }, 2000);
   };
+
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -400,6 +545,7 @@ const ExamInterface = () => {
   }
 
   return (
+    
     <div className="min-h-screen bg-muted/30">
       {/* Security Header */}
       <header className="bg-card shadow-card border-b border-warning">
@@ -452,19 +598,19 @@ const ExamInterface = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{currentQ.type.toUpperCase()}</Badge>
+                    <Badge variant="outline">{currentQ?.type ? currentQ.type.toUpperCase() : "MCQ"}</Badge>
 
                     {/* ✅ Difficulty Tag */}
                     <Badge 
                       className={
-                        currentQ.difficulty === "easy"
+                        (currentQ?.mode || "medium") === "easy"
                           ? "bg-green-100 text-green-700"
-                          : currentQ.difficulty === "medium"
+                          : (currentQ?.mode || "medium") === "medium"
                           ? "bg-yellow-100 text-yellow-700"
                           : "bg-red-100 text-red-700"
                       }
                     >
-                      {currentQ.difficulty.toUpperCase()}
+                      {(currentQ?.mode || "medium").toUpperCase()}
                     </Badge>
 
                     Question {currentQuestion + 1}
@@ -473,8 +619,8 @@ const ExamInterface = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleQuestionFlag(currentQ.id)}
-                    className={flaggedQuestions.has(currentQ.id) ? "text-warning" : ""}
+                    onClick={() => handleQuestionFlag(currentQ._id)}
+                    className={flaggedQuestions.has(currentQ._id) ? "text-warning" : ""}
                   >
                     <Flag className="h-4 w-4" />
                   </Button>
@@ -503,9 +649,9 @@ const ExamInterface = () => {
                     ))}
                   </RadioGroup>
                 )} */}
-                {currentQ.type === "mcq" && currentQ.options && (
+                { currentQ.options && (
                   <RadioGroup
-                    value={answers[currentQ._id] || ""}
+                    value={answers[currentQ._id] || "" }
                     onValueChange={(value) => handleAnswerChange(currentQ._id, value)}
                   >
                     {currentQ.options.map((option: string, index: number) => (
@@ -560,14 +706,14 @@ const ExamInterface = () => {
                       variant={currentQuestion === index ? "default" : "outline"}
                       size="sm"
                       className={`relative ${
-                        answers[examData.questions[index].id] ? "bg-success-light" : ""
+                        answers[examData.questions[index]._id] ? "bg-green-500" : ""
                       } ${
-                        flaggedQuestions.has(examData.questions[index].id) ? "border-warning" : ""
+                        flaggedQuestions.has(examData.questions[index]._id) ? "border-warning" : ""
                       }`}
                       onClick={() => setCurrentQuestion(index)}
                     >
                       {index + 1}
-                      {flaggedQuestions.has(examData.questions[index].id) && (
+                      {flaggedQuestions.has(examData.questions[index]._id) && (
                         <Flag className="h-3 w-3 absolute -top-1 -right-1 text-warning" />
                       )}
                     </Button>
@@ -608,7 +754,20 @@ const ExamInterface = () => {
           </div>
         </div>
       </div>
+      {showReenter && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="text-center">
+            <p className="text-white text-lg font-semibold mb-4">
+              Fullscreen mode is required to continue the exam
+            </p>
+            <Button onClick={handleReEnterFullscreen} variant="destructive">
+              Re-Enter Fullscreen
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
+    
   );
 };
 

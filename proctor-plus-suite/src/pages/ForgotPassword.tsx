@@ -188,7 +188,7 @@ const ForgotPassword = () => {
                     </p>
                   </div>
 
-                  <Button type="submit" variant="secondary" className="w-full h-12">
+                  <Button type="submit" variant="secondary" className="w-full h-12" onClick={() => navigate("/resetverification")}>
                     Request Password Reset
                   </Button>
                 </form>

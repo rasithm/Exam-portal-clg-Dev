@@ -67,7 +67,11 @@ export const studentLogin = async (req, res) => {
   if (!student) return res.status(401).json({ message: 'Invalid credentials' });
   const match = await bcrypt.compare(password, student.password);
   if (!match) return res.status(401).json({ message: 'Invalid credentials' });
-
+  // Prevent login if the student already has an active exam session
+  // const activeExam = await ExamSession.findOne({ student: user._id, active: true });
+  // if (activeExam) {
+  //   return res.status(403).json({ message: "Active exam session found. You cannot log in during an ongoing exam." });
+  // }
   const token = signToken(student._id.toString(), 'student');
   const sessionId = uuidv4();
   await Session.updateMany({ userId: student._id.toString(), role: 'student', sessionId, active:true },{ $set: { active: false } });

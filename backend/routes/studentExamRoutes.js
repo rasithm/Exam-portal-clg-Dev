@@ -15,7 +15,8 @@ const router = express.Router();
 router.post("/:examId/start", protect(["student"]), startExam);
 router.get("/:examId", protect(["student"]), getExam);
 router.post("/:examId/save", protect(["student"]), saveAnswer); 
-router.post("/:examId/submit", protect(["student"]), submitExam);
 router.post("/:examId/event", protect(["student"]), recordEvent);
+router.post("/:examId/submit", protect(["student"]), submitExam);
+
 
 export default router;

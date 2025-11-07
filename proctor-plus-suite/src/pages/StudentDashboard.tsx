@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Clock, 
   FileText, 
@@ -35,6 +36,7 @@ const StudentDashboard = () => {
   const [showRules, setShowRules] = useState(false);
   const [scrollEnd, setScrollEnd] = useState(false);
   const [selectedExam, setSelectedExam] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("tech");
 
 
   // ✅ Fetch exams for this student
@@ -70,7 +72,92 @@ const StudentDashboard = () => {
     fetchDashboardData();
   }, [navigate]);
   
+    // 🔐 Advanced Browser Extension Detection (for production)
+useEffect(() => {
+  const suspiciousPatterns = ["chrome-extension://", "moz-extension://", "safari-extension://"];
 
+  const handleSuspiciousActivity = (reason: string) => {
+    toast.error(`⚠️ Unauthorized browser extension detected (${reason})! Please disable extensions.`);
+    setTimeout(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate("/login");
+    }, 1500);
+  };
+
+  // --- Interval-based check (every few seconds)
+  const checkForExtensions = () => {
+    const scripts = Array.from(document.querySelectorAll("script, iframe"));
+    const found = scripts.some((el) => {
+      const src = (el as HTMLScriptElement | HTMLIFrameElement).src || el.baseURI || "";
+      return suspiciousPatterns.some((pattern) => src.includes(pattern));
+    });
+    if (found) handleSuspiciousActivity("periodic scan");
+  };
+
+  // Initial check
+  checkForExtensions();
+
+  // Re-check every 5 seconds
+  const interval = setInterval(checkForExtensions, 5000);
+
+  // --- Real-time detection (Mutation Observer)
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node instanceof HTMLScriptElement || node instanceof HTMLIFrameElement) {
+          const src = node.src || node.baseURI || "";
+          if (suspiciousPatterns.some((pattern) => src.includes(pattern))) {
+            observer.disconnect(); // stop observing before logout
+            handleSuspiciousActivity("real-time detection");
+            break;
+          }
+        }
+      }
+    }
+  });
+
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  // Cleanup
+  return () => {
+    clearInterval(interval);
+    observer.disconnect();
+  };
+}, [navigate]);
+
+
+  useEffect(() => {
+    const checkNetwork = async () => {
+      try {
+        const start = performance.now();
+        await fetch(window.location.origin, { cache: "no-store" });
+        const end = performance.now();
+        if (end - start > 3000) {
+          toast.error("⚠️ Network delay detected. Possible proxy interference.");
+          navigate("/login");
+        }
+      } catch {
+        toast.error("⚠️ Network tampering detected!");
+        navigate("/login");
+      }
+    };
+
+    const timer = setInterval(checkNetwork, 10000);
+    return () => clearInterval(timer);
+  }, [navigate]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.outerWidth - window.innerWidth > 160) {
+        toast.error("⚠️ Developer tools detected!");
+        navigate("/login");
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [navigate]);
 
   // ✅ Security — Disable Right-Click, Shortcuts, Tab Switch, Extensions
   useEffect(() => {
@@ -135,6 +222,44 @@ const StudentDashboard = () => {
     };
   }, [navigate]);
 
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      toast.info("Right-click disabled for exam security.");
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.ctrlKey &&
+        ["u", "U", "s", "S", "p", "P", "i", "I", "j", "J"].includes(e.key)
+      ) {
+        e.preventDefault();
+        toast.error("⚠️ Inspect/Shortcut blocked!");
+      }
+      if (e.key === "F12") {
+        e.preventDefault();
+        toast.error("⚠️ Inspect mode disabled!");
+      }
+    };
+
+    const handleResize = () => {
+      if (window.outerWidth - window.innerWidth > 150) {
+        toast.error("⚠️ Developer tools detected!");
+        setTimeout(() => navigate("/login"), 1000);
+      }
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [navigate]);
+
   // ✅ Redirect after repeated violations
   useEffect(() => {
     if (warningCount >= 10) {
@@ -154,6 +279,8 @@ const StudentDashboard = () => {
     switch (status) {
       case "upcoming":
         return "default";
+      case "missed":
+        return "warning";
       case "completed":
         return "secondary";
       case "active":
@@ -163,6 +290,24 @@ const StudentDashboard = () => {
     }
   };
   // const navigate = useNavigate();
+
+  const filterExamsByTab = (tab: string) => {
+    return upcomingExams.filter((exam) => {
+      const category = (exam.category || "").toLowerCase();
+      switch (tab) {
+        case "tech":
+          return category.includes("tech");
+        case "nontech":
+          return category.includes("non") || category.includes("arts") || category.includes("commerce");
+        case "reexam":
+          return category.includes("re-exam") || category.includes("retake");
+        case "certifications":
+          return category.includes("cert") || category.includes("certificate");
+        default:
+          return true;
+      }
+    });
+  };
   
   
   if (!studentInfo) {
@@ -188,8 +333,8 @@ const StudentDashboard = () => {
                 <p className="font-medium text-card-foreground capitalize">{studentInfo.name}</p>
                 <p className="text-sm text-muted-foreground">{studentInfo.department}</p>
               </div>
-              <div className="p-2 rounded-full bg-primary-light">
-                <User className="h-6 w-6 text-primary" />
+              <div className="p-2 rounded-full bg-primary-light" >
+                <User className="h-6 w-6 text-primary" onClick={() => navigate("/student/profile")} />
               </div>
               <Button variant="outline" 
                 onClick={async () => {
@@ -265,132 +410,212 @@ const StudentDashboard = () => {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Upcoming Exams */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-primary" />
-                Upcoming Exams
-              </CardTitle>
-              <CardDescription>Scheduled examinations requiring your attention</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 max-h-[450px] overflow-y-auto scrollbar-thin">
-              {upcomingExams.map((exam) => (
-                <div key={exam.id} className="p-4 rounded-lg border bg-card">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-card-foreground mb-1 capitalize">{exam.title}</h3>
-                      <p className="text-sm text-muted-foreground mb-2">{exam.description || "Comprehensive final examination covering all data structures topics"}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {exam.startDate}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {exam.startTime}
-                        </span>
-                        {/* <span>{exam.duration} mins</span> */}
-                        <span> to </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {exam.endDate}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {exam.endTime}
-                        </span> 
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
-                        {/* <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {exam.endDate}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {exam.endTime}
-                        
-                        </span> */}
-                        <span>Duration : {exam.duration} mins</span>
-                        
-                      </div>
-                      
-                    </div>
-                    <Badge variant={getStatusColor(exam.status)}>
-                      {exam.status}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Subject: {exam.subcategory || exam.subject}
-                    </span>
-                    <Button 
-                      variant="hero" 
-                      size="sm"
-                      onClick={() => handleStartExam(exam.id)}
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      Start Exam
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              
-              {upcomingExams.length === 0 && (
-                <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No upcoming exams scheduled</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="tech" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="tech">Tech</TabsTrigger>
+            <TabsTrigger value="nontech">Non-Tech</TabsTrigger>
+            <TabsTrigger value="reexam">Re-Exam</TabsTrigger>
+            <TabsTrigger value="certifications">Certifications</TabsTrigger>
+          </TabsList>
 
-          {/* Recent Results */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-success" />
-                Recent Results
-              </CardTitle>
-              <CardDescription>Your latest exam performance</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {recentExams.map((exam) => (
-                <div key={exam.id} className="p-4 rounded-lg border bg-card">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-card-foreground mb-1 capitalize">{exam.title}</h3>
-                      <p className="text-sm text-muted-foreground">{exam.subject} • {exam.date}</p>
-                    </div>
-                    <Badge variant="secondary">Completed</Badge>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Score</span>
-                      <span className="font-medium text-card-foreground">
-                        {exam.score}/{exam.totalMarks} ({Math.round((exam.score / exam.totalMarks) * 100)}%)
-                      </span>
-                    </div>
-                    <Progress 
-                      value={(exam.score / exam.totalMarks) * 100} 
-                      className="h-2"
-                    />
-                  </div>
-                </div>
-              ))}
-              
-              {recentExams.length === 0 && (
-                <div className="text-center py-8">
-                  <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No completed exams yet</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value={activeTab}>
+            {/* ✅ Conditionally render Certification tab layout */}
+            {activeTab === "certifications" ? (
+              <div className="mt-6">
+                <Card className="shadow-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-success" />
+                      Your Certifications
+                    </CardTitle>
+                    <CardDescription>
+                      Download certificates for completed courses or exams
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    {/* Demo Certificate Data */}
+                    {[
+                      { id: 1, examName: "Full Stack Web Development", date: "2025-05-10" },
+                      { id: 2, examName: "Blockchain Fundamentals", date: "2025-06-21" },
+                      { id: 3, examName: "AI & Machine Learning", date: "2025-07-15" },
+                    ].map((cert) => (
+                      <div
+                        key={cert.id}
+                        className="flex items-center justify-between p-4 border rounded-lg bg-card"
+                      >
+                        <div>
+                          <h4 className="font-semibold text-card-foreground">{cert.examName}</h4>
+                          <p className="text-sm text-muted-foreground">Issued on {cert.date}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toast.info(`Downloading ${cert.examName} certificate...`)}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              /* ✅ Default Tabs Layout (Tech, Non-Tech, Re-Exam) */
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
+                {/* Upcoming Exams */}
+                <Card className="shadow-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-primary" />
+                      Upcoming Exams
+                    </CardTitle>
+                    <CardDescription>Exams under "{activeTab}" category</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 max-h-[450px] overflow-y-auto scrollbar-thin">
+                    {filterExamsByTab(activeTab).map((exam) => (
+                      <div key={exam.id} className="p-4 rounded-lg border bg-card">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-card-foreground mb-1 capitalize">
+                              {exam.title}
+                            </h3>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {exam.description || "Exam details not available"}
+                            </p>
+                            {/* <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                {exam.startDate}
+
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {exam.startTime}
+                              </span>
+                              <span> to </span>
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                {exam.endDate}
+                              </span>
+                              
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {exam.endTime}
+                              </span>
+                            </div> */}
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                {exam.startDate}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {exam.startTime}
+                              </span>
+                              {/* <span>{exam.duration} mins</span> */}
+                              <span> to </span>
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                {exam.endDate}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {exam.endTime}
+                              </span> 
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                              {/* <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                {exam.endDate}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {exam.endTime}
+                              
+                              </span> */}
+                              <span>Duration : {exam.duration} mins</span>
+                              
+                            </div>
+                          </div>
+                          <Badge variant={getStatusColor(exam.status)}>{exam.status}</Badge>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-muted-foreground">
+                            Subject: {exam.subcategory || exam.subject}
+                          </span>
+                          <Button 
+                            variant="hero" 
+                            size="sm"
+                            onClick={() => handleStartExam(exam.id)}
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            Start Exam
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {filterExamsByTab(activeTab).length === 0 && (
+                      <div className="text-center py-8">
+                        <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">No exams found for this category</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Recent Results */}
+                <Card className="shadow-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-success" />
+                      Recent Results
+                    </CardTitle>
+                    <CardDescription>Your latest exam performance</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {recentExams.length === 0 ? (
+                      <div className="text-center py-8">
+                        <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">No completed exams yet</p>
+                      </div>
+                    ) : (
+                      recentExams.map((exam) => (
+                        <div key={exam.id} className="p-4 rounded-lg border bg-card">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-card-foreground mb-1 capitalize">
+                                {exam.title}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {exam.subject} • {exam.date}
+                              </p>
+                            </div>
+                            <Badge variant="secondary">Completed</Badge>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Score</span>
+                              <span className="font-medium text-card-foreground">
+                                {exam.score}/{exam.totalMarks} (
+                                {Math.round((exam.score / exam.totalMarks) * 100)}%)
+                              </span>
+                            </div>
+                            <Progress value={(exam.score / exam.totalMarks) * 100} className="h-2" />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+
+        </Tabs>
 
         {/* Important Notice */}
         <Card className="shadow-card border-warning mt-8">
@@ -441,7 +666,7 @@ const StudentDashboard = () => {
           </ScrollArea>
 
 
-          <DialogFooter className="flex justify-end gap-2 mt-4">
+          <DialogFooter className="flex justify-end gap-2 mt-4" aria-describedby="dialog-description" id="dialog-desc">
             <Button
               variant="secondary"
               onClick={() => setShowRules(false)}

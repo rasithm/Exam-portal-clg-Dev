@@ -2,8 +2,8 @@
 import mongoose from "mongoose";
 
 const examSessionSchema = new mongoose.Schema({
-  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
-  examId: { type: mongoose.Schema.Types.ObjectId, ref: "Exam", required: true },
+  student: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
+  exam: { type: mongoose.Schema.Types.ObjectId, ref: "Exam", required: true },
   active: { type: Boolean, default: true },
   startTime: { type: Date, default: Date.now },
   endTime: { type: Date },

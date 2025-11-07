@@ -1,22 +1,35 @@
-
-// models/Student.js
-import mongoose from 'mongoose';
+// backend/models/Student.js
+import mongoose from "mongoose";
 
 const studentSchema = new mongoose.Schema({
-  admin: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true }, // owner admin
+  admin: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: true }, // owner admin
   rollNumber: { type: String, required: true },
-  name: { type: String },
-  password: { type: String, required: true },
-  email: { type: String },
-  department: { type: String },
-  year: { type: String },
-  whatsapp_no: { type: String },
-  phone_no: { type: String },
-  domain: { type: String, enum: ['Technical','Coding','Aptitude','Core','HR'], default: 'Technical' },
-  scores: [{ examId: String, score: Number, date: Date }]
+  name: { type: String, required: true },
+  password: { type: String, required: true, select: false },
+  email: { type: String, required: true },
+  department: { type: String, default: "" },
+  year: { type: String, default: "" },
+  whatsapp_no: { type: String, required: true },
+  phone_no: { type: String, required: true },
+  profileImage: { type: String, default: "" },
+  dateOfBirth: { type: String, required: true },
+  collegeName: { type: String, required: true },
+  academicYear: { type: String, required: true },
+  domain: {
+    type: String,
+    enum: ["Technical", "Coding", "Aptitude", "Core", "HR"],
+    default: "Technical",
+  },
+  scores: [
+    {
+      examId: String,
+      score: Number,
+      date: Date,
+    },
+  ],
 }, { timestamps: true });
 
-// composite unique index: one admin cannot create duplicate rollNumbers
 studentSchema.index({ admin: 1, rollNumber: 1 }, { unique: true });
 
-export default mongoose.model('Student', studentSchema);
+export default mongoose.model("Student", studentSchema);
+

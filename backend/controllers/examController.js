@@ -339,7 +339,7 @@ export const createExam = async (req, res) => {
 
 export const listExams = async (req, res) => {
   try {
-    const exams = await Exam.find({ collegeTag: req.user.collegeTag })
+    const exams = await Exam.find({ createdBy: req.user._id })
       .populate("createdBy", "email")
       .sort({ createdAt: -1 });
     res.json(exams);
@@ -349,88 +349,144 @@ export const listExams = async (req, res) => {
   }
 };
 
-// 🚀 START EXAM — block multi-device
 export const startExam = async (req, res) => {
   try {
     const student = req.user._id;
     const exam = req.params.examId;
 
-    const already = await ExamSession.findOne({ student, active: true });
-    if (already) return res.status(403).json({ message: "Active exam exists" });
+    // ✅ 1. Check if already active for this exam
+    const existingSameExam = await ExamSession.findOne({ student, exam, active: true });
+    if (existingSameExam) {
+      console.log("✅ Reusing active session:", existingSameExam._id);
+      return res.status(200).json({
+        message: "Resumed existing session",
+        sessionId: existingSameExam._id,
+        startTime: existingSameExam.startTime,
+        endTime: existingSameExam.endTime,
+      });
+    }
 
-    const token = crypto.randomBytes(32).toString("hex");
+    // ✅ 2. Prevent multiple active exams
+    const otherExamActive = await ExamSession.findOne({ student, active: true, exam: { $ne: exam } });
+    if (otherExamActive) {
+      return res.status(403).json({ message: "Active exam exists on another exam or device" });
+    }
 
-    const end = new Date();
+    // ✅ 3. Create new session
     const examDoc = await Exam.findById(exam);
-    end.setMinutes(end.getMinutes() + examDoc.duration);
+    if (!examDoc) return res.status(404).json({ message: "Exam not found" });
+
+    const startTime = new Date();
+    const endTime = new Date(startTime.getTime() + (examDoc.duration || 120) * 60 * 1000);
+    const token = crypto.randomBytes(32).toString("hex");
 
     const session = await ExamSession.create({
       student,
       exam,
       sessionToken: token,
-      startTime: new Date(),
-      endTime: end,
+      startTime,
+      endTime,
       active: true,
       violations: 0,
     });
 
-    return res.json({ message: "OK", sessionId: session._id, token });
+    console.log("🟢 New session started:", session._id);
+    console.log("Session time window:", startTime, "→", endTime);
+
+    return res.status(200).json({
+      message: "OK",
+      sessionId: session._id,
+      token,
+      startTime,
+      endTime,
+    });
   } catch (err) {
+    console.error("Start Exam Error:", err);
     return res.status(500).json({ error: "Start failed" });
   }
 };
 
 
 
-// 🎯 GET QUESTIONS — shuffle once
+
+
+
+
 export const getExam = async (req, res) => {
   try {
     const examId = req.params.examId;
     const student = req.user._id;
 
     const session = await ExamSession.findOne({ student, exam: examId });
-    if (!session) return res.status(400).json({ message: "Start first" });
+    if (!session) return res.status(403).json({ message: "No active session found" });
 
-    if (!session.active) return res.status(410).json({ message: "Session expired" });
+    // ✅ Check expiration only if endTime is valid
+    // ✅ Fix: Grace period + correct time comparison
+    console.log({
+        now: new Date().toISOString(),
+        endTime: session.endTime,
+        diffMinutes: (new Date(session.endTime) - new Date()) / (1000 * 60),
+      });
+    if (session.endTime) {
+      // Always compare using UTC timestamps to avoid timezone drift
+      const nowUTC = new Date(new Date().toISOString()); // normalized UTC
+      const endTimeUTC = new Date(new Date(session.endTime).toISOString());
+      console.log("🕒 Now (UTC):", nowUTC);
+      console.log("🕒 End (UTC):", endTimeUTC);
 
-    const now = new Date();
-    if (now > session.endTime) {
-      await autoSubmit(session, "timeout");
-      return res.status(410).json({ message: "Time-up Auto-submitted" });
+      // Allow a 1-minute grace period (network delay, timezone drift, etc.)
+      const graceMs = 60 * 1000;
+
+      if (nowUTC.getTime() > endTimeUTC.getTime() + graceMs) {
+        session.active = false;
+        await session.save();
+        console.log(`⏱ Session expired for ${student} | exam ${examId}`);
+        return res.status(410).json({ message: "Session expired (time limit reached)" });
+      }
     }
 
-    const exam = await Exam.findById(examId);
-    if (!exam) return res.status(404).json({ message: "Not found" });
 
-    // ✅ ONE-TIME SHUFFLE (Mode-A)
+    const exam = await Exam.findById(examId).populate({
+      path: "questionSets",
+      populate: { path: "questions" },
+    });
+    if (!exam) return res.status(404).json({ message: "Exam not found" });
+
+    // ✅ Shuffle once
     if (!session.shuffledQuestions?.length) {
-      const shuffle = arr => [...arr].sort(() => Math.random() - 0.5);
+      const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+      const easy = shuffle(exam.questions.filter((q) => q.mode === "easy")).slice(0, 20);
+      const medium = shuffle(exam.questions.filter((q) => q.mode === "medium")).slice(0, 20);
+      const hard = shuffle(exam.questions.filter((q) => q.mode === "hard")).slice(0, 20);
 
-      const easy = shuffle(exam.questions.filter(q => q.mode === "easy")).slice(0, 20);
-      const med = shuffle(exam.questions.filter(q => q.mode === "medium")).slice(0, 20);
-      const hard = shuffle(exam.questions.filter(q => q.mode === "hard")).slice(0, 20);
-
-      const final = [...easy, ...med, ...hard];
-      session.shuffledQuestions = final.map(q => q._id);
+      const all = [...easy, ...medium, ...hard];
+      session.shuffledQuestions = all.map((q) => q._id);
       await session.save();
     }
 
-    const ordered = session.shuffledQuestions.map(id =>
-      exam.questions.find(q => q._id.toString() === id.toString())
+    const orderedQuestions = session.shuffledQuestions.map((id) =>
+      exam.questions.find((q) => q._id.toString() === id.toString())
     );
 
-    const questions = ordered.map(q => ({
+    const questions = orderedQuestions.map((q) => ({
       _id: q._id,
       question: q.question,
-      options: [...q.options].sort(() => Math.random() - 0.5), // ✅ option shuffle
+      options: [...q.options].sort(() => Math.random() - 0.5),
       mode: q.mode,
     }));
 
-    res.json({ examId, duration: exam.duration, questions });
+    return res.status(200).json({
+      title: exam.examName,
+      examId,
+      duration: exam.duration,
+      questions,
+    });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    console.error("getExam error:", err);
+    return res.status(500).json({ message: "Server error loading exam" });
   }
 };
+
 
 // 🛡️ RECORD CHEATING / VIOLATIONS
 export const recordEvent = async (req, res) => {
