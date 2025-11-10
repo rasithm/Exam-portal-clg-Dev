@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 const ForgotPassword = () => {
   const [adminEmail, setAdminEmail] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [emailId, setEmailId] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   
   const { toast } = useToast();
@@ -177,6 +178,17 @@ const ForgotPassword = () => {
                       placeholder="Enter your student ID"
                       value={studentId}
                       onChange={(e) => setStudentId(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email-id">Email ID</Label>
+                    <Input
+                      id="email-id"
+                      placeholder="Enter your email"
+                      value={emailId}
+                      onChange={(e) => setEmailId(e.target.value)}
                       required
                     />
                   </div>

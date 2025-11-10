@@ -257,7 +257,7 @@ const Profile = () => {
                     </label>
                   )}
                 </div>
-                <h3 className="text-lg font-semibold text-card-foreground mb-2">{profileData.name}</h3>
+                <h3 className="text-lg font-semibold text-card-foreground mb-2 capitalize">{profileData.name}</h3>
                 <p className="text-muted-foreground mb-4">{profileData.role}</p>
                 {profileData.studentId && <Badge variant="outline" className="mb-2">ID: {profileData.studentId}</Badge>}
                 {profileData.registerNo && <Badge variant="outline" className="mb-4 block w-fit mx-auto">Reg: {profileData.registerNo}</Badge>}

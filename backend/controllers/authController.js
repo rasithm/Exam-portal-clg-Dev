@@ -63,10 +63,20 @@ export const adminLogin = async (req, res) => {
 
 export const studentLogin = async (req, res) => {
   const { studentId, password } = req.body;
-  const student = await Student.findOne({ rollNumber: studentId });
-  if (!student) return res.status(401).json({ message: 'Invalid credentials' });
-  const match = await bcrypt.compare(password, student.password);
-  if (!match) return res.status(401).json({ message: 'Invalid credentials' });
+  // const change = await bcrypt.hash("malickbatcha134", 10);
+  // console.log(change)
+  const student = await Student.findOne({ rollNumber: studentId }).select("+password");
+  if (!student.password || student.password.trim() === "") {
+    console.error("Student record missing or empty password:", student.rollNumber);
+    return res.status(400).json({ message: "Password not set. Please contact admin to reset your account." });
+  }
+
+  
+  const match = await bcrypt.compare(String(password), String(student.password));
+  if (!match) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
   // Prevent login if the student already has an active exam session
   // const activeExam = await ExamSession.findOne({ student: user._id, active: true });
   // if (activeExam) {

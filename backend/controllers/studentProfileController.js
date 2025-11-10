@@ -101,14 +101,12 @@ export const updatePassword = async (req, res) => {
 
     // ✅ Strong password validation
     if (
-      newPassword.length < 8 ||        // must be at least 8 characters
-        /[^a-z0-9]/.test(newPassword) || // should NOT contain anything except lowercase letters and numbers
-        !/[a-z]/.test(newPassword) ||    // must include at least one lowercase letter
-        !/\d/.test(newPassword)
+      newPassword.length < 8 ||
+      !/[a-z]/.test(newPassword) ||
+      !/\d/.test(newPassword)
     ) {
       return res.status(400).json({
-        message:
-          "Password must be at least 8 chars, include uppercase, lowercase and number",
+        message: "Password must be at least 8 characters and include lowercase and number",
       });
     }
 
