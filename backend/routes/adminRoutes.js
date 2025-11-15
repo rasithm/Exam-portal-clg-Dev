@@ -7,7 +7,8 @@ import {
   uploadStudentsCSV,
   listStudents,
   exportStudentsCSV,
-  downloadTemplate
+  downloadTemplate , 
+  deleteStudent
 } from '../controllers/adminController.js';
 import { getNotifications, acceptQuestionFile, rejectQuestionFile } from '../controllers/notificationController.js';
 
@@ -18,6 +19,7 @@ const router = express.Router();
 // create single student
 router.post('/createStudents', protect(['admin']), createStudent);
 
+router.delete('/students/:id', protect(['admin']), deleteStudent);
 // upload students CSV (multipart) - strict validation
 router.post('/students/upload', protect(['admin']), upload.single('file'), uploadStudentsCSV);
 

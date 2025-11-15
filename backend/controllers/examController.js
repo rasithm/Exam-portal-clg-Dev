@@ -576,6 +576,19 @@ export const endExam = async (req, res, defaultReason) => {
     attempt.reason = reason;
     await attempt.save();
 
+    await Student.findByIdAndUpdate(
+      student,
+      {
+        $push: {
+          scores: {
+            examId: session.exam.toString(),
+            score: score,
+            date: new Date()
+          }
+        }
+      }
+    );
+
     res.json({ message: "Finished", score, reason });
   } catch {
     res.status(500).json({ message: "End error" });

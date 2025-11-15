@@ -268,11 +268,44 @@ useEffect(() => {
     }
   }, [warningCount, navigate]);
 
+  // const handleStartExam = (examId: string) => {
+  //   const required = [
+  //     "name", "email", "phone_no", "whatsapp_no",
+  //     "dateOfBirth", "collegeName", "academicYear", "year"
+  //   ];
+
+  //   const missing = required.some(k => !studentInfo[k]);
+
+  //   if (missing) {
+  //     toast.error("⚠️ Please complete your profile before starting the exam.");
+  //     navigate("/student/profile");
+  //     return;
+  //   }
+  //   setSelectedExam(examId);
+  //   setShowRules(true);
+  //   setScrollEnd(false);
+  // };
   const handleStartExam = (examId: string) => {
+
+    // Make sure studentInfo contains the flag
+    if (!studentInfo.isProfileUpdated) {
+      toast.error("⚠️ Please complete your profile before starting the exam.");
+      navigate("/student/profile");
+      return;
+    }
+
+    // Require profile image
+    if (!studentInfo.profileImage) {
+      toast.error("⚠️ Please upload your profile image before starting the exam.");
+      navigate("/student/profile");
+      return;
+    }
+
     setSelectedExam(examId);
     setShowRules(true);
     setScrollEnd(false);
   };
+
 
 
   const getStatusColor = (status: string) => {
@@ -546,14 +579,30 @@ useEffect(() => {
                           <span className="text-sm font-medium text-muted-foreground">
                             Subject: {exam.subcategory || exam.subject}
                           </span>
-                          <Button 
+                          {exam.status === "active" ? (
+                            <Button 
+                              variant="hero" 
+                              size="sm"
+                              onClick={() => handleStartExam(exam.id)}
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              Start Exam
+                            </Button>
+                          ) : exam.status === "upcoming" ? (
+                            <Badge>Upcoming</Badge>
+                          ) : exam.status === "missed" ? (
+                            <Badge variant="destructive">Missed</Badge>
+                          ) : exam.status === "completed" ? (
+                            <Badge variant="secondary">Completed</Badge>
+                          ) : null}
+                          {/* <Button 
                             variant="hero" 
                             size="sm"
                             onClick={() => handleStartExam(exam.id)}
                           >
                             <Play className="h-4 w-4 mr-2" />
                             Start Exam
-                          </Button>
+                          </Button> */}
                         </div>
                       </div>
                     ))}

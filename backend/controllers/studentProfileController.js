@@ -68,6 +68,8 @@ export const updateProfile = async (req, res) => {
     student.academicYear = academicYear.trim();
     student.year = year.trim();
 
+    student.isProfileUpdated = true;
+
     // ✅ Handle Cloudinary upload
     if (req.file) {
       const fileUrl =
@@ -76,6 +78,11 @@ export const updateProfile = async (req, res) => {
         req.file.secure_url ||
         req.file.filename;
       if (fileUrl) student.profileImage = fileUrl;
+    }else {
+      // If no image uploaded, do NOT mark updated
+      if (!student.profileImage) {
+        return res.status(400).json({ message: "Profile image is required" });
+      } 
     }
 
     await student.save();

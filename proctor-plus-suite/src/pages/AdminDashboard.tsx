@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCcw , LogOut } from "lucide-react";
+import { RefreshCcw , LogOut , Trash2 } from "lucide-react";
 import { 
   Users, 
   FileText, 
@@ -208,6 +208,40 @@ const fetchQuestionSets = async () => {
         description: "Students list updated",
       });
     };
+
+    const handleDeleteStudent = async (studentId: string, name: string) => {
+      if (!window.confirm(`Are you sure you want to delete ${name}?`)) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/students/${studentId}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to delete student");
+        }
+
+        toast({
+          title: "🗑️ Student Deleted",
+          description: `${name} has been removed successfully.`,
+        });
+
+        // Update list instantly
+        setRecentStudents((prev) => prev.filter((s) => s.id !== studentId));
+        setStats((prev) => ({ ...prev, totalStudents: prev.totalStudents - 1 }));
+      } catch (err: any) {
+        toast({
+          title: "Error",
+          description: err.message || "Deletion failed",
+          variant: "destructive",
+        });
+      }
+    };
+
+
 
 
   // const [recentExams] = useState([
@@ -535,7 +569,13 @@ const fetchQuestionSets = async () => {
                         <Button variant="outline" size="sm" 
                         // onClick={() => window.openCreateStudentWithData(student)}
                           >Edit</Button>
-                        <Button variant="outline" size="sm">Reset Password</Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => handleDeleteStudent(student.id, student.name)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}

@@ -65,6 +65,32 @@ export const createStudent = async (req, res) => {
 };
 
 /**
+ * DELETE /api/admin/students/:id
+ * Delete a specific student (admin only)
+ */
+export const deleteStudent = async (req, res) => {
+  try {
+    const adminId = req.user && req.user._id;
+    if (!adminId) return res.status(403).json({ message: "Not authorized" });
+
+    const { id } = req.params;
+
+    const student = await Student.findOne({ _id: id, admin: adminId });
+    if (!student) {
+      return res.status(404).json({ message: "Student not found or not under this admin" });
+    }
+
+    await Student.deleteOne({ _id: id });
+
+    res.json({ message: "Student deleted successfully", id });
+  } catch (err) {
+    console.error("deleteStudent error", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+/**
  * Upload students CSV - strict validation: if any row misses required fields, abort and return errors.
  * POST /api/admin/students/upload  (multipart form-data with key 'file')
  */
