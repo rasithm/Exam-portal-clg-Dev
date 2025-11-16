@@ -17,6 +17,9 @@ const Login = () => {
     email: "",
     password: ""
   });
+
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showStudentPassword, setShowStudentPassword] = useState(false);
   
   const [studentCredentials, setStudentCredentials] = useState({
     studentId: "",
@@ -47,6 +50,15 @@ const Login = () => {
   // };
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (showAdminPassword) {
+      toast({
+        title: "Security Alert",
+        description: "Hide your password before logging in",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const res = await fetch(`${baseUrl}/api/auth/admin/login`, {
@@ -96,6 +108,15 @@ const Login = () => {
   // };
   const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (showStudentPassword) {
+      toast({
+        title: "Security Alert",
+        description: "Hide your password before logging in",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const res = await fetch(`${baseUrl}/api/auth/student/login`, {
@@ -189,7 +210,7 @@ const Login = () => {
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="admin-password">Password</Label>
                     <Input
                       id="admin-password"
@@ -201,7 +222,32 @@ const Login = () => {
                       onChange={(e) => setAdminCredentials(prev => ({ ...prev, password: e.target.value }))}
                       required
                     />
+                  </div> */}
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="admin-password"
+                        type={showAdminPassword ? "text" : "password"}
+                        onPaste={(e) => e.preventDefault()}
+                        onDrop={(e) => e.preventDefault()}
+                        placeholder="Enter your password"
+                        value={adminCredentials.password}
+                        onChange={(e) =>
+                          setAdminCredentials((prev) => ({ ...prev, password: e.target.value }))
+                        }
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-2 text-muted-foreground"
+                        onClick={() => setShowAdminPassword((prev) => !prev)}
+                      >
+                        {showAdminPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
                   </div>
+
 
                   <Button type="submit" variant="hero" className="w-full h-12">
                     Sign In as Admin
@@ -224,7 +270,7 @@ const Login = () => {
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="student-password">Password</Label>
                     <Input
                       id="student-password"
@@ -236,7 +282,32 @@ const Login = () => {
                       onChange={(e) => setStudentCredentials(prev => ({ ...prev, password: e.target.value }))}
                       required
                     />
+                  </div> */}
+                  <div className="space-y-2">
+                    <Label htmlFor="student-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="student-password"
+                        type={showStudentPassword ? "text" : "password"}
+                        onPaste={(e) => e.preventDefault()}
+                        onDrop={(e) => e.preventDefault()}
+                        placeholder="Enter your password"
+                        value={studentCredentials.password}
+                        onChange={(e) =>
+                          setStudentCredentials((prev) => ({ ...prev, password: e.target.value }))
+                        }
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-2 text-muted-foreground"
+                        onClick={() => setShowStudentPassword((prev) => !prev)}
+                      >
+                        {showStudentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
                   </div>
+
 
                   <Button type="submit" variant="secondary" className="w-full h-12">
                     Sign In as Student
