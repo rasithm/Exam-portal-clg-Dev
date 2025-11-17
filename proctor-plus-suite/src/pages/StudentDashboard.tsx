@@ -444,11 +444,12 @@ useEffect(() => {
         </div>
 
         <Tabs defaultValue="tech" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="tech">Tech</TabsTrigger>
             <TabsTrigger value="nontech">Non-Tech</TabsTrigger>
             <TabsTrigger value="reexam">Re-Exam</TabsTrigger>
             <TabsTrigger value="certifications">Certifications</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab}>
@@ -491,6 +492,69 @@ useEffect(() => {
                         </Button>
                       </div>
                     ))}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : activeTab === "reports" ? (
+              // 🔹 NEW Reports UI
+              <div className="mt-6">
+                <Card className="shadow-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-primary" />
+                      Performance Reports
+                    </CardTitle>
+                    <CardDescription>
+                      View your exam-wise performance and open detailed answer review.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {recentExams.length === 0 ? (
+                      <div className="text-center py-8">
+                        <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">
+                          You haven&apos;t completed any exams yet.
+                        </p>
+                      </div>
+                    ) : (
+                      recentExams.map((exam) => (
+                        <div
+                          key={exam.id}
+                          className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border bg-card gap-3"
+                        >
+                          <div>
+                            <h3 className="font-semibold text-card-foreground capitalize">
+                              {exam.title}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {exam.subject} • {exam.date}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Score:{" "}
+                              <span className="font-medium">
+                                {exam.score}/{exam.totalMarks} (
+                                {Math.round((exam.score / exam.totalMarks) * 100)}%)
+                              </span>
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <Progress
+                              value={(exam.score / exam.totalMarks) * 100}
+                              className="h-2 w-40"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                navigate(`/student/exam/result/${exam.id}`)
+                              }
+                            >
+                              View Detailed Result
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -663,6 +727,8 @@ useEffect(() => {
               </div>
             )}
           </TabsContent>
+
+          
 
         </Tabs>
 

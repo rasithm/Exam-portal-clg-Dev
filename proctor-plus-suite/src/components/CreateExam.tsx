@@ -46,8 +46,19 @@ const CreateExam = () => {
     assignStudents: "",
     reassignAllowed: false,
     instructions: "",
+    negativeMarkingEnabled: true,   // ✅
+    generateCertificate: false,
+    sameMarkForAll: false,      // 🔹 NEW
+    markPerQuestion: "",        // 🔹 NEW
+    questionCount: "",
+    easyMark: "",     // 🔹 NEW
+    mediumMark: "",   // 🔹 NEW
+    hardMark: "",
   });
   const [questionSets, setQuestionSets] = useState<any[]>([]);
+
+  
+
 
   const categories = {
     "Tech": ["Java", "Python", "React", "Node.js", "C++"],
@@ -127,6 +138,11 @@ const CreateExam = () => {
       duration: examData.duration.toString().trim(),
       assignStudents: examData.assignStudents.trim(),
       instructions: examData.instructions.trim(),
+      markPerQuestion: examData.markPerQuestion.toString().trim(),
+      questionCount: examData.questionCount.toString().trim(),
+      easyMark: examData.easyMark.toString().trim(),
+      mediumMark: examData.mediumMark.toString().trim(),
+      hardMark: examData.hardMark.toString().trim(),
     };
 
     // --- Validation ---
@@ -187,19 +203,57 @@ const CreateExam = () => {
       return;
     }
 
+    // If same mark for all is enabled, markPerQuestion is required and > 0
+    if (examData.sameMarkForAll) {
+      const markVal = parseFloat(cleanedExamData.markPerQuestion);
+      if (isNaN(markVal) || markVal <= 0) {
+        toast({
+          title: "Invalid Mark",
+          description: "Please enter a valid positive mark per question.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // When NOT using same marks, require per-difficulty marks
+    if (!examData.sameMarkForAll) {
+      const easyVal = parseFloat(cleanedExamData.easyMark);
+      const medVal = parseFloat(cleanedExamData.mediumMark);
+      const hardVal = parseFloat(cleanedExamData.hardMark);
+
+      if (
+        isNaN(easyVal) || easyVal <= 0 ||
+        isNaN(medVal) || medVal <= 0 ||
+        isNaN(hardVal) || hardVal <= 0
+      ) {
+        toast({
+          title: "Invalid Marks",
+          description: "Please enter positive marks for easy, medium, and hard questions.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+
+    // Optional questionCount validation
+    if (cleanedExamData.questionCount) {
+      const qCount = parseInt(cleanedExamData.questionCount, 10);
+      if (isNaN(qCount) || qCount <= 0) {
+        toast({
+          title: "Invalid Question Count",
+          description: "Question count must be a positive number.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+
     // Prepare final payload
-    // const payload = {
-    //   ...cleanedExamData,
-    //   duration: durationMinutes,
-    //   reassignAllowed: !!cleanedExamData.reassignAllowed,
-    //   assignStudents: cleanedExamData.assignStudents
-    //     ? cleanedExamData.assignStudents
-    //         .split(",")
-    //         .map((s) => s.trim())
-    //         .filter(Boolean)
-    //     : [],
-    // };
-    // 🟢 Updated payload: automatically enable reassignAllowed for re-Assign-Exam category
+    
+    
     const payload = {
       ...cleanedExamData,
       duration: durationMinutes,
@@ -211,6 +265,14 @@ const CreateExam = () => {
             .map((s) => s.trim())
             .filter(Boolean)
         : [],
+      negativeMarkingEnabled: examData.negativeMarkingEnabled,
+      generateCertificate: examData.generateCertificate,
+      sameMarkForAll: !!examData.sameMarkForAll,
+      markPerQuestion: cleanedExamData.markPerQuestion || undefined,
+      questionCount: cleanedExamData.questionCount || undefined,
+      easyMark: cleanedExamData.easyMark || undefined,
+      mediumMark: cleanedExamData.mediumMark || undefined,
+      hardMark: cleanedExamData.hardMark || undefined,
     };
 
 
@@ -247,6 +309,14 @@ const CreateExam = () => {
         assignStudents: "",
         reassignAllowed: false,
         instructions: "",
+        negativeMarkingEnabled: true,   // ✅
+        generateCertificate: false,
+        sameMarkForAll: false,
+        markPerQuestion: "",
+        questionCount: "",
+        easyMark: "",
+        mediumMark: "",
+        hardMark: "",
       });
       setOpen(false);
     } catch (err: any) {
@@ -420,6 +490,93 @@ const CreateExam = () => {
             <Label>Duration (minutes) *</Label>
             <Input type="number" min="1" value={examData.duration}
                    onChange={(e) => setExamData(p => ({ ...p, duration: e.target.value }))}/>
+            
+            {/* Marking Configuration */}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={examData.sameMarkForAll}
+                  onChange={(e) =>
+                    setExamData((p) => ({
+                      ...p,
+                      sameMarkForAll: e.target.checked,
+                    }))
+                  }
+                />
+                Use same mark for all questions
+              </label>
+
+              <div>
+                <Label>Question Count (optional)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 60"
+                  value={examData.questionCount}
+                  onChange={(e) =>
+                    setExamData((p) => ({ ...p, questionCount: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            {examData.sameMarkForAll ? (
+              <div className="mt-2">
+                <Label>Mark per Question *</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 1"
+                  value={examData.markPerQuestion}
+                  onChange={(e) =>
+                    setExamData((p) => ({ ...p, markPerQuestion: e.target.value }))
+                  }
+                />
+              </div>
+            ) : (
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Easy Question Mark *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 1"
+                    value={examData.easyMark}
+                    onChange={(e) =>
+                      setExamData((p) => ({ ...p, easyMark: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Medium Question Mark *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 2"
+                    value={examData.mediumMark}
+                    onChange={(e) =>
+                      setExamData((p) => ({ ...p, mediumMark: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Hard Question Mark *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 3"
+                    value={examData.hardMark}
+                    onChange={(e) =>
+                      setExamData((p) => ({ ...p, hardMark: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+
 
             <Label>Assign Students (RegNos, optional)</Label>
             <Input placeholder="311823205030, 311823205031"
@@ -430,6 +587,31 @@ const CreateExam = () => {
             <Textarea placeholder="Write exam rules or guidelines..."
                       value={examData.instructions}
                       onChange={(e) => setExamData(p => ({ ...p, instructions: e.target.value }))}/>
+            
+            <div className="flex items-center gap-4 mt-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={examData.negativeMarkingEnabled}
+                  onChange={(e) =>
+                    setExamData((p) => ({ ...p, negativeMarkingEnabled: e.target.checked }))
+                  }
+                />
+                Enable negative marking on changed answers
+              </label>
+
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={examData.generateCertificate}
+                  onChange={(e) =>
+                    setExamData((p) => ({ ...p, generateCertificate: e.target.checked }))
+                  }
+                />
+                Generate certificate on pass
+              </label>
+            </div>
+
 
             <Button onClick={handleCreateExam} variant="hero" className="w-full">
               <Plus className="h-4 w-4 mr-2" /> Create Exam

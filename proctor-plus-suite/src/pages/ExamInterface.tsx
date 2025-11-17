@@ -33,7 +33,7 @@ const ExamInterface = () => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [examSubmitted, setExamSubmitted] = useState(false);
-  const [showReenter, setShowReenter] = useState(false);
+  const [showReenter, setShowReenter] = useState(true);
 
   // Sample exam data
   // Exam data from backend
@@ -162,6 +162,8 @@ const ExamInterface = () => {
   useEffect(() => {
     const handleFullScreenChange = () => {
       if (!document.fullscreenElement && !examSubmitted) {
+        // log event + show overlay
+        logEvent("fullscreen_exit");
         setShowReenter(true);
       }
     };
@@ -170,12 +172,46 @@ const ExamInterface = () => {
     return () => document.removeEventListener("fullscreenchange", handleFullScreenChange);
   }, [examSubmitted]);
 
+
+  
+  // useEffect(() => {
+  //   const handleFullScreenChange = () => {
+  //     if (!document.fullscreenElement && !examSubmitted) {
+        
+  //       logEvent("fullscreen_exit");
+
+        
+  //       setTimeout(() => {
+  //         if (!document.fullscreenElement && !examSubmitted) {
+  //           document.documentElement.requestFullscreen().catch(() => {
+              
+  //             setShowReenter(true);
+  //           });
+  //         }
+  //       }, 1000);
+  //     }
+  //   };
+
+  //   document.addEventListener("fullscreenchange", handleFullScreenChange);
+  //   return () => document.removeEventListener("fullscreenchange", handleFullScreenChange);
+  // }, [examSubmitted]);
+
+
   const handleReEnterFullscreen = () => {
-    document.documentElement.requestFullscreen().catch(() => {
-      console.warn("Fullscreen re-entry failed");
-    });
-    setShowReenter(false);
+    if (!document.fullscreenElement) {
+      document.documentElement
+        .requestFullscreen()
+        .then(() => {
+          setShowReenter(false);
+        })
+        .catch((err) => {
+          console.warn("Fullscreen re-entry failed", err);
+        });
+    } else {
+      setShowReenter(false);
+    }
   };
+
 
   
 
@@ -281,6 +317,7 @@ const ExamInterface = () => {
     return () => clearInterval(timer);
   }, [timeRemaining, examSubmitted]);
 
+
   // Security monitoring
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -315,15 +352,11 @@ const ExamInterface = () => {
   }, [examSubmitted, toast]);
 
   // Save answer (uses sessionId and backend expected fields)
-  const handleAnswerChange = async (questionId: string, selectedIndex: string) => {
-    // update local UI state
-    setAnswers(prev => ({ ...prev, [questionId]: selectedIndex }));
+  const handleAnswerChange = async (questionId: string, selectedValue: string) => {
+    // Store the OPTION TEXT
+    setAnswers((prev) => ({ ...prev, [questionId]: selectedValue }));
 
-    // Send to backend using expected keys: sessionId, questionId, selectedOption
-    if (!sessionId) {
-      console.warn("No sessionId available for save; skipping save.");
-      return;
-    }
+    if (!sessionId) return;
 
     try {
       await fetch(`${API_BASE}/api/student/exams/${examId}/save`, {
@@ -333,13 +366,16 @@ const ExamInterface = () => {
         body: JSON.stringify({
           sessionId,
           questionId,
-          selectedOption: selectedIndex
+          selectedOption: selectedValue, // save text
         }),
       });
+      setLastSaved(new Date());
     } catch (err) {
       console.error("Auto-save failed", err);
     }
   };
+
+
 
   const logEvent = async (eventType: string) => {
     if (!sessionId) {
@@ -370,78 +406,38 @@ const ExamInterface = () => {
     });
   };
 
-  useEffect(() => {
-    if (!sessionId) return;
-    const interval = setInterval(async () => {
-      try {
-        await fetch(`${API_BASE}/api/student/exams/${examId}/save`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ sessionId, answers }),
-        });
-        setLastSaved(new Date());
-      } catch {}
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [sessionId, answers, examId]);
-
-  // Add this top-right of header:
-  {lastSaved && (
-    <p className="text-xs text-muted-foreground">
-      Auto-saved at {lastSaved.toLocaleTimeString()}
-    </p>
-  )}
-
-  // ✅ Auto-save progress every 5 seconds
-  // useEffect(() => {
-  //   if (!sessionId) return;
-  //   const interval = setInterval(async () => {
-  //     try {
-  //       await fetch(`${API_BASE}/api/student/exams/${examId}/save`, {
-  //         method: "POST",
-  //         headers: { "Content-Type": "application/json" },
-  //         credentials: "include",
-  //         body: JSON.stringify({
-  //           sessionId,
-  //           answers,
-  //         }),
-  //       });
-  //       toast({
-  //         title: "Progress Saved",
-  //         description: "Your answers were auto-saved.",
-  //         variant: "default",
-  //       });
-  //     } catch (err) {
-  //       toast({
-  //         title: "Auto-Save Failed",
-  //         description: "Connection issue — answers not saved.",
-  //         variant: "destructive",
-  //       });
-  //     }
-  //   }, 20000);
-
-  //   return () => clearInterval(interval);
-  // }, [sessionId, answers, examId, toast]);
-
-  const handleAutoSubmit = () => {
-    setExamSubmitted(true);
-    toast({
-      title: "Exam Auto-Submitted",
-      description: "Time limit reached. Your exam has been automatically submitted.",
-      variant: "destructive",
-    });
-    
-    setTimeout(() => {
-      navigate("/student/exam/result");
-    }, 3000);
-  };
   
-  useEffect(() => {
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen();
+
+  const handleAutoSubmit = async () => {
+    if (!sessionId) {
+      setExamSubmitted(true);
+      navigate("/student/exam/result");
+      return;
     }
-  }, []);
+
+    try {
+      await submitToServer();   // ✅ call backend
+      setExamSubmitted(true);
+      toast({
+        title: "Exam Auto-Submitted",
+        description: "Time limit reached. Your exam has been automatically submitted.",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        navigate(`/student/exam/result/${examId}`);
+      }, 2000);
+    } catch (err) {
+      console.error("Auto submit failed", err);
+      toast({
+        title: "Auto-submit failed",
+        description: "Please contact your instructor.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  
+  
 
 
   useEffect(() => {
@@ -461,29 +457,20 @@ const ExamInterface = () => {
       console.warn("No sessionId for submit; aborting");
       return;
     }
-    try {
-      await fetch(`${API_BASE}/api/student/exams/${examId}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          sessionId,
-          // optionally send answers if backend expects them; backend can read attempt from DB
-          answers,
-        }),
-      });
-    } catch (err) {
-      console.error("Submit error", err);
-    }
+    await fetch(`${API_BASE}/api/student/exams/${examId}/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ sessionId }),
+    });
   };
+
 
 
   const handleManualSubmit = async () => {
     if (!examData || !examData.questions) return;
 
-    const unanswered = examData.questions.filter(
-      (q) => !answers[q._id]
-    );
+    const unanswered = examData.questions.filter((q) => !answers[q._id]);
 
     if (unanswered.length > 0) {
       toast({
@@ -500,11 +487,12 @@ const ExamInterface = () => {
       title: "Exam Submitted Successfully",
       description: "Your answers have been saved and submitted for evaluation.",
     });
-    
+
     setTimeout(() => {
-      navigate("/student/exam/result");
+      navigate(`/student/exam/result/${examId}`);
     }, 2000);
   };
+
 
 
   const formatTime = (seconds: number) => {
@@ -562,15 +550,25 @@ const ExamInterface = () => {
             <div className="flex items-center gap-6">
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Time Remaining</p>
-                <p className={`text-lg font-bold ${timeRemaining < 600 ? 'text-danger' : 'text-card-foreground'}`}>
+                <p
+                  className={`text-lg font-bold ${
+                    timeRemaining < 600 ? "text-danger" : "text-card-foreground"
+                  }`}
+                >
                   {formatTime(timeRemaining)}
                 </p>
+                {lastSaved && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Auto-saved at {lastSaved.toLocaleTimeString()}
+                  </p>
+                )}
               </div>
-              
+
               <Button variant="destructive" onClick={handleManualSubmit}>
                 Submit Exam
               </Button>
             </div>
+
           </div>
         </div>
       </header>
@@ -649,21 +647,31 @@ const ExamInterface = () => {
                     ))}
                   </RadioGroup>
                 )} */}
-                { currentQ.options && (
+                {currentQ.options && (
                   <RadioGroup
-                    value={answers[currentQ._id] || "" }
+                    value={answers[currentQ._id] || ""}
                     onValueChange={(value) => handleAnswerChange(currentQ._id, value)}
                   >
                     {currentQ.options.map((option: string, index: number) => (
-                      <div key={index} className="flex items-center space-x-2 p-3 rounded-lg hover:bg-muted/50">
-                        <RadioGroupItem value={index.toString()} id={`option-${currentQ._id}-${index}`} />
-                        <Label htmlFor={`option-${currentQ._id}-${index}`} className="flex-1 cursor-pointer">
+                      <div
+                        key={index}
+                        className="flex items-center space-x-2 p-3 rounded-lg hover:bg-muted/50"
+                      >
+                        <RadioGroupItem
+                          value={option} // ✅ use text
+                          id={`option-${currentQ._id}-${index}`}
+                        />
+                        <Label
+                          htmlFor={`option-${currentQ._id}-${index}`}
+                          className="flex-1 cursor-pointer"
+                        >
                           {option}
                         </Label>
                       </div>
                     ))}
                   </RadioGroup>
                 )}
+
 
                 {/* Descriptive Answer */}
                 

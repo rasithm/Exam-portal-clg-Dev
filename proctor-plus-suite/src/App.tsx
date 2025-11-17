@@ -16,6 +16,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ExamCompleted from "./pages/ExamCompleted";
 import Profile from "./pages/Profile";
 import ResetVerification from "./pages/ResetVerification";
+import ExamResultPage from "./pages/ExamResultPage";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/student/dashboard" element={<StudentDashboard />} />
           <Route path="/student/profile" element={<Profile />} />
           <Route path="/exam/:examId" element={<ExamInterface />} />
+          <Route path="/student/exam/result/:examId" element={<ExamResultPage />} />
           <Route path="/exam/Completed" element={<ExamCompleted />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/resetverification" element={<ResetVerification />} />

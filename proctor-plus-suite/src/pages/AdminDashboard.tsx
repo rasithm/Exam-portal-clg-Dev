@@ -51,6 +51,9 @@ const AdminDashboard = () => {
   const [QuestionData, setQuestionData] = useState([]);
   const [activeTab, setActiveTab] = useState("files"); // "files" or "exams"
   const [certificates, setCertificates] = useState<any[]>([]);
+  const [selectedExamForReport, setSelectedExamForReport] = useState<string>("");
+  const [reportData, setReportData] = useState<any | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   // const fetchExams = async () => {
   //   try {
   //     const res = await axios.get("/api/admin/exams/all");
@@ -240,6 +243,75 @@ const fetchQuestionSets = async () => {
         });
       }
     };
+
+    const handleFetchReport = async (examId: string) => {
+      if (!examId) return;
+      setReportLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/exams/${examId}/report`, {
+          credentials: "include",
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.message || "Failed to fetch report");
+        }
+        setReportData(json);
+        toast({
+          title: "Report Loaded",
+          description: `Loaded report for ${json.examName || "exam"}`,
+        });
+      } catch (err: any) {
+        console.error("Report fetch error", err);
+        toast({
+          title: "Error",
+          description: err.message || "Unable to load report",
+          variant: "destructive",
+        });
+      } finally {
+        setReportLoading(false);
+      }
+    };
+
+    const handleExportReport = async (examId: string, type: "xlsx" | "pdf") => {
+      if (!examId) {
+        toast({
+          title: "Select Exam",
+          description: "Please select an exam before exporting.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const endpoint =
+        type === "xlsx"
+          ? `${API_BASE}/api/admin/exams/${examId}/report.xlsx`
+          : `${API_BASE}/api/admin/exams/${examId}/report.pdf`;
+
+      try {
+        const res = await fetch(endpoint, { credentials: "include" });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || "Export failed");
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download =
+          type === "xlsx"
+            ? `exam_${examId}_report.xlsx`
+            : `exam_${examId}_report.pdf`;
+        a.click();
+      } catch (err: any) {
+        console.error("Export error", err);
+        toast({
+          title: "Export Failed",
+          description: err.message || "Unable to export report",
+          variant: "destructive",
+        });
+      }
+    };
+
 
 
 
@@ -709,24 +781,172 @@ const fetchQuestionSets = async () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Reports & Analytics</CardTitle>
-                    <CardDescription>Download exam results and system analytics</CardDescription>
+                    <CardDescription>
+                      Select an exam to view performance summary and export reports.
+                    </CardDescription>
                   </div>
-                  <Button variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Data
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleExportReport(selectedExamForReport, "xlsx")
+                      }
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export Excel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        handleExportReport(selectedExamForReport, "pdf")
+                      }
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export PDF
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-card-foreground mb-2">Analytics Dashboard</h3>
-                  <p className="text-muted-foreground mb-4">View detailed reports on exam performance and system usage</p>
-                  <Button variant="hero">View Reports</Button>
+
+              <CardContent className="space-y-6">
+                {/* Exam Selector */}
+                <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-card-foreground mb-1 block">
+                      Select Exam
+                    </label>
+                    <select
+                      className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                      value={selectedExamForReport}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setSelectedExamForReport(id);
+                        setReportData(null);
+                        if (id) handleFetchReport(id);
+                      }}
+                    >
+                      <option value="">-- Choose an exam --</option>
+                      {examData.map((exam: any) => (
+                        <option key={exam._id} value={exam._id}>
+                          {exam.examName || exam.fileName} ({exam.category} -{" "}
+                          {exam.subcategory || "N/A"})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+
+                {/* Report Content */}
+                {reportLoading && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Loading report...
+                  </div>
+                )}
+
+                {!reportLoading && !reportData && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Select an exam to view its report.
+                  </div>
+                )}
+
+                {!reportLoading && reportData && (
+                  <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-card-foreground">
+                          {reportData.examName}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Total Attempts: {reportData.attempts} • Total Marks:{" "}
+                          {reportData.totalMarks}
+                        </p>
+                      </div>
+                    </div>
+
+                    {reportData.stats && (
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <Card className="shadow-none border">
+                          <CardContent className="p-4">
+                            <p className="text-xs text-muted-foreground">Average Score</p>
+                            <p className="text-2xl font-bold">
+                              {reportData.stats.averageScore.toFixed(2)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card className="shadow-none border">
+                          <CardContent className="p-4">
+                            <p className="text-xs text-muted-foreground">
+                              Average Percentage
+                            </p>
+                            <p className="text-2xl font-bold">
+                              {reportData.stats.averagePercentage.toFixed(2)}%
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card className="shadow-none border">
+                          <CardContent className="p-4">
+                            <p className="text-xs text-muted-foreground">Highest Score</p>
+                            <p className="text-2xl font-bold">
+                              {reportData.stats.highestScore.toFixed(2)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card className="shadow-none border">
+                          <CardContent className="p-4">
+                            <p className="text-xs text-muted-foreground">Lowest Score</p>
+                            <p className="text-2xl font-bold">
+                              {reportData.stats.lowestScore.toFixed(2)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+
+                    <div className="mt-4">
+                      <h4 className="text-sm font-semibold mb-2">
+                        Student-wise Performance
+                      </h4>
+                      <div className="space-y-2 max-h-72 overflow-y-auto">
+                        {reportData.rows.map((row: any, idx: number) => (
+                          <div
+                            key={idx}
+                            className="flex flex-col md:flex-row md:items-center justify-between p-3 border rounded-md bg-muted/40 gap-2"
+                          >
+                            <div>
+                              <p className="font-medium text-card-foreground">
+                                {row.studentName} ({row.rollNumber})
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {row.email}
+                              </p>
+                            </div>
+                            <div className="text-right text-sm">
+                              <p>
+                                Score:{" "}
+                                <span className="font-semibold">{row.score}</span>
+                              </p>
+                              <p>
+                                Percentage:{" "}
+                                <span className="font-semibold">
+                                  {row.percentage?.toFixed(2)}%
+                                </span>
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {row.pass ? "Pass" : "Fail"} • {row.reason}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
+
 
           <TabsContent value="Certificates">
             <Card className="shadow-card">
