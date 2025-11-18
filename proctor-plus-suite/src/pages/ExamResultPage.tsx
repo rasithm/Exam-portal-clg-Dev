@@ -33,27 +33,91 @@ const ExamResultPage = () => {
     })();
   }, [examId]);
 
+  // src/pages/ExamResultPage.tsx
+
   const handleCompleteReview = async () => {
     try {
-        await fetch(`${API_BASE}/api/student/exams/${examId}/clear-review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        });
-        // After clearing answers, go to completion screen
-        navigate("/exam/completed"); // or whatever route you use
+      const res = await fetch(
+        `${API_BASE}/api/student/exams/${examId}/clear-review`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to clear review data");
+      }
+
+      toast({
+        title: "Result Verified",
+        description:
+          "Your answers have been verified. Detailed review data is cleared and only marks are stored.",
+      });
+
+      // ✅ Go to exam completed / certificate page
+      navigate("/exam/completed"); // or your actual completed route
     } catch (err) {
-        console.error("Clear review failed", err);
-        toast({
+      console.error("Clear review failed", err);
+      toast({
         title: "Failed to complete review",
         description: "Please try again later.",
         variant: "destructive",
-        });
+      });
     }
-    };
+  };
+
+
 
   if (loading) return <div className="p-8 text-center">Loading result...</div>;
   if (!data) return <div className="p-8 text-center">Result not found.</div>;
+
+  if (data.reviewCompleted && (!data.questions || data.questions.length === 0)) {
+    return (
+      <div className="min-h-screen bg-muted/30 py-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Card className="mb-6 shadow-card">
+            <CardHeader className="flex items-center justify-between">
+              <div>
+                <CardTitle>{data.examName}</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Score: {data.totalMarks.toFixed(2)} • {data.percentage.toFixed(2)}%
+                </p>
+              </div>
+              <div className="text-right">
+                <Badge variant={data.pass ? "success" : "destructive"}>
+                  {data.pass ? "Passed" : "Failed"}
+                </Badge>
+                <Progress className="mt-2 h-2" value={data.percentage} />
+              </div>
+            </CardHeader>
+          </Card>
+
+          <Card className="shadow-card">
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              Detailed review has been cleared to save storage.
+            </CardContent>
+          </Card>
+
+          <div className="mt-6 flex flex-col sm:flex-row justify-between gap-3">
+            <Button variant="outline" onClick={() => navigate("/student/dashboard")}>
+              Back to Dashboard
+            </Button>
+
+            {data.pass && data.certificateEligible && (
+              <Button
+                variant="hero"
+                onClick={() => navigate(`/student/certificate/${examId}`)}
+              >
+                View Certificate
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
@@ -150,10 +214,11 @@ const ExamResultPage = () => {
             </Button>
 
             {data.pass && (
-                <Button variant="hero" onClick={handleCompleteReview}>
-                Complete Review & View Certificate
-                </Button>
+              <Button variant="hero" onClick={handleCompleteReview}>
+                Verify Result & Complete
+              </Button>
             )}
+
         </div>
 
       </div>
