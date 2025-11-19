@@ -16,6 +16,8 @@ const ExamResultPage = () => {
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+
 
   useEffect(() => {
     (async () => {
@@ -57,7 +59,7 @@ const ExamResultPage = () => {
       });
 
       // ✅ Go to exam completed / certificate page
-      navigate("/exam/completed"); // or your actual completed route
+      navigate("/exam/Completed"); // or your actual completed route
     } catch (err) {
       console.error("Clear review failed", err);
       toast({
@@ -69,9 +71,10 @@ const ExamResultPage = () => {
   };
 
 
-
+  
   if (loading) return <div className="p-8 text-center">Loading result...</div>;
   if (!data) return <div className="p-8 text-center">Result not found.</div>;
+  const stats = data && data.stats ? data.stats : {};
 
   if (data.reviewCompleted && (!data.questions || data.questions.length === 0)) {
     return (
@@ -127,8 +130,21 @@ const ExamResultPage = () => {
             <div>
               <CardTitle>{data.examName}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Score: {data.totalMarks.toFixed(2)} • {data.percentage.toFixed(2)}%
+                Score: {data.totalMarks.toFixed(2)} / {data.maxMarks.toFixed(2)} •{" "}
+                {data.percentage.toFixed(2)}%
               </p>
+              {data.stats && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Qns: {stats.totalQuestions} • Attempted: {stats.attempted} • Correct: {stats.correct} • Wrong: {stats.wrong} • Grace: {stats.graceCount || 0}
+                </p>
+              )}
+              {data.stats && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Easy: {stats.easyCorrect || 0} ({(stats.easyMarks || 0).toFixed(1)} marks) •
+                  Medium: {stats.mediumCorrect || 0} ({(stats.mediumMarks || 0).toFixed(1)} marks) •
+                  Hard: {stats.hardCorrect || 0} ({(stats.hardMarks || 0).toFixed(1)} marks)
+                </p>
+              )}
             </div>
             <div className="text-right">
               <Badge variant={data.pass ? "success" : "destructive"}>
@@ -137,16 +153,23 @@ const ExamResultPage = () => {
               <Progress className="mt-2 h-2" value={data.percentage} />
             </div>
           </CardHeader>
+
         </Card>
 
         <div className="space-y-4">
           {data.questions.map((q: any, idx: number) => {
-            const correctIdx = Number(q.correctAnswer);
+            const correctIdx = q.correctAnswer;
             const correctText =
-                Array.isArray(q.options) && correctIdx >= 0 && correctIdx < q.options.length
+              Array.isArray(q.options) &&
+              correctIdx != null &&
+              correctIdx >= 0 &&
+              correctIdx < q.options.length
                 ? q.options[correctIdx]
-                : null;
+                : q.correctAnswerText || null;
+
             const selectedText = q.selectedOption || null;
+            const isGrace = q.isGrace;
+
 
             return (
                 <Card key={q.id} className="shadow-card">
@@ -166,10 +189,14 @@ const ExamResultPage = () => {
                     </Badge>
                     <span className="text-xs text-muted-foreground">Marks: {q.marks}</span>
                     </div>
-                    {q.isCorrect ? (
-                    <CheckCircle className="h-5 w-5 text-success" />
+                    {isGrace ? (
+                      <span className="text-xs font-semibold text-blue-600">
+                        Grace Marks Awarded
+                      </span>
+                    ) : q.isCorrect ? (
+                      <CheckCircle className="h-5 w-5 text-success" />
                     ) : (
-                    <XCircle className="h-5 w-5 text-destructive" />
+                      <XCircle className="h-5 w-5 text-destructive" />
                     )}
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -201,6 +228,11 @@ const ExamResultPage = () => {
                         );
                     })}
                     </div>
+                    {isGrace && (
+                      <p className="text-xs text-blue-600 font-medium mt-2">
+                        This question had configuration issues. Full marks have been given as grace.
+                      </p>
+                    )}
                 </CardContent>
                 </Card>
             );

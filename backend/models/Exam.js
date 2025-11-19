@@ -1,6 +1,6 @@
-// C:\Users\nazeer\Downloads\Exam-portal\Exam-portal\backend\models\Exam.js
-import mongoose from "mongoose";
 
+// backend/models/Exam.js
+import mongoose from "mongoose";
 
 const questionSchema = new mongoose.Schema({
   type: { type: String, enum: ["mcq", "descriptive", "coding"], required: true },
@@ -13,7 +13,6 @@ const questionSchema = new mongoose.Schema({
   marks: { type: Number, default: 1 }
 });
 
-
 const examSchema = new mongoose.Schema({
   examName: { type: String, required: true },
   fileName: String,
@@ -22,6 +21,7 @@ const examSchema = new mongoose.Schema({
   questionSets: [{ type: mongoose.Schema.Types.ObjectId, ref: "QuestionSet" }],
   questions: [questionSchema],
   totalMarks: Number,
+  questionCount: Number,
   startDateTime: Date,
   endDateTime: Date,
   duration: Number,
@@ -31,7 +31,15 @@ const examSchema = new mongoose.Schema({
   instructions: String,
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: true },
   collegeTag: String,
-}, { timestamps: true });
 
+  // ✅ NEW
+  negativeMarkingEnabled: { type: Boolean, default: true },
+  generateCertificate: { type: Boolean, default: false },
+  sameMarkForAll: { type: Boolean, default: false },
+  markPerQuestion: Number,
+  easyMarkPerQuestion: Number,
+  mediumMarkPerQuestion: Number,
+  hardMarkPerQuestion: Number,
+}, { timestamps: true });
 
 export default mongoose.model("Exam", examSchema);

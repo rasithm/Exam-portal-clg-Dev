@@ -23,11 +23,13 @@ const studentSchema = new mongoose.Schema({
   },
   scores: [
     {
-      examId: String,
-      score: Number,
-      date: Date,
-    },
+      examId: { type: String },
+      score: { type: Number },
+      percentage: { type: Number },
+      date: { type: Date }
+    }
   ],
+
 }, { timestamps: true });
 
 studentSchema.index({ admin: 1, rollNumber: 1 }, { unique: true });

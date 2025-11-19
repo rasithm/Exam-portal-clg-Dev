@@ -1,10 +1,13 @@
+//C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\backend\controllers\studentController.js
 import Exam from "../models/Exam.js";
 import Student from "../models/Student.js";
+import ExamAttempt from "../models/ExamAttempt.js";
 
 export const getStudentDashboard = async (req, res) => {
   try {
     const rollNumber = req.user.rollNumber;
     const adminId = req.user.admin || req.user._id;
+    
 
     // Step 1 — Fetch student
     const student = await Student.findOne({ rollNumber, admin: adminId })
@@ -25,24 +28,33 @@ export const getStudentDashboard = async (req, res) => {
     const upcomingExams = [];
     const completedExams = [];
 
+    
+
+
     allExams.forEach(exam => {
       const start = new Date(exam.startDateTime);
       const end = new Date(exam.endDateTime);
 
-      const scoreEntry = student.scores?.find(
-        s => s.examId === exam._id.toString()
-      );
+      const scoreEntry = Array.isArray(student.scores)
+        ? student.scores.find(s => s.examId == exam._id.toString())
+        : null;
+
 
       const attempted = !!scoreEntry;
 
-      const status =
-        now < start
-          ? "upcoming"
-          : now >= start && now <= end
-          ? "active"
-          : attempted
-          ? "completed"
-          : "missed";
+      
+
+      let status;
+
+      if (attempted) {
+        status = "completed";
+      } else if (now < start) {
+        status = "upcoming";
+      } else if (now >= start && now <= end) {
+        status = "active";
+      } else {
+        status = "missed";
+      }
 
       const examObj = {
         id: exam._id,
@@ -58,7 +70,10 @@ export const getStudentDashboard = async (req, res) => {
         status,
         score: scoreEntry?.score || 0,
         totalMarks: exam.totalMarks || 100,
+        percentage: scoreEntry?.percentage || 0,
+        pass: (scoreEntry?.percentage || 0) >= 40,
       };
+
 
       if (status === "upcoming" || status === "active")
         upcomingExams.push(examObj);

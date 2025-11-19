@@ -1,4 +1,4 @@
-//C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\backend\models\ExamSession.js
+// backend/models/ExamSession.js
 import mongoose from "mongoose";
 
 const examSessionSchema = new mongoose.Schema({
@@ -9,6 +9,9 @@ const examSessionSchema = new mongoose.Schema({
   endTime: { type: Date },
   violations: { type: Number, default: 0 },
   sessionToken: { type: String, required: true },
+
+  // ✅ store question order so it doesn’t reshuffle every refresh
+  shuffledQuestions: [{ type: mongoose.Schema.Types.ObjectId }],
 });
 
 export default mongoose.model("ExamSession", examSessionSchema);

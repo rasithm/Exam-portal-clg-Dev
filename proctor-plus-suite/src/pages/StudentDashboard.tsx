@@ -52,15 +52,15 @@ const StudentDashboard = () => {
         setUpcomingExams(data.upcomingExams);
         setRecentExams(data.completedExams);
 
-        const avg =
-          data.completedExams.length > 0
-            ? Math.round(
-                data.completedExams.reduce(
-                  (acc, exam) => acc + (exam.score / exam.totalMarks) * 100,
-                  0
-                ) / data.completedExams.length
-              )
-            : 0;
+        const avg = data.completedExams.length > 0
+          ? Math.round(
+              data.completedExams.reduce(
+                (acc, exam) => acc + (exam.percentage || 0),
+                0
+              ) / data.completedExams.length
+            )
+          : 0;
+
         setAverageScore(avg);
       } catch (err: any) {
         console.error("Dashboard load error:", err);
@@ -351,6 +351,8 @@ useEffect(() => {
     );
   }
 
+  
+
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
@@ -434,7 +436,16 @@ useEffect(() => {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Average Score</p>
                   <p className="text-3xl font-bold text-card-foreground">
-                    {Math.round(recentExams.reduce((acc, exam) => acc + (exam.score / exam.totalMarks * 100), 0) / recentExams.length)}%
+                    {recentExams.length > 0
+                      ? Math.round(
+                          recentExams.reduce(
+                            (acc, exam) => acc + (exam.score / exam.totalMarks) * 100,
+                            0
+                          ) / recentExams.length
+                        )
+                      : 0
+                    }%
+
                   </p>
                 </div>
                 <BarChart3 className="h-8 w-8 text-secondary" />
@@ -681,49 +692,96 @@ useEffect(() => {
                 </Card>
 
                 {/* Recent Results */}
+                {/* Completed Exams (Full Detailed Cards like Upcoming Exams) */}
                 <Card className="shadow-card">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <BarChart3 className="h-5 w-5 text-success" />
-                      Recent Results
+                      Completed Exams
                     </CardTitle>
-                    <CardDescription>Your latest exam performance</CardDescription>
+                    <CardDescription>All exams you have completed so far</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+
+                  <CardContent className="space-y-4 max-h-[450px] overflow-y-auto scrollbar-thin">
+
                     {recentExams.length === 0 ? (
                       <div className="text-center py-8">
                         <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <p className="text-muted-foreground">No completed exams yet</p>
                       </div>
                     ) : (
-                      recentExams.map((exam) => (
-                        <div key={exam.id} className="p-4 rounded-lg border bg-card">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-card-foreground mb-1 capitalize">
-                                {exam.title}
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                {exam.subject} • {exam.date}
-                              </p>
+                      recentExams.map((exam) => {
+                        const percentage = (exam.score / exam.totalMarks) * 100;
+
+                        return (
+                          <div key={exam.id} className="p-4 rounded-lg border bg-card">
+                            
+                            {/* Top Section */}
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-card-foreground mb-1 capitalize">
+                                  {exam.title}
+                                </h3>
+
+                                <p className="text-sm text-muted-foreground">
+                                  Subject: {exam.subject}
+                                </p>
+
+                                <p className="text-sm text-muted-foreground">
+                                  Completed on: {exam.endDate}
+                                </p>
+
+                                <p className="text-sm text-muted-foreground">
+                                  Duration: {exam.duration} mins
+                                </p>
+                              </div>
+
+                              <Badge variant={percentage >= 40 ? "success" : "destructive"}>
+                                {percentage >= 40 ? "Passed" : "Failed"}
+                              </Badge>
                             </div>
-                            <Badge variant="secondary">Completed</Badge>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Score</span>
-                              <span className="font-medium text-card-foreground">
-                                {exam.score}/{exam.totalMarks} (
-                                {Math.round((exam.score / exam.totalMarks) * 100)}%)
-                              </span>
+
+                            {/* Score Section */}
+                            <div className="space-y-3 mt-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Score</span>
+                                <span className="font-medium text-card-foreground">
+                                  {exam.score}/{exam.totalMarks} ({Math.round(percentage)}%)
+                                </span>
+                              </div>
+
+                              <Progress value={percentage} className="h-2" />
                             </div>
-                            <Progress value={(exam.score / exam.totalMarks) * 100} className="h-2" />
+
+                            {/* Buttons Section */}
+                            <div className="flex items-center justify-between mt-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/student/exam/result/${exam.id}`)}
+                              >
+                                View Detailed Result
+                              </Button>
+
+                              {exam.pass && exam.certificateEligible && (
+                                <Button
+                                  variant="hero"
+                                  size="sm"
+                                  onClick={() => toast.info(`Downloading certificate for ${exam.title}...`)}
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Download Certificate
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
+
                   </CardContent>
                 </Card>
+
               </div>
             )}
           </TabsContent>
@@ -795,19 +853,7 @@ useEffect(() => {
                 if (selectedExam) navigate(`/exam/${selectedExam}`);
                 setShowRules(false);
               }}
-              // onClick={async () => {
-              //   if (!selectedExam) return;
-              //   try {
-              //     await axios.post(`${API_BASE}/api/student/exam/start`, 
-              //       { examId: selectedExam },
-              //       { withCredentials: true }
-              //     );
-              //     navigate(`/exam/${selectedExam}`);
-              //   } catch(e) {
-              //     toast.error("Cannot start exam. Try again.");
-              //   }
-              //   setShowRules(false);
-              // }}
+              
             >
               {scrollEnd ? "Accept & Start Exam" : "Scroll to Accept"}
             </Button>

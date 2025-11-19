@@ -34,6 +34,7 @@ const ExamInterface = () => {
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [examSubmitted, setExamSubmitted] = useState(false);
   const [showReenter, setShowReenter] = useState(true);
+  const [shortcutCount, setShortcutCount] = useState(0);
 
   // Sample exam data
   // Exam data from backend
@@ -134,14 +135,28 @@ const ExamInterface = () => {
         }
 
         const data = await res.json();
+        setExamData(data); 
         // Ensure questions array exists
         if (!data?.questions || !Array.isArray(data.questions) || data.questions.length === 0) {
           throw new Error("No questions returned from server");
         }
 
-        setExamData(data);
-        setTimeRemaining((data.duration || 120) * 60);
+        if (data.answers) {
+          setAnswers(data.answers);     // ✅ pre-fill from backend
+        }
+
+
+        // ✅ calculate remaining time from sessionEndTime
+        let remainingSeconds = (data.duration || 120) * 60;
+        if (data.sessionEndTime) {
+          const endMs = new Date(data.sessionEndTime).getTime();
+          const nowMs = Date.now();
+          remainingSeconds = Math.max(0, Math.floor((endMs - nowMs) / 1000));
+        }
+        setTimeRemaining(remainingSeconds);
+
         setLoading(false);
+
       } catch (err: any) {
         console.error("Init exam error:", err);
         setLoadError(err.message || "Failed to start or load exam.");
@@ -160,17 +175,43 @@ const ExamInterface = () => {
   }, [examId, navigate, toast]);
 
   useEffect(() => {
+    const enterFullscreen = () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.warn("Initial fullscreen request failed", err);
+          // If blocked, show overlay so student must click to resume
+          setShowReenter(true);
+        });
+      }
+    };
+
+    enterFullscreen();
+  }, []);
+
+
+  useEffect(() => {
     const handleFullScreenChange = () => {
       if (!document.fullscreenElement && !examSubmitted) {
-        // log event + show overlay
         logEvent("fullscreen_exit");
-        setShowReenter(true);
+
+        // Try to immediately re-enter fullscreen
+        document.documentElement
+          .requestFullscreen()
+          .then(() => {
+            setShowReenter(false);
+          })
+          .catch((err) => {
+            console.warn("Automatic fullscreen re-entry failed", err);
+            // Browser blocked auto re-entry; require manual click
+            setShowReenter(true);
+          });
       }
     };
 
     document.addEventListener("fullscreenchange", handleFullScreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullScreenChange);
   }, [examSubmitted]);
+
 
 
   
@@ -229,22 +270,29 @@ const ExamInterface = () => {
 
     // Disable keyboard shortcuts (Ctrl, F12, etc.)
     const disableShortcuts = (e: KeyboardEvent) => {
-      if (
+      const key = e.key.toLowerCase();
+
+      const isBlocked =
+        e.keyCode === 123 ||              // F12
+        e.key === "Escape" ||             // ESC → often exits fullscreen
         e.ctrlKey ||
         e.metaKey ||
         e.altKey ||
-        [123, 73, 74, 85, 67, 86, 88, 83].includes(e.keyCode) // F12, Ctrl+I, Ctrl+Shift+I, etc.
-      ) {
+        [73, 74, 85, 67, 86, 88, 83].includes(e.keyCode); // I, J, U, C, V, X, S
+
+      if (isBlocked) {
         e.preventDefault();
         e.stopPropagation();
+        setShortcutCount((prev) => prev + 1);   // ✅ count shortcut usage
+        logEvent("shortcut");                   // ✅ backend event
         toast({
           title: "Security Alert",
           description: "Shortcut keys are disabled during the exam!",
-          variant: "destructive"
+          variant: "destructive",
         });
-        // alert("Shortcut keys are disabled during the exam!");
       }
     };
+
     document.addEventListener("keydown", disableShortcuts);
 
     // Detect tab switch or minimize
@@ -293,12 +341,20 @@ const ExamInterface = () => {
   }, []);
 
   useEffect(() => {
-    if (warningCount >= 3) {
-      alert("Multiple focus changes detected! Your exam will be auto-submitted.");
-      // Auto submit or logout student
-      // submitExam();
+    if (!examSubmitted && shortcutCount >= 15) {
+      alert("Too many shortcut attempts detected! Your exam will be auto-submitted.");
+      handleAutoSubmit();
     }
-  }, [warningCount]);
+  }, [shortcutCount, examSubmitted]);
+
+
+  useEffect(() => {
+    if (warningCount >= 3 && !examSubmitted) {
+      alert("Multiple focus changes detected! Your exam will be auto-submitted.");
+      handleAutoSubmit();  // uses submitToServer + reason (see note below)
+    }
+  }, [warningCount, examSubmitted]);
+
 
   // Timer effect
   useEffect(() => {
@@ -632,21 +688,7 @@ const ExamInterface = () => {
                 </div>
 
                 {/* MCQ Options */}
-                {/* {currentQ.type === "mcq" && currentQ.options && (
-                  <RadioGroup
-                    value={answers[currentQ.id] || ""}
-                    onValueChange={(value) => handleAnswerChange(currentQ.id, value)}
-                  >
-                    {currentQ.options.map((option, index) => (
-                      <div key={index} className="flex items-center space-x-2 p-3 rounded-lg hover:bg-muted/50">
-                        <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                        <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
-                          {option}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )} */}
+                
                 {currentQ.options && (
                   <RadioGroup
                     value={answers[currentQ._id] || ""}
@@ -774,6 +816,7 @@ const ExamInterface = () => {
           </div>
         </div>
       )}
+
     </div>
     
   );

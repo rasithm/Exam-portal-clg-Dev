@@ -6,7 +6,12 @@ import {
   saveAnswer,
   submitExam,
   recordEvent,
-  getExam
+  getExam,
+  getExamResult,
+  getExamReport,
+  exportExamReportXlsx,
+  exportExamReportPdf,
+  clearExamReview,
 } from "../controllers/examController.js";
 
 const router = express.Router();
@@ -17,6 +22,13 @@ router.get("/:examId", protect(["student"]), getExam);
 router.post("/:examId/save", protect(["student"]), saveAnswer); 
 router.post("/:examId/event", protect(["student"]), recordEvent);
 router.post("/:examId/submit", protect(["student"]), submitExam);
+
+router.get("/:examId/result", protect(["student"]), getExamResult);
+router.post("/:examId/clear-review", protect(["student"]), clearExamReview);
+
+router.get("/:examId/report", protect(["admin"]), getExamReport);
+router.get("/:examId/report.xlsx", protect(["admin"]), exportExamReportXlsx);
+router.get("/:examId/report.pdf", protect(["admin"]), exportExamReportPdf);
 
 
 export default router;
