@@ -17,6 +17,7 @@ import ExamCompleted from "./pages/ExamCompleted";
 import Profile from "./pages/Profile";
 import ResetVerification from "./pages/ResetVerification";
 import ExamResultPage from "./pages/ExamResultPage";
+import ExamReport from "./pages/StudentReport";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/exam/:examId" element={<ExamInterface />} />
           <Route path="/student/exam/result/:examId" element={<ExamResultPage />} />
           <Route path="/exam/Completed" element={<ExamCompleted />} />
+          <Route path="/student/exam/report/:examId" element={<ExamReport />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/resetverification" element={<ResetVerification />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

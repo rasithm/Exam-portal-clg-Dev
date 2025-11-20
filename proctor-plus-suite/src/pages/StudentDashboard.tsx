@@ -557,7 +557,9 @@ useEffect(() => {
                               variant="outline"
                               size="sm"
                               onClick={() =>
-                                navigate(`/student/exam/result/${exam.id}`)
+                                navigate(`/student/exam/report/${exam.id}`, {
+                                state: { averageScore }
+                              }) 
                               }
                             >
                               View Detailed Result

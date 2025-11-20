@@ -190,3 +190,8 @@
     box-shadow: var(--shadow-hero);
   }
 }
+@media print {
+  .page-break-before {
+    page-break-before: always;
+  }
+}

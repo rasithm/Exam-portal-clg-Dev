@@ -59,7 +59,12 @@ const ExamResultPage = () => {
       });
 
       // ✅ Go to exam completed / certificate page
-      navigate("/exam/Completed"); // or your actual completed route
+      if(data.pass){
+        navigate("/exam/Completed"); 
+      }else if(!data.pass) {
+        navigate("/student/dashboard");
+      }
+      // or your actual completed route
     } catch (err) {
       console.error("Clear review failed", err);
       toast({
@@ -240,12 +245,12 @@ const ExamResultPage = () => {
 
         </div>
 
-        <div className="mt-6 flex flex-col sm:flex-row justify-between gap-3">
-            <Button variant="outline" onClick={() => navigate("/student/dashboard")}>
+        <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3">
+            {/* <Button variant="outline" onClick={() => navigate("/student/dashboard")}>
                 Back to Dashboard
-            </Button>
+            </Button> */}
 
-            {data.pass && (
+            {(data.pass || !data.pass )&& (
               <Button variant="hero" onClick={handleCompleteReview}>
                 Verify Result & Complete
               </Button>
