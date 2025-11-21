@@ -19,6 +19,7 @@ import examRoutes from "./routes/examRoutes.js";
 import questionRoutes from "./routes/questionRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js"
 import studentExamRoutes from "./routes/studentExamRoutes.js";
+import publicCertificateRoutes from "./routes/publicCertificateRoutes.js";
 // import { initSocket } from "./sockets/socketManager.js";
 const app = express();
 const server = http.createServer(app);
@@ -44,6 +45,7 @@ app.use("/api/admin/exams", examRoutes);
 app.use("/api/admin/questions", protect(["admin"]), questionRoutes);
 app.use("/api/student", protect(["student"]), studentRoutes);
 app.use("/api/student/exams", protect(["student"]), studentExamRoutes);
+app.use("/api/public/certificate", publicCertificateRoutes);
 
 // basic health
 app.get('/api/health', (req,res) => res.json({ ok: true }));

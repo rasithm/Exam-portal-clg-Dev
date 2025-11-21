@@ -35,6 +35,9 @@ const examAttemptSchema = new mongoose.Schema({
   certificateEligible: { type: Boolean, default: false },
   reviewCompleted: { type: Boolean, default: false },
 
+  // ✅ NEW
+  certificateId: { type: String, unique: true, sparse: true },
+
   // ✅ For student development reports
   stats: {
     totalQuestions: Number,

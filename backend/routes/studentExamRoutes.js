@@ -12,11 +12,14 @@ import {
   exportExamReportXlsx,
   exportExamReportPdf,
   clearExamReview,
+  getStudentReportCard,
 } from "../controllers/examController.js";
 
 const router = express.Router();
 
 // ✅ MATCHING FRONTEND ROUTES
+
+
 router.post("/:examId/start", protect(["student"]), startExam);
 router.get("/:examId", protect(["student"]), getExam);
 router.post("/:examId/save", protect(["student"]), saveAnswer); 
@@ -25,6 +28,9 @@ router.post("/:examId/submit", protect(["student"]), submitExam);
 
 router.get("/:examId/result", protect(["student"]), getExamResult);
 router.post("/:examId/clear-review", protect(["student"]), clearExamReview);
+
+router.get("/:examId/student-report", protect(["student"]), getStudentReportCard);
+
 
 router.get("/:examId/report", protect(["admin"]), getExamReport);
 router.get("/:examId/report.xlsx", protect(["admin"]), exportExamReportXlsx);

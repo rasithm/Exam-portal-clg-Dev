@@ -942,10 +942,18 @@ const finalizeExam = async (sessionId, studentId, reason) => {
   };
 
 
-  // ✅ certificate eligibility
+    // ✅ certificate eligibility
   if (exam.generateCertificate && attempt.pass) {
     attempt.certificateEligible = true;
+
+    // ✅ generate ONE stable certificateId
+    if (!attempt.certificateId) {
+      const shortSession = session._id.toString().slice(-6).toUpperCase();
+      const random = Math.random().toString(36).slice(-4).toUpperCase();
+      attempt.certificateId = `CERT-${shortSession}-${random}`;
+    }
   }
+
 
   await attempt.save();
 
@@ -1094,6 +1102,7 @@ export const getExamResult = async (req, res) => {
       percentage: attempt.percentage,
       pass: attempt.pass,
       certificateEligible: !!attempt.certificateEligible,
+      certificateId: attempt.certificateId || null,
       questions: questionsWithAnswers,
       stats: attempt.stats,
       reviewCompleted: false,
@@ -1295,6 +1304,184 @@ export const exportExamReportPdf = async (req, res) => {
     return res.status(500).json({ message: "Export error" });
   }
 };
+
+
+
+
+export const getStudentReportCard = async (req, res) => {
+  try {
+    const examId = req.params.examId;
+    const studentId = req.user._id;
+
+    const exam = await Exam.findById(examId);
+    if (!exam) return res.status(404).json({ message: "Exam not found" });
+
+    const session = await ExamSession.findOne({ exam: examId, student: studentId })
+      .sort({ createdAt: -1 });
+
+    if (!session) return res.status(404).json({ message: "Session not found" });
+
+    const attempt = await ExamAttempt.findOne({
+      examSessionId: session._id,
+      student: studentId,
+    });
+
+    if (!attempt || !attempt.stats)
+      return res.status(404).json({ message: "Report not available" });
+
+    const student = await Student.findById(studentId).select(
+      "name rollNumber department year profileImage"
+    );
+
+    const stats = attempt.stats;
+    const totalQs = stats.totalQuestions;
+
+    const reportId = `RPT-${session._id.toString().slice(-6).toUpperCase()}`;
+
+    return res.json({
+      reportId,
+      student: {
+        name: student.name,
+        id: student.rollNumber,
+        batch: `${student.department} - Year ${student.year}`,
+        examDate: session.startTime.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+        photoUrl: student.profileImage || "",
+      },
+      exam: {
+        examName: exam.examName,
+        totalQs,
+        correct: stats.correct,
+        wrong: stats.wrong,
+        totalMarks: attempt.totalMarks,   // REAL SCORE
+        maxMarks: attempt.maxMarks        // REAL MAX
+      },
+      proctoring: {
+        cheatingCount: session.violations,
+        cheatingReason:
+          attempt.reason === "violation"
+            ? "Proctoring violation detected"
+            : "None",
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load report" });
+  }
+};
+
+// backend/controllers/examController.js (or a separate verifyController)
+
+export const getCertificateView = async (req, res) => {
+  try {
+    const { certificateId } = req.params;
+
+    const attempt = await ExamAttempt.findOne({ certificateId })
+      .populate("student", "name rollNumber department year email collegeName profileImage")
+      .populate({
+        path: "examSessionId",
+        populate: [
+          { path: "exam", model: "Exam" }
+        ]
+      });
+
+
+    if (!attempt || !attempt.examSessionId || !attempt.examSessionId.exam) {
+      return res.status(404).json({ message: "Certificate not found" });
+    }
+
+    const exam = attempt.examSessionId.exam;
+    const student = attempt.student;
+    const session = attempt.examSessionId;
+
+    // ✅ For percentile: compare with all attempts of same exam
+    const allExamAttempts = await ExamAttempt.find({
+      examSessionId: { $in: await ExamSession.find({ exam: exam._id }).distinct("_id") }
+    });
+
+    const allPercentages = allExamAttempts
+      .map(a => a.percentage || 0)
+      .filter(p => p >= 0);
+
+    let percentile = 0;
+    if (allPercentages.length > 0) {
+      const belowOrEqual = allPercentages.filter(p => p <= attempt.percentage).length;
+      percentile = (belowOrEqual / allPercentages.length) * 100;
+    }
+
+    // ✅ Simple grade + classification
+    const pct = attempt.percentage || 0;
+    let grade = "C";
+    let classification = "Pass";
+
+    if (pct >= 75) {
+      grade = "A";
+      classification = "First Class with Distinction";
+    } else if (pct >= 60) {
+      grade = "B";
+      classification = "First Class";
+    } else if (pct >= 50) {
+      grade = "C";
+      classification = "Second Class";
+    } else {
+      grade = "D";
+      classification = "Fail";
+    }
+
+    const stats = attempt.stats || {};
+    const totalAnswered = (stats.correct || 0) + (stats.wrong || 0);
+    const accuracy = totalAnswered > 0
+      ? ((stats.correct || 0) / totalAnswered) * 100
+      : 0;
+
+    return res.json({
+      certificateId,
+      // Student block
+      student: {
+        name: student.name,
+        id: student.rollNumber,
+        course: student.department,
+        semester: `Year ${student.year}`,
+        avatarUrl: student.profileImage || "",
+        email: student.email,
+        institution: student.collegeName,
+      },
+      // Exam block
+      exam: {
+        title: exam.examName,
+        code: exam._id.toString().slice(-6).toUpperCase(),
+        session: session.startTime?.getFullYear() || "",
+        date: session.startTime,
+        time: null, // you can split start/end if you want
+        totalQuestions: stats.totalQuestions || 0,
+        maxMarks: attempt.maxMarks || exam.totalMarks || 0,
+        passingMarks: Math.round(((exam.totalMarks || attempt.maxMarks || 0) * 40) / 100),
+      },
+      // Result block
+      result: {
+        score: attempt.totalMarks || 0,
+        percentage: Number((attempt.percentage || 0).toFixed(2)),
+        status: attempt.pass ? "PASSED" : "FAILED",
+        grade,
+        classification,
+        correct: stats.correct || 0,
+        wrong: stats.wrong || 0,
+        skipped: (stats.totalQuestions || 0) - (stats.attempted || 0),
+        timeTaken: null,              // if you later store this in session, fill here
+        percentile: Number(percentile.toFixed(2)),
+      },
+    });
+  } catch (err) {
+    console.error("getCertificateView error:", err);
+    return res.status(500).json({ message: "Error loading certificate" });
+  }
+};
+
+
+
 
 
 

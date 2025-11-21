@@ -59,9 +59,11 @@ const ExamResultPage = () => {
       });
 
       // ✅ Go to exam completed / certificate page
-      if(data.pass){
-        navigate("/exam/Completed"); 
-      }else if(!data.pass) {
+      if (data.pass && data.certificateId) {
+        navigate(`/exam/completed/${data.certificateId}`, {
+          state: { from: "student", examId },   // ✅ to detect student view later
+        });
+      } else {
         navigate("/student/dashboard");
       }
       // or your actual completed route
