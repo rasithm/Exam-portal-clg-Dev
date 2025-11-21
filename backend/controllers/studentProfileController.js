@@ -108,29 +108,32 @@ export const updateProfile = async (req, res) => {
 export const updatePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword)
-      return res
-        .status(400)
-        .json({ message: "Both current and new password are required" });
 
-    // ✅ Strong password validation
-    if (
-      newPassword.length < 8 ||
-      !/[a-z]/.test(newPassword) ||
-      !/\d/.test(newPassword)
-    ) {
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Both current and new password are required" });
+    }
+
+    // Validation: new password rules
+    const isValid =
+      newPassword.length >= 8 &&
+      /[a-z]/.test(newPassword) &&
+      /\d/.test(newPassword);
+
+    if (!isValid) {
       return res.status(400).json({
-        message: "Password must be at least 8 characters and include lowercase and number",
+        message: "New password must be 8+ characters, include a lowercase letter and a number"
       });
     }
 
     const student = await Student.findById(req.user._id).select("+password");
-    if (!student)
+    if (!student) {
       return res.status(404).json({ message: "Student not found" });
+    }
 
     const isMatch = await bcrypt.compare(currentPassword, student.password);
-    if (!isMatch)
+    if (!isMatch) {
       return res.status(400).json({ message: "Current password is incorrect" });
+    }
 
     student.password = await bcrypt.hash(newPassword, 10);
     await student.save();
@@ -138,7 +141,8 @@ export const updatePassword = async (req, res) => {
     return res.json({ message: "Password updated successfully" });
   } catch (err) {
     console.error("updatePassword error:", err);
-    return res.status(500).json({ message: "Failed to change password" });
+    res.status(500).json({ message: "Failed to change password" });
   }
 };
+
 

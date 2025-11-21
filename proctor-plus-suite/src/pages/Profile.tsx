@@ -58,15 +58,17 @@ const Profile = () => {
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
 
   const [isEditing, setIsEditing] = useState(false);
+  
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
-    confirm: false
+    confirm: false,
   });
+
 
   // --- fetch profile once ---
   useEffect(() => {
@@ -188,35 +190,88 @@ const Profile = () => {
   };
 
   // --- password change ---
+  
+
+  const togglePasswordVisibility = (field: keyof typeof showPasswords) => {
+    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const validatePassword = (password: string) => {
+    if (password.length < 8) return false;
+    if (!/[a-z]/.test(password)) return false;    // lowercase
+    if (!/[0-9]/.test(password)) return false;    // number
+    return true;
+  };
+
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     const { currentPassword, newPassword, confirmPassword } = passwordData;
+
+    // Required validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return toast({
+        title: "Missing Fields",
+        description: "All password fields are required.",
+        variant: "destructive",
+      });
+    }
+
+    if (!validatePassword(newPassword)) {
+      return toast({
+        title: "Weak Password",
+        description: "Password must be at least 8 characters long, include one lowercase letter and one number.",
+        variant: "destructive",
+      });
+    }
+
     if (newPassword !== confirmPassword) {
-      toast({ title: "Error", description: "New passwords do not match", variant: "destructive" });
+      return toast({
+        title: "Mismatch",
+        description: "New password & confirm password do not match.",
+        variant: "destructive",
+      });
+    }
+
+    if (showPasswords.confirm === true || showPasswords.current === true || showPasswords.new === true) {
+      toast({
+        title: "Security Alert",
+        description: "Hide your password before logging in",
+        variant: "destructive",
+      });
       return;
     }
-    // strong password check
-    if (newPassword.length < 8 || /[^a-z0-9]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword) ){
-      toast({ title: "Error", description: "Password must be ≥8 chars, include lowercase and number", variant: "destructive" });
-      return;
-    }
+
     try {
       const res = await fetch(`${API_BASE}/api/student/profile/password`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
         credentials: "include",
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Password update failed");
-      toast({ title: "Password Changed", description: data.message });
+
+      if (!res.ok) {
+        throw new Error(data.message || "Password update failed.");
+      }
+
+      toast({
+        title: "Success",
+        description: "Password updated successfully!",
+      });
+
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: err.message || "Unable to update password",
+        variant: "destructive",
+      });
     }
   };
 
-  const togglePasswordVisibility = (field: keyof typeof showPasswords) => setShowPasswords(s => ({ ...s, [field]: !s[field] }));
+
+
 
   if (loading) return <div className="p-8 text-center">Loading profile...</div>;
 
@@ -377,45 +432,93 @@ const Profile = () => {
                     <CardDescription>Update your password</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <form onSubmit={handlePasswordChange} className="space-y-6">
+                      {/* Current Password */}
                       <div className="space-y-2">
-                        <Label htmlFor="current-password">Current Password</Label>
+                        <Label htmlFor="current-pass">Current Password</Label>
                         <div className="relative">
-                          <Input id="current-password" type={showPasswords.current ? "text" : "password"} value={passwordData.currentPassword} onChange={(e) => setPasswordData(p => ({ ...p, currentPassword: e.target.value }))} />
-                          <Button type="button" variant="ghost" size="sm" className="absolute right-2 top-1/2 -translate-y-1/2 h-auto p-1" onClick={() => togglePasswordVisibility("current")}>{showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+                          <Input
+                            id="current-pass"
+                            type={showPasswords.current ? "text" : "password"}
+                            value={passwordData.currentPassword}
+                            onChange={(e) =>
+                              setPasswordData((p) => ({ ...p, currentPassword: e.target.value }))
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                            onClick={() => togglePasswordVisibility("current")}
+                          >
+                            {showPasswords.current ? <EyeOff /> : <Eye />}
+                          </Button>
                         </div>
                       </div>
 
+                      {/* New Password */}
                       <div className="space-y-2">
-                        <Label htmlFor="new-password">New Password</Label>
+                        <Label htmlFor="new-pass">New Password</Label>
                         <div className="relative">
-                          <Input id="new-password" type={showPasswords.new ? "text" : "password"} value={passwordData.newPassword} onChange={(e) => setPasswordData(p => ({ ...p, newPassword: e.target.value }))} />
-                          <Button type="button" variant="ghost" size="sm" className="absolute right-2 top-1/2 -translate-y-1/2 h-auto p-1" onClick={() => togglePasswordVisibility("new")}>{showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+                          <Input
+                            id="new-pass"
+                            type={showPasswords.new ? "text" : "password"}
+                            value={passwordData.newPassword}
+                            onChange={(e) =>
+                              setPasswordData((p) => ({ ...p, newPassword: e.target.value }))
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                            onClick={() => togglePasswordVisibility("new")}
+                          >
+                            {showPasswords.new ? <EyeOff /> : <Eye />}
+                          </Button>
                         </div>
                       </div>
 
+                      {/* Confirm Password */}
                       <div className="space-y-2">
-                        <Label htmlFor="confirm-password">Confirm New Password</Label>
+                        <Label htmlFor="confirm-pass">Confirm Password</Label>
                         <div className="relative">
-                          <Input id="confirm-password" type={showPasswords.confirm ? "text" : "password"} value={passwordData.confirmPassword} onChange={(e) => setPasswordData(p => ({ ...p, confirmPassword: e.target.value }))} />
-                          <Button type="button" variant="ghost" size="sm" className="absolute right-2 top-1/2 -translate-y-1/2 h-auto p-1" onClick={() => togglePasswordVisibility("confirm")}>{showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+                          <Input
+                            id="confirm-pass"
+                            type={showPasswords.confirm ? "text" : "password"}
+                            value={passwordData.confirmPassword}
+                            onChange={(e) =>
+                              setPasswordData((p) => ({ ...p, confirmPassword: e.target.value }))
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                            onClick={() => togglePasswordVisibility("confirm")}
+                          >
+                            {showPasswords.confirm ? <EyeOff /> : <Eye />}
+                          </Button>
                         </div>
                       </div>
 
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <h4 className="font-medium text-card-foreground mb-2">Password Requirements:</h4>
+                      <div className="p-4 bg-muted rounded">
+                        <h4 className="font-medium mb-2">Password Requirements:</h4>
                         <ul className="text-sm text-muted-foreground space-y-1">
                           <li>• At least 8 characters long</li>
                           <li>• Include at least one number</li>
-                          <li>• Include one lowercase letters</li>
-                          <li>• Include one uppercase (Optional)</li>
-                          
-                          <li>• Include at least one special character (Optional)</li>
+                          <li>• Include at least one lowercase letter</li>
                         </ul>
                       </div>
 
-                      <Button type="submit" variant="hero"><Lock className="h-4 w-4 mr-2" /> Update Password</Button>
+                      <Button type="submit" variant="hero">
+                        <Lock className="h-4 w-4 mr-2" /> Update Password
+                      </Button>
                     </form>
+
                   </CardContent>
                 </Card>
               </TabsContent>
