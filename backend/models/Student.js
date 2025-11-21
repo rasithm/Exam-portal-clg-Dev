@@ -16,6 +16,8 @@ const studentSchema = new mongoose.Schema({
   dateOfBirth: { type: String, required: true },
   collegeName: { type: String, required: true },
   academicYear: { type: String, required: true },
+  github: { type: String, default: "" },
+  leetcode: { type: String, default: "" },
   domain: {
     type: String,
     enum: ["Technical", "Coding", "Aptitude", "Core", "HR"],

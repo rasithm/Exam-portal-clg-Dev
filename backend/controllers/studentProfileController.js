@@ -29,7 +29,10 @@ export const updateProfile = async (req, res) => {
       dateOfBirth,
       collegeName,
       academicYear, 
-      year
+      year ,
+      department, 
+      github,
+      leetcode
     } = req.body;
 
     // ✅ Required field validation
@@ -41,7 +44,8 @@ export const updateProfile = async (req, res) => {
       !dateOfBirth ||
       !collegeName ||
       !academicYear || 
-      !year
+      !year ||
+      !department
     ) {
       return res.status(400).json({
         message:
@@ -67,6 +71,9 @@ export const updateProfile = async (req, res) => {
     student.collegeName = collegeName.trim();
     student.academicYear = academicYear.trim();
     student.year = year.trim();
+    student.department = department.trim();
+    student.github = github.trim();
+    student.leetcode = leetcode.trim();
 
     student.isProfileUpdated = true;
 

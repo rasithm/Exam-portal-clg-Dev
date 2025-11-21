@@ -95,7 +95,9 @@ const Profile = () => {
           parentsNumber: data.parentsNumber || prev.parentsNumber,
           collegeName: data.collegeName || prev.collegeName,
           academicYear: data.academicYear || prev.academicYear,
-          year: data.year || prev.year
+          year: data.year || prev.year,
+          github : data.github || prev.github,
+          leetcode : data.leetcode || prev.leetcode
         }));
 
         if (data.profileImage) {
@@ -156,6 +158,9 @@ const Profile = () => {
       formData.append("collegeName", profileData.collegeName || "");
       formData.append("academicYear", profileData.academicYear || "");
       formData.append("year", profileData.year || "");
+      formData.append("department", profileData.department || "");
+      formData.append("github", profileData.github || "");
+      formData.append("leetcode", profileData.leetcode || "");
       if (profileImageFile) formData.append("profileImage", profileImageFile);
 
       const res = await fetch(`${API_BASE}/api/student/profile`, {
@@ -333,6 +338,16 @@ const Profile = () => {
                         <div className="space-y-2">
                           <Label htmlFor="department">Department</Label>
                           <Input id="department" value={profileData.department} onChange={(e) => setProfileData(p => ({ ...p, department: e.target.value }))} disabled={!isEditing} />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="github">GitHub</Label>
+                          <Input id="github" value={profileData.github} onChange={(e) => setProfileData(p => ({ ...p, github: e.target.value }))} disabled={!isEditing} />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="leetcode">LeetCode</Label>
+                          <Input id="leetcode" value={profileData.leetcode} onChange={(e) => setProfileData(p => ({ ...p, leetcode: e.target.value }))} disabled={!isEditing} />
                         </div>
 
                         {profileData.studentId && (
