@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import ResetVerification from "./pages/ResetVerification";
 import ExamResultPage from "./pages/ExamResultPage";
 import ExamReport from "./pages/StudentReport";
+import OtpVerification from "./pages/OtpVerification";
 
 const queryClient = new QueryClient();
 
@@ -40,7 +41,9 @@ const App = () => (
           <Route path="/exam/completed/:certificateId" element={<ExamCompleted />} />
           <Route path="/student/exam/report/:examId" element={<ExamReport />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/resetverification" element={<ResetVerification />} />
+          <Route path="/reset/verify" element={<OtpVerification />} />
+          <Route path="/reset/complete" element={<ResetVerification />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

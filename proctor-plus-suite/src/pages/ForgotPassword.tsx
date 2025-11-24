@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GraduationCap, ArrowLeft, Mail, Shield, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { baseUrl } from "../constant/Url";
+const API = baseUrl || "http://localhost:5000";
 
 const ForgotPassword = () => {
   const [adminEmail, setAdminEmail] = useState("");
@@ -35,21 +37,44 @@ const ForgotPassword = () => {
     }
   };
 
-  const handleStudentReset = (e: React.FormEvent) => {
+  const handleStudentReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (studentId) {
-      toast({
-        title: "Request Submitted",
-        description: "Contact your administrator for password reset assistance",
+    if (!studentId || !emailId) {
+      toast({ title: "Error", description: "Enter student ID and email", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API}/api/forgot/student/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ regNo: studentId, email: emailId }),
       });
-      setIsSubmitted(true);
-    } else {
-      toast({
-        title: "Error",
-        description: "Please enter your student ID",
-        variant: "destructive",
-      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        toast({ title: "Error", description: json.message || "Failed", variant: "destructive" });
+        return;
+      }
+
+      // If OTP sent: navigate to otp page
+      if (json.requestId && json.message && json.message.toLowerCase().includes("otp")) {
+        toast({ title: "OTP Sent", description: "Check your email" });
+        navigate(`/reset/verify?req=${json.requestId}`); // new verification page
+        return;
+      }
+
+      // Pending admin approval
+      if (json.requestId && json.message && json.message.toLowerCase().includes("admin")) {
+        toast({ title: "Pending Admin Approval", description: "Admin will review your request" });
+        // optionally show a "status" page - for now just message
+        return;
+      }
+
+      toast({ title: "Success", description: json.message || "Request recorded" });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err.message || "Server error", variant: "destructive" });
     }
   };
 

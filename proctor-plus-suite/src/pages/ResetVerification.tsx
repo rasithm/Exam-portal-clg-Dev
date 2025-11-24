@@ -1,3 +1,4 @@
+//C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\proctor-plus-suite\src\pages\ResetVerification.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,45 +8,49 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { GraduationCap, ArrowLeft, ShieldCheck, Lock, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+import { useLocation } from "react-router-dom";
+import { baseUrl } from "../constant/Url";
+const API = baseUrl || "http://localhost:5000";
+
+
 const ResetVerification = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  function useQuery() { return new URLSearchParams(useLocation().search); }
+  const query = useQuery();
+  const requestId = query.get("req");
+  const oneTimeToken = query.get("token");
 
   const [verificationCode, setVerificationCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isResetComplete, setIsResetComplete] = useState(false);
 
-  const handleReset = (e: React.FormEvent) => {
+  const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!verificationCode || !password || !confirmPassword) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all fields.",
-        variant: "destructive",
-      });
-      return;
+    if (!verificationCode && !oneTimeToken) {
+      // legacy: if your page still accepts verification code directly, skip
     }
+    if (!password || !confirmPassword) return toast({ title: "Missing", description: "Fill both", variant: "destructive" });
+    if (password !== confirmPassword) return toast({ title: "Mismatch", description: "Passwords differ", variant: "destructive" });
+    // server-side validation will also run
 
-    if (password !== confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "Passwords do not match. Please try again.",
-        variant: "destructive",
+    try {
+      const res = await fetch(`${API}/api/forgot/student/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, newPassword: password, oneTimeToken }),
       });
-      return;
+      const json = await res.json();
+      if (!res.ok) {
+        return toast({ title: "Error", description: json.message || "Reset failed", variant: "destructive" });
+      }
+      toast({ title: "Password Updated", description: "Please login" });
+      navigate("/login");
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err.message || "Server error", variant: "destructive" });
     }
-
-    // Simulate success (will connect API later)
-    toast({
-      title: "Password Reset Successful",
-      description: "Your password has been updated. Please login again.",
-    });
-
-    setTimeout(() => {
-      setIsResetComplete(true);
-    }, 800);
   };
 
   // ✅ Success Page
