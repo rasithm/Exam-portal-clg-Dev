@@ -1,3 +1,4 @@
+//C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\backend\controllers\forgotController.js
 import Student from "../models/Student.js";
 import PasswordResetRequest from "../models/PasswordResetRequest.js";
 import bcrypt from "bcrypt";

@@ -1,3 +1,4 @@
+//C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\backend\models\PasswordResetRequest.js
 import mongoose from "mongoose";
 
 const passwordResetSchema = new mongoose.Schema({

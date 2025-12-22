@@ -1,3 +1,4 @@
+//C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\backend\models\Notification.js
 import mongoose from "mongoose";
 
 const notificationSchema = new mongoose.Schema(

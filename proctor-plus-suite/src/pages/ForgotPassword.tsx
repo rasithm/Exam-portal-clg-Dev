@@ -1,3 +1,4 @@
+//C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\proctor-plus-suite\src\pages\ForgotPassword.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -225,7 +226,7 @@ const ForgotPassword = () => {
                     </p>
                   </div>
 
-                  <Button type="submit" variant="secondary" className="w-full h-12" onClick={() => navigate("/resetverification")}>
+                  <Button type="submit" variant="secondary" className="w-full h-12" >
                     Request Password Reset
                   </Button>
                 </form>

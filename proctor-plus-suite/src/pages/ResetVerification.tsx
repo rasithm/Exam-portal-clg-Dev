@@ -21,19 +21,28 @@ const ResetVerification = () => {
   const requestId = query.get("req");
   const oneTimeToken = query.get("token");
 
-  const [verificationCode, setVerificationCode] = useState("");
+  
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isResetComplete, setIsResetComplete] = useState(false);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!verificationCode && !oneTimeToken) {
-      // legacy: if your page still accepts verification code directly, skip
+
+    if (!requestId || !oneTimeToken) {
+      toast({ title: "Invalid request", variant: "destructive" });
+      return;
     }
-    if (!password || !confirmPassword) return toast({ title: "Missing", description: "Fill both", variant: "destructive" });
-    if (password !== confirmPassword) return toast({ title: "Mismatch", description: "Passwords differ", variant: "destructive" });
-    // server-side validation will also run
+
+    if (!password || !confirmPassword) {
+      toast({ title: "Missing", description: "Fill both fields", variant: "destructive" });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast({ title: "Mismatch", description: "Passwords differ", variant: "destructive" });
+      return;
+    }
 
     try {
       const res = await fetch(`${API}/api/forgot/student/complete`, {
@@ -41,17 +50,20 @@ const ResetVerification = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestId, newPassword: password, oneTimeToken }),
       });
+
       const json = await res.json();
       if (!res.ok) {
-        return toast({ title: "Error", description: json.message || "Reset failed", variant: "destructive" });
+        toast({ title: "Error", description: json.message, variant: "destructive" });
+        return;
       }
+
       toast({ title: "Password Updated", description: "Please login" });
       navigate("/login");
     } catch (err: any) {
-      console.error(err);
-      toast({ title: "Error", description: err.message || "Server error", variant: "destructive" });
+      toast({ title: "Error", description: "Server error", variant: "destructive" });
     }
   };
+
 
   // ✅ Success Page
   if (isResetComplete) {
@@ -120,17 +132,7 @@ const ResetVerification = () => {
 
           <CardContent>
             <form onSubmit={handleReset} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="code">Verification Code</Label>
-                <Input
-                  id="code"
-                  placeholder="Enter your 6-digit code"
-                  maxLength={6}
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  required
-                />
-              </div>
+              
 
               <div className="space-y-2">
                 <Label htmlFor="password">New Password</Label>
