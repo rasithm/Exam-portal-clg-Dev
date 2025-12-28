@@ -13,6 +13,7 @@ const API = baseUrl || "http://localhost:5000";
 
 const ForgotPassword = () => {
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminPersonalEmail, setAdminPersonalEmail] = useState("");
   const [studentId, setStudentId] = useState("");
   const [emailId, setEmailId] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -20,23 +21,21 @@ const ForgotPassword = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleAdminReset = (e: React.FormEvent) => {
+  const handleAdminReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (adminEmail) {
-      toast({
-        title: "Reset Link Sent",
-        description: "Check your email for password reset instructions",
-      });
-      setIsSubmitted(true);
-    } else {
-      toast({
-        title: "Error",
-        description: "Please enter your email address",
-        variant: "destructive",
-      });
-    }
+    const res = await fetch(`${API}/api/forgot/admin/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: adminEmail, personalEmail: adminPersonalEmail }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) return toast({ title: "Error", description: json.message, variant: "destructive" });
+
+    toast({ title: "OTP Sent" });
+    navigate(`/reset/verify?role=admin`);
   };
+
 
   const handleStudentReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +177,17 @@ const ForgotPassword = () => {
                       placeholder="admin@college.edu"
                       value={adminEmail}
                       onChange={(e) => setAdminEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-personalemail">Admin Email Address</Label>
+                    <Input
+                      id="admin-personalemail"
+                      type="email"
+                      placeholder="admin@gmail.com"
+                      value={adminPersonalEmail}
+                      onChange={(e) => setAdminPersonalEmail(e.target.value)}
                       required
                     />
                   </div>

@@ -19,6 +19,7 @@ import ResetVerification from "./pages/ResetVerification";
 import ExamResultPage from "./pages/ExamResultPage";
 import ExamReport from "./pages/StudentReport";
 import OtpVerification from "./pages/OtpVerification";
+import AdminProfile from "./pages/AdminProfile";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/student/dashboard" element={<StudentDashboard />} />
           <Route path="/student/profile" element={<Profile />} />
+          <Route path="/admin/profile" element={<AdminProfile />} />
           <Route path="/exam/:examId" element={<ExamInterface />} />
           <Route path="/student/exam/result/:examId" element={<ExamResultPage />} />
           <Route path="/exam/completed/:certificateId" element={<ExamCompleted />} />

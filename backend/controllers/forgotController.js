@@ -5,30 +5,31 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
+import { sendOtpMail } from "../services/mailer.js";
 
 const OTP_TTL_MIN = 10; // minutes
 const MAX_REQUESTS_WINDOW = 3; // max OTP sends per 30 minutes
 const REQUEST_WINDOW_MIN = 30; // minutes
 
 // nodemailer transporter (use env)
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: Number(process.env.EMAIL_PORT || 587),
-  secure: process.env.EMAIL_SECURE === "true",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// const transporter = nodemailer.createTransport({
+//   host: process.env.EMAIL_HOST,
+//   port: Number(process.env.EMAIL_PORT || 587),
+//   secure: process.env.EMAIL_SECURE === "true",
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASS,
+//   },
+// });
 
-const sendEmail = async (to, subject, html) => {
-  await transporter.sendMail({
-    to,
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-    subject,
-    html,
-  });
-};
+// const sendEmail = async (to, subject, html) => {
+//   await transporter.sendMail({
+//     to,
+//     from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+//     subject,
+//     html,
+//   });
+// };
 
 const generateOTP = () => {
   return ("" + Math.floor(100000 + Math.random() * 900000)); // 6-digit
@@ -74,7 +75,7 @@ export const requestStudentReset = async (req, res) => {
                     <p>If you didn't request this, ignore this message.</p>
                     <p><small>Or click to verify: <a href="${link}">${link}</a></small></p>`;
 
-      await sendEmail(email.trim(), "ExamPortal Password Reset OTP", html);
+      await sendOtpMail(email.trim(), "ExamPortal Password Reset OTP", html);
 
       return res.json({ message: "OTP sent to registered email", requestId: reqDoc._id });
     }
@@ -231,7 +232,7 @@ export const adminApproveEmailAssign = async (req, res) => {
       const html = `<p>Your requested email has been attached to the student account.</p>
                     <p>Your OTP: <strong>${otp}</strong></p>
                     <p>It expires in ${OTP_TTL_MIN} minutes.</p>`;
-      await sendEmail(reqDoc.requestedEmail, "ExamPortal: Email attached & OTP", html);
+      await sendOtpMail(reqDoc.requestedEmail, "ExamPortal: Email attached & OTP", html);
 
       return res.json({ message: "Email assigned and OTP sent to student email" });
     } else {
@@ -245,3 +246,52 @@ export const adminApproveEmailAssign = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+export const requestAdminReset = async (req, res) => {
+  const { email, personalEmail } = req.body;
+
+  const admin = await Admin.findOne({ email, personalEmail });
+  if (!admin) return res.status(404).json({ message: "No matching admin" });
+
+  const otp = generateOTP();
+  const otpHash = await bcrypt.hash(otp, 10);
+
+  await PasswordResetRequest.create({
+    admin: admin._id,
+    requestedEmail: personalEmail,
+    otpHash,
+    otpExpiresAt: new Date(Date.now() + 10 * 60000),
+    status: "otp_sent",
+  });
+
+  await sendOtpMail(personalEmail, "Admin Password Reset OTP", `<p>Your OTP: ${otp}</p>`);
+  res.json({ message: "OTP sent" });
+};
+
+export const verifyAdminOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  const reqDoc = await PasswordResetRequest.findOne({
+    _id: requestId,
+    purpose: "admin_profile",
+    status: "otp_sent"
+  });
+
+
+  if (!reqDoc) return res.status(400).json({ message: "No OTP request" });
+
+  if (new Date() > reqDoc.otpExpiresAt) return res.status(410).json({ message: "OTP expired" });
+
+  const ok = await bcrypt.compare(String(otp), reqDoc.otpHash);
+  if (!ok) return res.status(401).json({ message: "Invalid OTP" });
+
+  const token = jwt.sign({ reqId: reqDoc._id.toString() }, process.env.JWT_SECRET, { expiresIn: "15m" });
+
+  reqDoc.oneTimeToken = token;
+  reqDoc.status = "verified";
+  await reqDoc.save();
+
+  return res.json({ message: "OTP verified", oneTimeToken: token, requestId: reqDoc._id });
+};
+
+

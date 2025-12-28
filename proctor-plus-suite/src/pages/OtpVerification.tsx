@@ -15,6 +15,7 @@ function useQuery() {
 
 const OtpVerification = () => {
   const query = useQuery();
+  const role = query.get("role");
   const requestId = query.get("req");
   const [otp, setOtp] = useState("");
   const { toast } = useToast();
@@ -25,26 +26,62 @@ const OtpVerification = () => {
     if (!otp) return toast({ title: "Enter OTP", variant: "destructive" });
 
     try {
-      const res = await fetch(`${API}/api/forgot/student/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, otp }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        return toast({ title: "Error", description: json.message || "Invalid OTP", variant: "destructive" });
+      
+
+      if (role === "admin") {
+        const res = await fetch(`${API}/api/forgot/admin/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId, otp })
+        });
+
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message);
+
+        const pending = JSON.parse(sessionStorage.getItem("pendingAdminProfileUpdate") || "{}");
+
+        const formData = new FormData();
+        formData.append("name", pending.name);
+        formData.append("phone_no", pending.phone_no);
+        formData.append("whatsapp_no", pending.whatsapp_no || "");
+        formData.append("personalEmail", pending.personalemail);
+
+        await fetch(`${API}/api/admin/profile`, {
+          method: "PUT",
+          credentials: "include",
+          body: formData
+        });
+
+        sessionStorage.removeItem("pendingAdminProfileUpdate");
+        toast({ title: "Profile Updated" });
+        navigate("/admin/profile");
       }
-      // get oneTimeToken and navigate to ResetVerification
-      const token = json.oneTimeToken;
-      toast({ title: "OTP Verified", description: "Proceed to reset password" });
-      navigate(`/reset/complete?req=${requestId}&token=${encodeURIComponent(token)}`);
+
+      else{
+        const res = await fetch(`${API}/api/forgot/student/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId, otp }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          return toast({ title: "Error", description: json.message || "Invalid OTP", variant: "destructive" });
+        }
+        // get oneTimeToken and navigate to ResetVerification
+        const token = json.oneTimeToken;
+        toast({ title: "OTP Verified", description: "Proceed to reset password" });
+        navigate(`/reset/complete?req=${requestId}&token=${encodeURIComponent(token)}`);
+        
+      }
+      
+      
     } catch (err: any) {
       console.error(err);
       toast({ title: "Error", description: err.message || "Server error", variant: "destructive" });
     }
   };
 
-  if (!requestId) {
+  if (role !== "admin" && !requestId) {
     return <div className="p-8 text-center">Invalid request</div>;
   }
 

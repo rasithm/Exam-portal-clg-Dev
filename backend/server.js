@@ -1,8 +1,11 @@
 // server.js
+// import dotenv from 'dotenv';
+// dotenv.config();
+import 'dotenv/config';
+
 import express from 'express';
 import http from 'http';
-import dotenv from 'dotenv';
-dotenv.config();
+
 
 import connectDB from './config/db.js';
 import helmet from 'helmet';

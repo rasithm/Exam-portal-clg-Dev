@@ -1,3 +1,4 @@
+//C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\backend\routes\forgotRoutes.js
 import express from "express";
 import {
   requestStudentReset,
@@ -5,6 +6,7 @@ import {
   completeReset,
   listEmailAssignRequests,
   adminApproveEmailAssign,
+  requestAdminReset , verifyAdminOtp
 } from "../controllers/forgotController.js";
 import { protect } from "../middlewares/auth.js";
 
@@ -12,6 +14,7 @@ const router = express.Router();
 
 // student initiate reset (public; allow unauthenticated)
 router.post("/student/request", requestStudentReset);
+router.post("/admin/verify-otp", verifyAdminOtp);
 
 // verify otp
 router.post("/student/verify-otp", verifyOtp);
@@ -24,5 +27,8 @@ router.get("/admin/pending-email-requests", protect(["admin"]), listEmailAssignR
 
 // admin: approve/reject assignment
 router.post("/admin/answer-email-request", protect(["admin"]), adminApproveEmailAssign);
+
+router.post("/admin/request", requestAdminReset);
+
 
 export default router;

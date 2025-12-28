@@ -1,28 +1,56 @@
-//C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\backend\models\PasswordResetRequest.js
 import mongoose from "mongoose";
 
-const passwordResetSchema = new mongoose.Schema({
-  student: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
-  rollNumber: { type: String, required: true }, // convenience
-  requestedEmail: { type: String, required: true },
-  otpHash: { type: String },            // hashed OTP
-  otpExpiresAt: { type: Date },
-  verified: { type: Boolean, default: false }, // OTP verified / admin approved
+const passwordResetRequestSchema = new mongoose.Schema({
+  student: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Student",
+    required: function () {
+      return this.purpose !== "admin";
+    }
+  },
+  rollNumber: {
+    type: String,
+    required: function () {
+      return this.purpose !== "admin";
+    }
+  },
+  admin: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Admin",
+    required: function () {
+      return this.purpose === "admin";
+    }
+  },
+  requestedEmail: {
+    type: String,
+    required: true,
+  },
+  otpHash: String,
+  otpExpiresAt: Date,
+  status: {
+    type: String,
+    enum: ["pending_email_assign", "otp_sent", "verified", "completed", "rejected"],
+    default: "otp_sent"
+  },
+  purpose: {
+    type: String,
+    enum: ["student_reset", "admin_reset", "admin_profile"],
+    default: "student_reset"
+  },
+  attempts: { type: Number, default: 0 },
   used: { type: Boolean, default: false },
-  status: { type: String, enum: ["pending", "otp_sent", "verified", "completed", "pending_email_assign", "rejected"], default: "pending" },
-  attempts: { type: Number, default: 0 }, // OTP verification attempts
-  requestedAt: { type: Date, default: Date.now },
+  oneTimeToken: String,
   adminAction: {
     approved: Boolean,
     by: String,
     at: Date,
     reason: String,
   },
-  oneTimeToken: { type: String }, // short token to allow reset after OTP verification
+  requestedAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
-passwordResetSchema.index({ rollNumber: 1 });
-passwordResetSchema.index({ requestedEmail: 1 });
-passwordResetSchema.index({ requestedAt: 1 });
+export default mongoose.model("PasswordResetRequest", passwordResetRequestSchema);
 
-export default mongoose.model("PasswordResetRequest", passwordResetSchema);

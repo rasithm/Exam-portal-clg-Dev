@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCcw , LogOut , Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { 
   Users, 
   FileText, 
@@ -42,6 +43,7 @@ const AdminDashboard = () => {
   //   violations: 2
   // });
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [recentStudents, setRecentStudents] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -344,9 +346,9 @@ const fetchQuestionSets = async () => {
                 Notification 
               </Button>
               <NotificationPopup open={showNotifications} onClose={() => setShowNotifications(false)} />
-              <Button variant="outline" className="mr-2" >
+              <Button variant="outline" className="mr-2"  onClick={() => navigate("/admin/profile")}>
                 <Settings className="h-4 w-4 mr-2" />
-                Settings 
+                Profile 
               </Button>
               
               <Button variant="outline" 
