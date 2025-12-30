@@ -20,6 +20,9 @@ import ExamResultPage from "./pages/ExamResultPage";
 import ExamReport from "./pages/StudentReport";
 import OtpVerification from "./pages/OtpVerification";
 import AdminProfile from "./pages/AdminProfile";
+import CreateCompilerExam from "./pages/admin/CreateCompilerExam";
+import CreateCompilerQuestion from "./pages/admin/CreateCompilerQuestion";
+import CompilerExam from "./pages/student/CompilerExam";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +48,10 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset/verify" element={<OtpVerification />} />
           <Route path="/reset/complete" element={<ResetVerification />} />
+          <Route path="/admin/exam/create/compiler" element={<CreateCompilerExam />} />
+          <Route path="/admin/exam/compiler/question/:id" element={<CreateCompilerQuestion />} />
+          <Route path="/student/exam/compiler/:examId" element={<CompilerExam />} />
+
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

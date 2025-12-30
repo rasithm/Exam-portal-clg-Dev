@@ -1,0 +1,187 @@
+/* C:\Users\nazeer\Desktop\Exam-edit\Exam-portal\Exam-Portal\proctor-plus-suite\src\compiler-theme.css */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+.compiler-theme {
+  --background: 210 20% 98%;
+  --foreground: 220 25% 10%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 10%;
+
+  --primary: 174 72% 40%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 215 25% 93%;
+  --secondary-foreground: 220 25% 20%;
+
+  --success: 142 72% 40%;
+  --warning: 38 92% 50%;
+  --destructive: 0 72% 51%;
+
+  --muted: 215 20% 94%;
+  --muted-foreground: 215 15% 45%;
+
+  --border: 215 25% 88%;
+  --input: 215 25% 88%;
+  --ring: 174 72% 40%;
+
+  --radius: 0.75rem;
+
+  /* Font */
+  --tw-font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.compiler-theme.dark {
+  --background: 222 25% 10%;
+  --foreground: 210 20% 95%;
+
+  --card: 222 25% 12%;
+  --card-foreground: 210 20% 95%;
+
+  --muted: 222 20% 16%;
+  --muted-foreground: 215 15% 55%;
+
+  --border: 222 20% 18%;
+  --input: 222 20% 18%;
+}
+.compiler-theme:not(.dark) {
+  color-scheme: light;
+}
+
+.compiler-theme.dark {
+  color-scheme: dark;
+}
+
+.compiler-theme {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.compiler-theme .bg-background { background-color: hsl(var(--background)) !important; }
+.compiler-theme .bg-card { background-color: hsl(var(--card)) !important; }
+.compiler-theme .bg-muted { background-color: hsl(var(--muted)) !important; }
+
+.compiler-theme .text-foreground { color: hsl(var(--foreground)) !important; }
+.compiler-theme .text-muted-foreground { color: hsl(var(--muted-foreground)) !important; }
+
+.compiler-theme .border-border { border-color: hsl(var(--border)) !important; }
+
+.compiler-theme .bg-secondary {
+  background-color: hsl(var(--secondary)) !important;
+}
+
+.compiler-theme .text-secondary-foreground {
+  color: hsl(var(--secondary-foreground)) !important;
+}
+.compiler-theme.dark {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.compiler-theme.dark .bg-card {
+  background-color: hsl(var(--card)) !important;
+}
+
+
+
+
+
+
+.compiler-theme {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.compiler-theme pre,
+.compiler-theme code {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.compiler-theme .btn-primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.compiler-theme .btn-primary:hover {
+  filter: brightness(0.95);
+}
+
+.compiler-theme .btn-secondary {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+.compiler-theme .bg-primary {
+  background-color: hsl(var(--primary)) !important;
+}
+
+.compiler-theme .bg-secondary {
+  background-color: hsl(var(--secondary)) !important;
+}
+
+
+
+
+/* When applied to body */
+body.compiler-theme {
+  --background: 210 20% 98%;
+  --foreground: 220 25% 10%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 10%;
+
+  --primary: 174 72% 40%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 215 25% 93%;
+  --secondary-foreground: 220 25% 20%;
+
+  --success: 142 72% 40%;
+  --warning: 38 92% 50%;
+  --destructive: 0 72% 51%;
+
+  --muted: 215 20% 94%;
+  --muted-foreground: 215 15% 45%;
+
+  --border: 215 25% 88%;
+  --input: 215 25% 88%;
+  --ring: 174 72% 40%;
+}
+
+/* Dark mode */
+body.compiler-dark {
+  --background: 222 25% 10%;
+  --foreground: 210 20% 95%;
+
+  --card: 222 25% 12%;
+  --card-foreground: 210 20% 95%;
+
+  --muted: 222 20% 16%;
+  --muted-foreground: 215 15% 55%;
+
+  --border: 222 20% 18%;
+  --input: 222 20% 18%;
+}
+body.compiler-theme [data-radix-dialog-content] {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+
+.monaco-wrapper * {
+  box-sizing: content-box !important;
+}
+
+.monaco-wrapper {
+  all: unset;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.monaco-wrapper * {
+  all: revert;
+}
+
+
+
+
