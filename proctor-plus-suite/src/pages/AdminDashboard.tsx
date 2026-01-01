@@ -26,6 +26,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import axios from "axios";
 import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
+import CreateCompilerExam from "./admin/CreateCompilerExam";
 // line ~25 after imports
 const API_BASE = baseUrl || "http://localhost:5000";
 
@@ -732,6 +733,10 @@ const fetchQuestionSets = async () => {
                         >
                           <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                           {loading ? "Refreshing..." : "Refresh"}
+                        </Button>
+                        <Button variant="hero" className="mr-2 h-13" onClick={() => navigate("/admin/exam/create/compiler")}>
+                          <Plus className="h-4 w-4 mr-2"  />
+                          Create Compiler Exam
                         </Button>
                         <CreateExam />
                       </div>

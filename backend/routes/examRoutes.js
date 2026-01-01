@@ -13,7 +13,7 @@ const router = express.Router();
 /* ────────────────────────────────────────────────
    ✅ ADMIN ROUTES
    ──────────────────────────────────────────────── */
-router.post("/create", protect(["admin"]), requireVerifiedAdmin,createExam);
+router.post("/create", protect(["admin"]),createExam);
 router.get("/list", protect(["admin"]), listExams);
 
 
