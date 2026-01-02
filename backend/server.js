@@ -24,6 +24,7 @@ import studentRoutes from "./routes/studentRoutes.js"
 import studentExamRoutes from "./routes/studentExamRoutes.js";
 import publicCertificateRoutes from "./routes/publicCertificateRoutes.js";
 import forgotRoutes from './routes/forgotRoutes.js';
+import compilerExamRoutes from './routes/compilerExamRouter.js'
 // import { initSocket } from "./sockets/socketManager.js";
 const app = express();
 const server = http.createServer(app);
@@ -51,6 +52,7 @@ app.use("/api/student", protect(["student"]), studentRoutes);
 app.use("/api/student/exams", protect(["student"]), studentExamRoutes);
 app.use("/api/public/certificate", publicCertificateRoutes);
 app.use('/api/forgot', forgotRoutes);
+app.use("/api/admin/compilerExams", compilerExamRoutes);
 
 // basic health
 app.get('/api/health', (req,res) => res.json({ ok: true }));

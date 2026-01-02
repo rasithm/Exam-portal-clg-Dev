@@ -10,7 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft, FileCode2, Clock, Calendar, Award, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { LanguageIcon } from "@/components/compiler/LanguageIcons";
+import axios from 'axios';
+import { baseUrl } from "@/constant/Url";
 
+const API_BASE = baseUrl || "http://localhost:5000";
 // Language config with VSCode-style icons
 const languageConfig = [
   { name: "Python", color: "bg-yellow-500/10 border-yellow-500/30 text-yellow-600" },
@@ -41,6 +44,15 @@ export default function CreateCompilerExam() {
       // Cleanup not needed - next page will set its own mode
     };
   }, []);
+  useEffect(() => {
+    const savedDraft = localStorage.getItem("compilerExamDraft");
+    if (savedDraft) {
+      try {
+        setFormData(JSON.parse(savedDraft));
+      } catch {}
+    }
+  }, []);
+
 
   const selectLanguage = (lang: string) => {
     setFormData((prev) => ({
@@ -49,27 +61,66 @@ export default function CreateCompilerExam() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // const {
+    //   title, selectedLanguage, questionCount, totalMarks, description, startDate, endDate, duration, generateCertificate
+    // } = formData;
+
     if (!formData.title.trim()) {
-      toast({ title: "Error", description: "Please enter exam title", variant: "destructive" });
-      return;
+      return toast({ title: "Error", description: "Please enter exam title", variant: "destructive" });
     }
     if (!formData.selectedLanguage) {
-      toast({ title: "Error", description: "Please select a compiler language", variant: "destructive" });
-      return;
+      return toast({ title: "Error", description: "Please select a compiler language", variant: "destructive" });
     }
     if (formData.questionCount < 1) {
-      toast({ title: "Error", description: "Question count must be at least 1", variant: "destructive" });
-      return;
+      return toast({ title: "Error", description: "Question count must be at least 1", variant: "destructive" });
     }
 
-    // Navigate to question creation with exam data
-    navigate("/admin/exam/compiler/question/1", { 
-      state: { examData: formData, totalQuestions: formData.questionCount } 
-    });
+    try {
+      // const payload = {
+      //   title: title.trim(),
+      //   language: selectedLanguage,
+      //   duration,
+      //   startTime: startDate,
+      //   endTime: endDate,
+      //   description,
+      //   questionCount,
+      //   totalMarks,
+      //   generateCertificate,
+      //   assignedRegNos: [] // ⚠️ Replace with actual regno list from student selection in future
+      // };
+
+      // const res = await axios.post(`${API_BASE}/api/admin/compilerExams/create`, payload , {
+      //   withCredentials: true
+      // });
+      // const { examId } = res.data;
+
+      // toast({ title: "Success", description: "Compiler exam created!" });
+
+      // navigate(`/admin/exam/compiler/question/1`, {
+      //   state: {
+      //     examData: formData,
+      //     totalQuestions: questionCount,
+      //     examId
+      //   }
+      // });
+      localStorage.setItem("compilerExamDraft", JSON.stringify(formData));
+      navigate("/admin/exam/compiler/question/1", {
+        state: { examData: formData, totalQuestions: formData.questionCount, examId: null }
+      });
+
+      
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to create exam",
+        variant: "destructive"
+      });
+    }
   };
+
 
   return (
     <div className="min-h-screen bg-background">

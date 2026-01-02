@@ -11,7 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/uis/badge";
 import { ArrowLeft, Plus, Trash2, FileText, TestTube, Settings } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import axios from 'axios';
+import { baseUrl } from "@/constant/Url";
 
+const API_BASE = baseUrl || "http://localhost:5000";
 interface TestCase {
   inputs: string[];
   expectedOutput: string;
@@ -36,7 +39,7 @@ export default function CreateCompilerQuestion() {
     sampleInput: "",
     sampleOutput: "",
     attemptLimit: 3,
-    evaluationMode: "Strict" as "Strict" | "Non-Strict",
+    evaluationMode: "strict" as "strict" | "non-strict",
     testCases: [{ inputs: [""], expectedOutput: "", hidden: false }] as TestCase[],
   });
 
@@ -97,21 +100,71 @@ export default function CreateCompilerQuestion() {
     }));
   };
 
-  const handleSubmit = (isLast: boolean) => {
+  const handleSubmit = async (isLast: boolean) => {
     if (!formData.title.trim()) {
       toast({ title: "Error", description: "Please enter question title", variant: "destructive" });
       return;
     }
 
-    if (isLast) {
-      toast({ title: "Success", description: "Exam created successfully!" });
-      navigate("/admin/exam/create/compiler");
-    } else {
-      navigate(`/admin/exam/compiler/question/${currentQuestion + 1}`, {
-        state: { examData, totalQuestions },
+    for (const [i, tc] of formData.testCases.entries()) {
+      const validInputs = tc.inputs.filter(inp => inp.trim() !== "");
+      if (validInputs.length === 0 || !tc.expectedOutput.trim()) {
+        toast({
+          title: "Error",
+          description: `Test case ${i + 1} must have at least one input and an expected output`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    try {
+      let examId = location.state?.examId;
+
+      // 🟡 Only create exam if not already created
+      if (!examId) {
+        const createPayload = {
+          ...examData,
+          language: examData.selectedLanguage,
+          startTime: examData.startDate,
+          endTime: examData.endDate,
+          assignedRegNos: [] // add students if needed
+        };
+
+        const examRes = await axios.post(`${API_BASE}/api/admin/compilerExams/create`, createPayload, {
+          withCredentials: true
+        });
+
+        examId = examRes.data.examId;
+      }
+
+      // ✅ Now safely create question
+      await axios.post(`${API_BASE}/api/admin/compilerExams/${examId}/questions`, {
+        ...formData,
+        title: formData.title.trim()
+      }, { withCredentials: true });
+
+      if (isLast) {
+        localStorage.removeItem("compilerExamDraft");
+        toast({ title: "Success", description: "Exam created successfully!" });
+        navigate("/admin/exam/create/compiler");
+      } else {
+        // ✅ Pass examId forward
+        navigate(`/admin/exam/compiler/question/${currentQuestion + 1}`, {
+          state: { examData, totalQuestions, examId }
+        });
+      }
+
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to save question",
+        variant: "destructive"
       });
     }
   };
+
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -364,7 +417,7 @@ export default function CreateCompilerQuestion() {
                   <Label htmlFor="evalMode">Evaluation Mode</Label>
                   <Select
                     value={formData.evaluationMode}
-                    onValueChange={(value: "Strict" | "Non-Strict") =>
+                    onValueChange={(value: "strict" | "non-strict") =>
                       setFormData({ ...formData, evaluationMode: value })
                     }
                   >
@@ -372,8 +425,8 @@ export default function CreateCompilerQuestion() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Strict">Strict (exact match)</SelectItem>
-                      <SelectItem value="Non-Strict">Non-Strict (ignore whitespace)</SelectItem>
+                      <SelectItem value="strict">Strict (exact match)</SelectItem>
+                      <SelectItem value="non-strict">Non-Strict (ignore whitespace)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
