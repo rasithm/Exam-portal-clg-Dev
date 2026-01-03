@@ -151,3 +151,22 @@ export const createExamWithQuestions = async (req, res) => {
     return res.status(500).json({ message: "Server error during exam creation" });
   }
 };
+
+
+export const getStudentCompilerExams = async (req, res) => {
+  try {
+    const studentId = req.user._id;
+
+    const exams = await CompilerExam.find({
+      assignedStudents: studentId,
+      published: true,
+    })
+      .sort({ startTime: 1 })
+      .select("title language description startTime endTime duration totalMarks status");
+
+    res.json({ compilerExams: exams });
+  } catch (err) {
+    console.error("Error fetching compiler exams for student:", err);
+    res.status(500).json({ message: "Failed to fetch compiler exams" });
+  }
+};

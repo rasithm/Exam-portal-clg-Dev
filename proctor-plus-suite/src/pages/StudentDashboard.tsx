@@ -35,8 +35,13 @@ const StudentDashboard = () => {
   // Modal state
   const [showRules, setShowRules] = useState(false);
   const [scrollEnd, setScrollEnd] = useState(false);
-  const [selectedExam, setSelectedExam] = useState<string | null>(null);
+  // const [selectedExam, setSelectedExam] = useState<string | null>(null);
+  const [selectedExam, setSelectedExam] = useState<any>(null); // or a better defined type if available
+
   const [activeTab, setActiveTab] = useState("tech");
+  const [compilerExams, setCompilerExams] = useState<any[]>([]);
+
+  
 
 
   // ✅ Fetch exams for this student
@@ -285,7 +290,7 @@ useEffect(() => {
   //   setShowRules(true);
   //   setScrollEnd(false);
   // };
-  const handleStartExam = (examId: string) => {
+  const handleStartExam = (exam: any) => {
 
     // Make sure studentInfo contains the flag
     if (!studentInfo.isProfileUpdated) {
@@ -301,7 +306,8 @@ useEffect(() => {
       return;
     }
 
-    setSelectedExam(examId);
+    setSelectedExam(exam);
+
     setShowRules(true);
     setScrollEnd(false);
   };
@@ -336,6 +342,9 @@ useEffect(() => {
           return category.includes("re-exam") || category.includes("retake");
         case "certifications":
           return category.includes("cert") || category.includes("certificate");
+        case "coding":
+          return upcomingExams.filter((exam) => exam.isCompiler);
+
         default:
           return true;
       }
@@ -405,7 +414,7 @@ useEffect(() => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="shadow-card">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -434,7 +443,7 @@ useEffect(() => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Average Score</p>
+                  <p className="text-sm font-medium text-muted-foreground">MCQ Average Score</p>
                   <p className="text-3xl font-bold text-card-foreground">
                     {recentExams.length > 0
                       ? Math.round(
@@ -452,13 +461,37 @@ useEffect(() => {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="shadow-card">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Coding Average Score</p>
+                  <p className="text-3xl font-bold text-card-foreground">
+                    {recentExams.length > 0
+                      ? Math.round(
+                          recentExams
+                            .filter(exam => exam.isCompiler)
+                            .reduce((acc, exam) => acc + (exam.score / exam.totalMarks) * 100, 0) /
+                          recentExams.filter(exam => exam.isCompiler).length || 1
+                        )
+                      : 0
+                    }%
+
+                  </p>
+                </div>
+                <BarChart3 className="h-8 w-8 text-secondary" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Tabs defaultValue="tech" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="tech">Tech</TabsTrigger>
             <TabsTrigger value="nontech">Non-Tech</TabsTrigger>
             <TabsTrigger value="reexam">Re-Exam</TabsTrigger>
+            <TabsTrigger value="coding">Coding-Exam</TabsTrigger>
             <TabsTrigger value="certifications">Certifications</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
@@ -654,13 +687,13 @@ useEffect(() => {
 
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-muted-foreground">
-                            Subject: {exam.subcategory || exam.subject}
+                            {exam.isCompiler ? `Compiler - ${exam.subject}` : exam.subject}
                           </span>
                           {exam.status === "active" ? (
                             <Button 
                               variant="hero" 
                               size="sm"
-                              onClick={() => handleStartExam(exam.id)}
+                              onClick={() => handleStartExam(exam)}
                             >
                               <Play className="h-4 w-4 mr-2" />
                               Start Exam
@@ -852,11 +885,17 @@ useEffect(() => {
               variant="hero"
               disabled={!scrollEnd}
               onClick={() => {
-                if (selectedExam) navigate(`/exam/${selectedExam}`);
+                if (!selectedExam) return;
+
+                const path = selectedExam.isCompiler
+                  ? `/student/exam/compiler/${selectedExam.id}`
+                  : `/exam/${selectedExam.id}`;
+
+                navigate(path);
                 setShowRules(false);
               }}
-              
             >
+
               {scrollEnd ? "Accept & Start Exam" : "Scroll to Accept"}
             </Button>
           </DialogFooter>

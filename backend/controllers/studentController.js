@@ -2,6 +2,7 @@
 import Exam from "../models/Exam.js";
 import Student from "../models/Student.js";
 import ExamAttempt from "../models/ExamAttempt.js";
+import CompilerExam from "../models/CompilerExam.js";
 
 export const getStudentDashboard = async (req, res) => {
   try {
@@ -22,6 +23,8 @@ export const getStudentDashboard = async (req, res) => {
       createdBy: adminId,
       assignStudents: { $in: [rollNumber] },
     }).sort({ startDateTime: 1 });
+
+    
 
     const now = new Date();
 
@@ -79,6 +82,60 @@ export const getStudentDashboard = async (req, res) => {
         upcomingExams.push(examObj);
       else completedExams.push(examObj);
     });
+
+  
+
+    // Fetch compiler exams for this student
+    const compilerExams = await CompilerExam.find({
+      createdBy: adminId,
+      assignedStudents: { $in: [student._id] },
+    }).sort({ startTime: 1 });
+
+    compilerExams.forEach(exam => {
+      const start = new Date(exam.startTime);
+      const end = new Date(exam.endTime);
+      const now = new Date();
+
+      let status;
+      const attempted = exam.submissions?.some(sub => sub.student.toString() === student._id.toString());
+
+      if (attempted) {
+        status = "completed";
+      } else if (now < start) {
+        status = "upcoming";
+      } else if (now >= start && now <= end) {
+        status = "active";
+      } else {
+        status = "missed";
+      }
+
+      const examObj = {
+        id: exam._id,
+        title: exam.title,
+        description: exam.description || "",
+        category: "coding", // to filter in frontend
+        subject: exam.language,
+        startDate: start.toISOString().split("T")[0],
+        startTime: start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        endDate: end.toISOString().split("T")[0],
+        endTime: end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        duration: exam.duration,
+        status,
+        score: 0, // compiler score logic placeholder
+        totalMarks: exam.totalMarks,
+        percentage: 0, // placeholder for future
+        isCompiler: true
+      };
+
+      if (status === "upcoming" || status === "active")
+        upcomingExams.push(examObj);
+      else
+        completedExams.push(examObj);
+    });
+
+
+    
+
 
     // Step 3 — Return dashboard data
     return res.json({
