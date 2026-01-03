@@ -1,5 +1,5 @@
 //C:\Users\nazeer\Desktop\Compailor-version-2\code-compiler-studio\src\pages\admin\CreateCompilerQuestion.tsx
-import { useState } from "react";
+import { useState , useEffect} from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Button } from "@/components/uis/button";
 import { Input } from "@/components/uis/input";
@@ -42,6 +42,14 @@ export default function CreateCompilerQuestion() {
     evaluationMode: "strict" as "strict" | "non-strict",
     testCases: [{ inputs: [""], expectedOutput: "", hidden: false }] as TestCase[],
   });
+
+  useEffect(() => {
+    const storedQuestions = JSON.parse(localStorage.getItem("compilerQuestions") || "[]");
+    const saved = storedQuestions[currentQuestion - 1];
+    if (saved) {
+      setFormData(saved);
+    }
+  }, [currentQuestion]);
 
   const addTestCase = () => {
     setFormData((prev) => ({
@@ -102,67 +110,152 @@ export default function CreateCompilerQuestion() {
 
   const handleSubmit = async (isLast: boolean) => {
     if (!formData.title.trim()) {
-      toast({ title: "Error", description: "Please enter question title", variant: "destructive" });
-      return;
+      return toast({ title: "Error", description: "Please enter question title", variant: "destructive" });
     }
 
     for (const [i, tc] of formData.testCases.entries()) {
       const validInputs = tc.inputs.filter(inp => inp.trim() !== "");
       if (validInputs.length === 0 || !tc.expectedOutput.trim()) {
-        toast({
+        return toast({
           title: "Error",
-          description: `Test case ${i + 1} must have at least one input and an expected output`,
+          description: `Test case ${i + 1} must have at least one input and expected output`,
           variant: "destructive"
         });
-        return;
       }
     }
 
     try {
-      let examId = location.state?.examId;
+      let draft = JSON.parse(localStorage.getItem("compilerExamDraft") || "{}");
+      let existingQuestions = JSON.parse(localStorage.getItem("compilerQuestions") || "[]");
 
-      // 🟡 Only create exam if not already created
-      if (!examId) {
-        const createPayload = {
-          ...examData,
-          language: examData.selectedLanguage,
-          startTime: examData.startDate,
-          endTime: examData.endDate,
-          assignedRegNos: [] // add students if needed
+      // Save current question to temp store
+      // const updatedQuestions = [...existingQuestions, {
+      //   ...formData,
+      //   memoryLimit: 128, // Optional default
+      //   marks: draft.totalMarks ? Math.floor(draft.totalMarks / draft.questionCount) : 10
+      // }];
+      // localStorage.setItem("compilerQuestions", JSON.stringify(updatedQuestions));
+      const updatedQuestions = [...existingQuestions];
+        updatedQuestions[currentQuestion - 1] = {
+          ...formData,
+          memoryLimit: 128,
+          marks: draft.totalMarks ? Math.floor(draft.totalMarks / draft.questionCount) : 10
+        };
+        localStorage.setItem("compilerQuestions", JSON.stringify(updatedQuestions));
+
+
+      if (isLast) {
+        const payload = {
+          title: draft.title,
+          language: draft.selectedLanguage,
+          duration: draft.duration,
+          startTime: draft.startDate,
+          endTime: draft.endDate,
+          description: draft.description,
+          questionCount: draft.questionCount,
+          totalMarks: draft.totalMarks,
+          generateCertificate: draft.generateCertificate,
+          assignedRegNos: [], // Update if frontend includes student selection
+          questions: updatedQuestions
         };
 
-        const examRes = await axios.post(`${API_BASE}/api/admin/compilerExams/create`, createPayload, {
+        const res = await axios.post(`${API_BASE}/api/admin/compilerExams/create`, payload, {
           withCredentials: true
         });
 
-        examId = examRes.data.examId;
-      }
-
-      // ✅ Now safely create question
-      await axios.post(`${API_BASE}/api/admin/compilerExams/${examId}/questions`, {
-        ...formData,
-        title: formData.title.trim()
-      }, { withCredentials: true });
-
-      if (isLast) {
         localStorage.removeItem("compilerExamDraft");
+        localStorage.removeItem("compilerQuestions");
         toast({ title: "Success", description: "Exam created successfully!" });
         navigate("/admin/exam/create/compiler");
       } else {
-        // ✅ Pass examId forward
+        // Navigate to next question
         navigate(`/admin/exam/compiler/question/${currentQuestion + 1}`, {
-          state: { examData, totalQuestions, examId }
+          state: {
+            examData,
+            totalQuestions,
+            examId: null // Not needed, as everything submits at end
+          }
         });
       }
 
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to save question",
+        description: err.response?.data?.message || "Failed to save exam",
         variant: "destructive"
       });
     }
   };
+
+
+  // const handleSubmit = async (isLast: boolean) => {
+  //   if (!formData.title.trim()) {
+  //     toast({ title: "Error", description: "Please enter question title", variant: "destructive" });
+  //     return;
+  //   }
+
+  //   for (const [i, tc] of formData.testCases.entries()) {
+  //     const validInputs = tc.inputs.filter(inp => inp.trim() !== "");
+  //     if (validInputs.length === 0 || !tc.expectedOutput.trim()) {
+  //       toast({
+  //         title: "Error",
+  //         description: `Test case ${i + 1} must have at least one input and an expected output`,
+  //         variant: "destructive"
+  //       });
+  //       return;
+  //     }
+  //   }
+
+  //   try {
+  //     let examId = location.state?.examId;
+
+  //     // 🟡 Only create exam if not already created
+  //     if (!examId) {
+  //       const createPayload = {
+  //         ...examData,
+  //         language: examData.selectedLanguage,
+  //         startTime: examData.startDate,
+  //         endTime: examData.endDate,
+  //         assignedRegNos: [] // add students if needed
+  //       };
+
+  //       const examRes = await axios.post(`${API_BASE}/api/admin/compilerExams/create`, createPayload, {
+  //         withCredentials: true
+  //       });
+
+  //       examId = examRes.data.examId;
+  //     }
+
+  //     // ✅ Now safely create question
+  //     await axios.post(`${API_BASE}/api/admin/compilerExams/${examId}/questions`, {
+  //       ...formData,
+  //       title: formData.title.trim()
+  //     }, { withCredentials: true });
+
+  //     if (isLast) {
+  //       localStorage.removeItem("compilerExamDraft");
+  //       toast({ title: "Success", description: "Exam created successfully!" });
+  //       navigate("/admin/exam/create/compiler");
+  //     } else {
+  //       // ✅ Pass examId forward
+  //       navigate(`/admin/exam/compiler/question/${currentQuestion + 1}`, {
+  //         state: { examData, totalQuestions, examId }
+  //       });
+  //     }
+
+  //   } catch (err: any) {
+  //     toast({
+  //       title: "Error",
+  //       description: err.response?.data?.message || "Failed to save question",
+  //       variant: "destructive"
+  //     });
+  //   }
+  // };
+  const confirmBack = () => {
+    const confirmLeave = window.confirm("Going back will reset the current unsaved question. Continue?");
+    if (confirmLeave) navigate(-1);
+  };
+
 
 
 
@@ -172,7 +265,7 @@ export default function CreateCompilerQuestion() {
       <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="container flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={confirmBack}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
