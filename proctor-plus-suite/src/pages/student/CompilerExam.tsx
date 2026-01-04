@@ -13,89 +13,18 @@ import { useExamSecurity } from "@/hooks/useExamSecurity";
 import { ArrowLeft, Clock, AlertTriangle, Shield, Maximize2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { SubmitResultModal } from "@/components/compiler/SubmitResultModal";
+import { useParams } from "react-router-dom";
+import axios from "axios";
+import { baseUrl } from "@/constant/Url";
 
-
-// Mock exam data
-const mockExam = {
-  title: "Data Structures Final Exam",
-  duration: 120,
-  languages: ["Python", "Java", "C++", "JavaScript"],
-  questions: [
-    {
-      id: 1,
-      title: "Two Sum",
-      difficulty: "Easy" as const,
-      evaluationMode: "Strict" as const,
-      shortDescription: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.",
-      longDescription: `You may assume that each input would have exactly one solution, and you may not use the same element twice.
-
-You can return the answer in any order.
-
-**Constraints:**
-- 2 <= nums.length <= 10^4
-- -10^9 <= nums[i] <= 10^9
-- -10^9 <= target <= 10^9
-- Only one valid answer exists.`,
-      inputFormat: "First line: n (number of elements)\nSecond line: n space-separated integers\nThird line: target sum",
-      outputFormat: "Two space-separated indices (0-indexed)",
-      testCases: [
-        { inputs: ["4", "2 7 11 15", "9"], expectedOutput: "0 1", isHidden: false },
-        { inputs: ["3", "3 2 4", "6"], expectedOutput: "1 2", isHidden: false },
-        { inputs: ["2", "3 3", "6"], expectedOutput: "0 1", isHidden: true },
-      ],
-      attemptLimit: 5,
-      completed: false,
-    },
-    {
-      id: 2,
-      title: "Reverse Linked List",
-      difficulty: "Medium" as const,
-      evaluationMode: "Strict" as const,
-      shortDescription: "Given the head of a singly linked list, reverse the list, and return the reversed list.",
-      longDescription: `The linked list is given as space-separated values representing the nodes.
-
-**Constraints:**
-- The number of nodes in the list is in the range [0, 5000]
-- -5000 <= Node.val <= 5000`,
-      inputFormat: "Space-separated integers representing node values",
-      outputFormat: "Space-separated integers representing reversed list",
-      testCases: [
-        { inputs: ["1 2 3 4 5"], expectedOutput: "5 4 3 2 1", isHidden: false },
-        { inputs: ["1 2"], expectedOutput: "2 1", isHidden: false },
-        { inputs: [""], expectedOutput: "", isHidden: true },
-      ],
-      attemptLimit: 5,
-      completed: false,
-    },
-    {
-      id: 3,
-      title: "Valid Parentheses",
-      difficulty: "Easy" as const,
-      evaluationMode: "Strict" as const,
-      shortDescription: "Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.",
-      longDescription: `An input string is valid if:
-1. Open brackets must be closed by the same type of brackets.
-2. Open brackets must be closed in the correct order.
-3. Every close bracket has a corresponding open bracket of the same type.`,
-      inputFormat: "A string containing parentheses",
-      outputFormat: "true or false",
-      testCases: [
-        { inputs: ["()"], expectedOutput: "true", isHidden: false },
-        { inputs: ["()[]{}"], expectedOutput: "true", isHidden: false },
-        { inputs: ["(]"], expectedOutput: "false", isHidden: true },
-      ],
-      attemptLimit: 5,
-      completed: true,
-    },
-  ],
-};
+const API_BASE = baseUrl || "http://localhost:5000";
 
 export default function CompilerExam() {
   const navigate = useNavigate();
   const [examStarted, setExamStarted] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(mockExam.duration * 60);
+  const [timeRemaining, setTimeRemaining] = useState(0);
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [attemptsUsed, setAttemptsUsed] = useState<Record<number, number>>({});
@@ -104,13 +33,79 @@ export default function CompilerExam() {
   const [testCaseResults, setTestCaseResults] = useState<Record<number, Record<number, { status: "passed" | "failed"; actualOutput: string }>>>({});
   const [showSubmitResultModal, setShowSubmitResultModal] = useState(false);
   const { isFullscreen, tabSwitchCount, enterFullscreen, exitFullscreen } = useExamSecurity(examStarted);
+  const { examId } = useParams();
+  const [examData, setExamData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<any[]>([]);
 
   // const currentQuestion = mockExam.questions[currentQuestionIndex];
-  const [questions, setQuestions] = useState(
-    mockExam.questions.map(q => ({ ...q, completed: false }))
-  );
+  // const [questions, setQuestions] = useState(
+  //   examData.questions.map(q => ({ ...q, completed: false }))
+  // );
+  useEffect(() => {
+    const fetchCompilerExam = async () => {
+      setLoading(true);
+      setError(null);
 
-  const currentQuestion = questions[currentQuestionIndex];
+      try {
+        const res = await axios.get(`${API_BASE}/api/student/compiler-exams/${examId}`, {
+          withCredentials: true,
+        });
+        const { exam } = res.data;
+
+        // const { title, duration, language, questions } = res.data;
+
+        // if (!questions || questions.length === 0) {
+        //   throw new Error("No questions found for this exam.");
+        // }
+        if (!exam?.questions || exam.questions.length === 0) {
+          throw new Error("No questions found for this exam.");
+        }
+
+
+
+        setExamData({ ...exam, languages: [exam.language?.trim()] });
+
+        // setQuestions(exam.questions.map(q => ({ ...q, completed: false })));
+        setQuestions(exam.questions.map(q => ({ ...q, completed: !!q.completed })));
+        // if (!exam.languages || !Array.isArray(exam.languages) || exam.languages.length === 0) {
+        //   throw new Error("Languages not set for this exam. Please contact the admin.");
+        // }
+      } catch (err: any) {
+        console.error("Compiler exam fetch error:", err);
+        const message = err.response?.data?.message || err.message || "Unknown error";
+        setError(message);
+        toast({
+          title: "Exam Load Failed",
+          description: message,
+          variant: "destructive",
+        });
+
+        // setTimeout(() => {
+        //   navigate("/student/dashboard");
+        // }, 2000);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (examId) fetchCompilerExam();
+  }, [examId, navigate]);
+
+  const currentQuestion = examData?.questions?.[currentQuestionIndex];
+
+  useEffect(() => {
+    if (examData?.duration) {
+      setTimeRemaining(examData.duration * 60);
+    }
+  }, [examData]);
+  useEffect(() => {
+    if (examData?.questions) {
+      setQuestions(examData.questions.map(q => ({ ...q, completed: false })));
+    }
+  }, [examData]);
+
   
 
   const [showResultsTable, setShowResultsTable] = useState(false);
@@ -173,6 +168,22 @@ export default function CompilerExam() {
     return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Loading exam...</p>
+      </div>
+    );
+  }
+
+  if (error || !examData || !currentQuestion) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-red-500 font-semibold">{error || "Failed to load exam"}</p>
+      </div>
+    );
+  }
+
   const handleStartExam = async () => {
     await enterFullscreen();
     setExamStarted(true);
@@ -184,7 +195,7 @@ export default function CompilerExam() {
     
     // Simulate code execution
     setTimeout(() => {
-      const visibleTestCases = currentQuestion.testCases.filter(tc => !tc.isHidden);
+      const visibleTestCases = currentQuestion.testCases.filter(tc => !tc.hidden);
       const statuses: { index: number; status: "passed" | "failed" }[] = [];
       const results: Record<number, { status: "passed" | "failed"; actualOutput: string }> = {};
       const allTableResults: typeof tableResults = [];
@@ -242,7 +253,9 @@ export default function CompilerExam() {
     
     setTimeout(() => {
       const passed = Math.random() > 0.3;
-      const testCase = currentQuestion.testCases.filter((tc) => !tc.isHidden)[testCaseIndex];
+      const visibleTestCases = currentQuestion.testCases.filter(tc => !tc.hidden);
+
+      const testCase = currentQuestion.testCases.filter((tc) => !tc.hidden)[testCaseIndex];
       const actualOutput = passed ? testCase.expectedOutput : "Wrong output";
       
       // Update test case results
@@ -335,9 +348,9 @@ export default function CompilerExam() {
       {/* Exam Start Modal */}
       <ExamStartModal
         open={!examStarted}
-        examTitle={mockExam.title}
-        duration={mockExam.duration}
-        questionCount={mockExam.questions.length}
+        examTitle={examData.title}
+        duration={examData.duration}
+        questionCount={examData.questions.length}
         selectedTheme={editorTheme}
         onThemeChange={setEditorTheme}
         onStart={handleStartExam}
@@ -374,9 +387,9 @@ export default function CompilerExam() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="font-semibold text-sm">{mockExam.title}</h1>
+              <h1 className="font-semibold text-sm">{examData.title}</h1>
               <p className="text-xs text-muted-foreground">
-                Question {currentQuestionIndex + 1} of {mockExam.questions.length}
+                Question {currentQuestionIndex + 1} of {examData.questions.length}
               </p>
             </div>
           </div>
@@ -440,7 +453,7 @@ export default function CompilerExam() {
         <div className="border-r border-border overflow-hidden flex flex-col h-full">
           <div className="flex-1 overflow-auto p-4 h-full">
             <ProblemDescription
-              examTitle={mockExam.title}
+              examTitle={examData.title}
               questionTitle={currentQuestion.title}
               difficulty={currentQuestion.difficulty}
               evaluationMode={currentQuestion.evaluationMode}
@@ -448,14 +461,30 @@ export default function CompilerExam() {
               longDescription={currentQuestion.longDescription}
               inputFormat={currentQuestion.inputFormat}
               outputFormat={currentQuestion.outputFormat}
-              testCases={currentQuestion.testCases.filter((tc) => !tc.isHidden).map((tc, i) => {
+              sampleInput={currentQuestion.sampleInput}
+              sampleOutput={currentQuestion.sampleOutput}
+              // testCases={(currentQuestion.testCases || []).map((tc, i) => {
+              //   if (tc.hidden === true) return null;
+                
+              //   const result = testCaseResults[currentQuestion.id]?.[i];
+              //   return {
+              //     ...tc,
+              //     status: result?.status,
+              //     actualOutput: result?.actualOutput,
+              //   };
+              // }).filter(Boolean)}
+              testCases={(currentQuestion.testCases || []).map((tc, i) => {
                 const result = testCaseResults[currentQuestion.id]?.[i];
                 return {
-                  ...tc,
+                  inputs: tc.inputs,
+                  expectedOutput: tc.expectedOutput,
+                  isHidden: tc.hidden, // ✅ convert backend 'hidden' to frontend 'isHidden'
                   status: result?.status,
                   actualOutput: result?.actualOutput,
                 };
               })}
+
+
               attemptLimit={currentQuestion.attemptLimit}
               attemptsUsed={attemptsUsed[currentQuestion.id] || 0}
               onRunTestCase={handleRunTestCase}
@@ -472,7 +501,7 @@ export default function CompilerExam() {
         <div className="flex flex-col overflow-hidden h-full">
           <div className="flex-1 p-4 overflow-hidden min-h-0">
             <CodeEditor
-              languages={mockExam.languages}
+              languages={examData.languages}
               onRun={handleRun}
               onSubmit={handleSubmit}
               isRunning={isRunning}
@@ -485,7 +514,7 @@ export default function CompilerExam() {
           {/* Question Navigator - Fixed at bottom */}
           <div className="border-t border-border p-4 bg-muted/30 flex-shrink-0">
             <QuestionNavigator
-              questions={mockExam.questions.map((q) => ({
+              questions={examData.questions.map((q) => ({
                 id: q.id,
                 title: q.title,
                 completed: q.completed,
@@ -495,7 +524,7 @@ export default function CompilerExam() {
               onNavigate={setCurrentQuestionIndex}
               onPrevious={() => setCurrentQuestionIndex((i) => Math.max(0, i - 1))}
               onNext={() =>
-                setCurrentQuestionIndex((i) => Math.min(mockExam.questions.length - 1, i + 1))
+                setCurrentQuestionIndex((i) => Math.min(examData.questions.length - 1, i + 1))
               }
             />
           </div>

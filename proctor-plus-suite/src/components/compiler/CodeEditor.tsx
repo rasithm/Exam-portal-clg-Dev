@@ -1,6 +1,6 @@
 //C:\Users\nazeer\Desktop\Compailor-version-2\code-compiler-studio\src\components\compiler\CodeEditor.tsx
 import Editor, { Monaco } from "@monaco-editor/react";
-import { useState, useRef } from "react";
+import { useState, useRef , useEffect} from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/uis/select";
 import { Button } from "@/components/uis/button";
 import { Textarea } from "@/components/uis/textarea";
@@ -54,12 +54,15 @@ export function CodeEditor({
   output = "",
   editorTheme = "vs-dark"
 }: CodeEditorProps) {
-  const [selectedLanguage, setSelectedLanguage] = useState(languages[0] || "Python");
+
+  const [selectedLanguage, setSelectedLanguage] = useState(() => languages?.[0] ?? "Python");
+
   const [code, setCode] = useState(defaultCode[languageMap[selectedLanguage]] || "");
   const [customInput, setCustomInput] = useState("");
   const [outputTab, setOutputTab] = useState<"output" | "custom">("output");
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
+  
 
     
   
@@ -68,6 +71,15 @@ export function CodeEditor({
 
   const customInputCount = customInputs.length;
   const isDarkMode = editorTheme !== "light";
+  const defaultLang = languages?.[0] || "Python";
+
+
+  useEffect(() => {
+    if (languages && languages.length > 0) {
+      setSelectedLanguage(languages[0]);
+      setCode(defaultCode[languageMap[languages[0]]] || "");
+    }
+  }, [languages]);
 
   const handleCustomInputChange = (index: number, value: string) => {
     setCustomInputs((prev) => {
@@ -89,6 +101,16 @@ export function CodeEditor({
     }, 100);
   };
 
+  if (!languages || languages.length === 0) {
+    return <div className="p-4 text-muted-foreground">No languages available.</div>;
+    console.warn("Language mismatch:", { selectedLanguage, languageMap, available: languages });
+
+  }
+  if (!languageMap[selectedLanguage]) {
+    const fallback = Object.keys(languageMap).find((key) => key.toLowerCase() === selectedLanguage.toLowerCase());
+    if (fallback) setSelectedLanguage(fallback);
+  }
+
 
 
   const handleLanguageChange = (lang: string) => {
@@ -99,27 +121,6 @@ export function CodeEditor({
   const handleClear = () => {
     setCode(defaultCode[languageMap[selectedLanguage]] || "");
   };
-
-  // const handleEditorMount = (editor: editor.IStandaloneCodeEditor, monaco: Monaco) => {
-  //   editorRef.current = editor;
-  //   monacoRef.current = monaco;
-    
-  //   // Define custom gray theme
-  //   monaco.editor.defineTheme("gray-theme", {
-  //     base: "vs-dark",
-  //     inherit: true,
-  //     rules: [],
-  //     colors: {
-  //       "editor.background": "#374151",
-  //       "editor.foreground": "#e5e7eb",
-  //     },
-  //   });
-
-  //   // Apply theme if it's gray
-  //   if (editorTheme === "gray") {
-  //     monaco.editor.setTheme("gray-theme");
-  //   }
-  // };
 
   const handleRunWithCustomInput = () => {
     const formattedInput = customInputs.filter(i => i.trim()).join("\n");
@@ -133,7 +134,7 @@ export function CodeEditor({
           <div className="flex flex-col h-full">
             {/* Toolbar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
-              <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
+              {/* <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
                 <SelectTrigger className="w-44 h-8 text-sm">
                   <LanguageIcon language={selectedLanguage} className="w-4 h-4 mr-2" />
                   <SelectValue />
@@ -148,7 +149,45 @@ export function CodeEditor({
                     </SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
+              </Select> */}
+              {/* <div className="flex gap-2 overflow-x-auto py-1">
+                {languages.map((lang) => {
+                  const isSelected = selectedLanguage === lang;
+                  return (
+                    <div
+                      key={lang}
+                      onClick={() => handleLanguageChange(lang)}
+                      className={`flex items-center gap-2 px-3 py-1 cursor-pointer rounded-md border text-sm
+                        ${isSelected
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : isDarkMode
+                            ? 'bg-zinc-800 text-zinc-100 border-zinc-700'
+                            : 'bg-muted text-muted-foreground border-muted'
+                        }
+                      `}
+                    >
+                      <LanguageIcon language={lang} className="w-4 h-4" />
+                      {lang}
+                    </div>
+                  );
+                })}
+              </div> */}
+              <div className="flex items-center gap-2 text-sm">
+                {languages.map((lang) => (
+                  <Button
+                    key={lang}
+                    variant={selectedLanguage === lang ? "secondary" : "ghost"}
+                    className="h-8 px-3 flex items-center gap-2"
+                    onClick={() => handleLanguageChange(lang)}
+                  >
+                    <LanguageIcon language={lang} className="w-4 h-4" />
+                    {lang}
+                  </Button>
+                ))}
+              </div>
+
+
+
 
               <div className="flex items-center gap-2">
                 <Button 
@@ -195,50 +234,15 @@ export function CodeEditor({
                   value={code}
                   onChange={(value) => setCode(value || "")}
                   theme={editorTheme === "gray" ? "gray-theme" : monacoThemeMap[editorTheme]}
-                  onMount={handleEditorMount}
-                  // options={{
-                  //   minimap: { enabled: false },
-                  //   fontSize: 14,
-                  //   fontFamily: "JetBrains Mono, monospace",
-                  //   lineNumbers: "on",
-                  //   scrollBeyondLastLine: false,
-                  //   automaticLayout: true,
-                  //   tabSize: 4,
-                  //   wordWrap: "off",
-                    
-                  //   // scrollbar: {
-                  //   //   horizontal: "auto",
-                  //   //   vertical: "auto",
-                  //   // },
-                  //   scrollbar: {
-                  //     horizontalScrollbarSize: 10,
-                  //     verticalScrollbarSize: 10,
-                  //     alwaysConsumeMouseWheel: false,
-                  //   },
-                    
-                  //   padding: { top: 16 },
-                  //   folding: true,
-                  //   foldingHighlight: true,
-                  //   // Enhanced bracket pair colorization
-                  //   bracketPairColorization: { 
-                  //     enabled: true,
-                  //     independentColorPoolPerBracketType: true,
-                  //   },
-                  //   matchBrackets: "always",
-                  //   autoIndent: "full",
-                  //   formatOnPaste: true,
-                  //   formatOnType: true,
-                  //   quickSuggestions: true,
-                  //   suggestOnTriggerCharacters: true,
-                  //   cursorBlinking: "smooth",
-                  //   cursorSmoothCaretAnimation: "on",
-                  //   smoothScrolling: true,
-                  //   guides: {
-                  //     bracketPairs: true,
-                  //     bracketPairsHorizontal: true,
-                  //     highlightActiveBracketPair: true,
-                  //     indentation: true,
-                  //   },
+                  // onMount={handleEditorMount}
+                  
+                  onMount={(editor, monaco) => {
+                    editorRef.current = editor;
+                    monacoRef.current = monaco;
+                    setTimeout(() => editor.layout(), 100);
+                  }}
+
+                  
                   options={{
                     minimap: { enabled: false },
                     fontSize: 14,

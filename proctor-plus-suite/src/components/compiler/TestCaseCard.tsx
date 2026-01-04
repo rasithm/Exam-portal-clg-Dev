@@ -21,7 +21,7 @@ export function TestCaseCard({
   index,
   inputs,
   expectedOutput,
-  isHidden = false,
+  isHidden,
   status = "pending",
   actualOutput,
   showDetails = true,
@@ -127,6 +127,12 @@ export function TestCaseCard({
               </pre>
             </div>
           )}
+        </div>
+      )}
+      {/* Show placeholder for hidden test case if not expanded */}
+      {isHidden && !showDetails && (
+        <div className="p-4 text-sm text-muted-foreground">
+          This test case is hidden and will be evaluated after submission.
         </div>
       )}
     </Card>

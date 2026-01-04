@@ -23,6 +23,8 @@ interface ProblemDescriptionProps {
   longDescription?: string;
   inputFormat: string;
   outputFormat: string;
+  sampleInput : string,
+  sampleOutput : string,
   testCases: TestCase[];
   attemptLimit?: number;
   attemptsUsed?: number;
@@ -54,6 +56,8 @@ export function ProblemDescription({
   longDescription,
   inputFormat,
   outputFormat,
+  sampleInput,
+  sampleOutput,
   testCases,
   attemptLimit,
   attemptsUsed = 0,
@@ -127,6 +131,23 @@ export function ProblemDescription({
           </div>
         </section>
 
+        {/* Sample Input/Output Section */}
+        <section className="grid md:grid-cols-2 gap-4 flex-shrink-0">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground mb-2">Sample Input</h2>
+            <pre className="text-xs bg-muted/50 rounded-md p-3 font-mono whitespace-pre-wrap">
+              {sampleInput || "N/A"}
+            </pre>
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-foreground mb-2">Sample Output</h2>
+            <pre className="text-xs bg-muted/50 rounded-md p-3 font-mono whitespace-pre-wrap">
+              {sampleOutput || "N/A"}
+            </pre>
+          </div>
+        </section>
+
+
         {/* Test Case Results Table - Shown after running */}
         {showResultsTable && tableResults.length > 0 && (
           <section className="flex-shrink-0">
@@ -170,7 +191,7 @@ export function ProblemDescription({
           </div>
 
           {/* Wrapper with visibility toggle - preserves space */}
-          <div 
+          {/* <div 
             className={`space-y-3 transition-opacity duration-200 ${
               showTestCases ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
@@ -189,7 +210,7 @@ export function ProblemDescription({
                 isRunning={runningTestCaseIndex === i}
               />
             ))}
-            {/* {showResultsTable && <TestCaseResultsTable results={tableResults} />} */}
+            
             {hiddenCount > 0 && (
               <TestCaseCard
                 index={visibleTestCases.length}
@@ -199,7 +220,50 @@ export function ProblemDescription({
                 showDetails={false}
               />
             )}
+          </div> */}
+          {/* Wrapper with visibility toggle - preserves space */}
+          <div 
+            className={`space-y-3 transition-opacity duration-200 ${
+              showTestCases ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+            style={{ visibility: showTestCases ? "visible" : "hidden" }}
+          >
+            
+            {visibleTestCases.map((tc, i) => (
+              <TestCaseCard
+                key={i}
+                index={i}
+                inputs={tc.inputs}
+                expectedOutput={tc.expectedOutput}
+                isHidden={false}
+                status={tc.status}
+                actualOutput={tc.actualOutput}
+                onRunTestCase={onRunTestCase}
+                isRunning={runningTestCaseIndex === i}
+              />
+            ))}
+            {testCases
+            .filter((tc) => tc.isHidden) // show only after run
+            .map((tc, i) => (
+              <TestCaseCard
+                key={`hidden-${i}`}
+                index={visibleTestCases.length + i}
+                inputs={tc.inputs}
+                expectedOutput={tc.expectedOutput}
+                isHidden={true}
+                showDetails={false}
+                // status={tc.status}
+                // actualOutput={tc.actualOutput}
+              />
+            ))}
+
+            {/* 🔧 Render hidden test cases properly */}
+            
+
+
           </div>
+
+
         </section>
       </div>
     </div>
