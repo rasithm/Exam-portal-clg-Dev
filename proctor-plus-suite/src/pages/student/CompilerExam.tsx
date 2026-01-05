@@ -39,10 +39,7 @@ export default function CompilerExam() {
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
 
-  // const currentQuestion = mockExam.questions[currentQuestionIndex];
-  // const [questions, setQuestions] = useState(
-  //   examData.questions.map(q => ({ ...q, completed: false }))
-  // );
+  
   useEffect(() => {
     const fetchCompilerExam = async () => {
       setLoading(true);
@@ -54,11 +51,7 @@ export default function CompilerExam() {
         });
         const { exam } = res.data;
 
-        // const { title, duration, language, questions } = res.data;
-
-        // if (!questions || questions.length === 0) {
-        //   throw new Error("No questions found for this exam.");
-        // }
+        
         if (!exam?.questions || exam.questions.length === 0) {
           throw new Error("No questions found for this exam.");
         }
@@ -67,11 +60,9 @@ export default function CompilerExam() {
 
         setExamData({ ...exam, languages: [exam.language?.trim()] });
 
-        // setQuestions(exam.questions.map(q => ({ ...q, completed: false })));
+        
         setQuestions(exam.questions.map(q => ({ ...q, completed: !!q.completed })));
-        // if (!exam.languages || !Array.isArray(exam.languages) || exam.languages.length === 0) {
-        //   throw new Error("Languages not set for this exam. Please contact the admin.");
-        // }
+        
       } catch (err: any) {
         console.error("Compiler exam fetch error:", err);
         const message = err.response?.data?.message || err.message || "Unknown error";
@@ -82,9 +73,9 @@ export default function CompilerExam() {
           variant: "destructive",
         });
 
-        // setTimeout(() => {
-        //   navigate("/student/dashboard");
-        // }, 2000);
+        setTimeout(() => {
+          navigate("/student/dashboard");
+        }, 2000);
       } finally {
         setLoading(false);
       }
@@ -183,17 +174,22 @@ export default function CompilerExam() {
       </div>
     );
   }
+  // if (!currentQuestion.completed && hasUnsavedCode) {
+  //   const confirmMove = window.confirm("Your code is not submitted. Navigate anyway?");
+  //   if (!confirmMove) return;
+  // }
+
 
   const handleStartExam = async () => {
     await enterFullscreen();
     setExamStarted(true);
   };
 
-  const handleRun = (code: string, language: string, customInput?: string) => {
+  const handleRunAll = (code: string, language: string, customInput?: string) => {
     setIsRunning(true);
     setOutput("Running all test cases...\n");
     
-    // Simulate code execution
+    
     setTimeout(() => {
       const visibleTestCases = currentQuestion.testCases.filter(tc => !tc.hidden);
       const statuses: { index: number; status: "passed" | "failed" }[] = [];
@@ -245,6 +241,51 @@ export default function CompilerExam() {
       setIsRunning(false);
     }, 1500);
   };
+  
+  const handleRun = async (code: string, language: string, customInput?: string) => {
+    if (!code?.trim()) {
+      toast({
+        title: 'Code required',
+        description: 'Write your code before running.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Detect if code expects input but input is missing
+    const expectsInput = /input\(|fs\.readFileSync|Scanner|readline/.test(code);
+    const inputGiven = customInput?.trim().length > 0;
+
+    if (expectsInput && !inputGiven) {
+      toast({
+        title: "Missing Input",
+        description: "This program expects input. Please provide input in the Custom Input tab.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsRunning(true);
+      setOutput("Running your code...");
+
+      const res = await axios.post(`${API_BASE}/api/student/compiler-exams/run-code`, {
+        sourceCode: code,
+        language,
+        customInput
+      }, { withCredentials: true });
+
+      setOutput(res.data.output || '');
+    } catch (err: any) {
+      setOutput(err.response?.data?.message || 'Execution error');
+    } finally {
+      setIsRunning(false);
+      setShowResultsTable(false);
+    }
+    
+  };
+
+
 
   // Run a single test case
   const handleRunTestCase = (testCaseIndex: number) => {
@@ -334,6 +375,16 @@ export default function CompilerExam() {
 
 
   const handleFinalSubmit = () => {
+    const incomplete = questions.filter(q => !q.completed);
+    if (incomplete.length > 0) {
+      toast({
+        title: "Incomplete Questions",
+        description: `You must complete all questions before ending the exam.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     setShowSubmitModal(false);
     exitFullscreen();
     toast({
@@ -463,16 +514,7 @@ export default function CompilerExam() {
               outputFormat={currentQuestion.outputFormat}
               sampleInput={currentQuestion.sampleInput}
               sampleOutput={currentQuestion.sampleOutput}
-              // testCases={(currentQuestion.testCases || []).map((tc, i) => {
-              //   if (tc.hidden === true) return null;
-                
-              //   const result = testCaseResults[currentQuestion.id]?.[i];
-              //   return {
-              //     ...tc,
-              //     status: result?.status,
-              //     actualOutput: result?.actualOutput,
-              //   };
-              // }).filter(Boolean)}
+              
               testCases={(currentQuestion.testCases || []).map((tc, i) => {
                 const result = testCaseResults[currentQuestion.id]?.[i];
                 return {

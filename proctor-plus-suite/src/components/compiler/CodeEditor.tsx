@@ -10,6 +10,7 @@ import { EditorTheme } from "./ThemeSelector";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/uis/resizable";
 import { LanguageIcon } from "./LanguageIcons";
 import type { editor } from "monaco-editor";
+import { toast } from "@/hooks/use-toast";
 import { TestCaseCard } from "./TestCaseCard";
 import { TestCaseResultsTable } from "./TestCaseResultsTable";
 
@@ -67,7 +68,45 @@ export function CodeEditor({
     
   
   const [customInputs, setCustomInputs] = useState<string[]>([""]);
-  
+  const [detectedInputs, setDetectedInputs] = useState<{ label: string }[]>([]);
+  const [inputRequired, setInputRequired] = useState(false);
+
+  useEffect(() => {
+    const needsInput = /input\(|fs\.readFileSync|Scanner|readline/.test(code);
+    setInputRequired(needsInput);
+
+    if (!needsInput) {
+      setDetectedInputs([]);
+      return;
+    }
+
+    const nextCallMatches = [...code.matchAll(/(?:const|let|var)?\s*(\w+)?\s*=?\s*(?:Number\()?next\(\)?/g)];
+
+    let inputs: { label: string }[] = [];
+
+    // Track inputs with variable names
+    nextCallMatches.forEach((match, i) => {
+      const varName = match[1]?.trim();
+      if (varName) {
+        inputs.push({ label: `${varName}:` });
+      } else {
+        inputs.push({ label: `Input ${i + 1}:` });
+      }
+    });
+
+    // Fallback: count raw next() if no matches
+    if (inputs.length === 0) {
+      const fallbackCount = (code.match(/next\(\)/g) || []).length;
+      for (let i = 0; i < fallbackCount; i++) {
+        inputs.push({ label: `Input ${i + 1}:` });
+      }
+    }
+
+    setDetectedInputs(inputs);
+    setCustomInputs(Array(inputs.length).fill(""));
+  }, [code]);
+
+
 
   const customInputCount = customInputs.length;
   const isDarkMode = editorTheme !== "light";
@@ -124,8 +163,31 @@ export function CodeEditor({
 
   const handleRunWithCustomInput = () => {
     const formattedInput = customInputs.filter(i => i.trim()).join("\n");
+
+    if (!formattedInput.trim()) {
+      toast({
+        title: "Input Required",
+        description: "Please fill in required inputs before running.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     onRun?.(code, selectedLanguage, formattedInput);
   };
+
+  const handleRunClick = () => {
+    if (inputRequired) {
+      toast({
+        title: "Custom Input Required",
+        description: "This code requires input. Please provide input values under the Custom Input tab.",
+        variant: "destructive",
+      });
+      return;
+    }
+    onRun?.(code, selectedLanguage);
+  };
+
 
   return (
     <div className="flex flex-col h-full bg-card rounded-lg border border-border ">
@@ -134,44 +196,7 @@ export function CodeEditor({
           <div className="flex flex-col h-full">
             {/* Toolbar */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
-              {/* <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="w-44 h-8 text-sm">
-                  <LanguageIcon language={selectedLanguage} className="w-4 h-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {languages.map((lang) => (
-                    <SelectItem key={lang} value={lang}>
-                      <div className="flex items-center gap-2">
-                        <LanguageIcon language={lang} className="w-4 h-4" />
-                        {lang}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select> */}
-              {/* <div className="flex gap-2 overflow-x-auto py-1">
-                {languages.map((lang) => {
-                  const isSelected = selectedLanguage === lang;
-                  return (
-                    <div
-                      key={lang}
-                      onClick={() => handleLanguageChange(lang)}
-                      className={`flex items-center gap-2 px-3 py-1 cursor-pointer rounded-md border text-sm
-                        ${isSelected
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : isDarkMode
-                            ? 'bg-zinc-800 text-zinc-100 border-zinc-700'
-                            : 'bg-muted text-muted-foreground border-muted'
-                        }
-                      `}
-                    >
-                      <LanguageIcon language={lang} className="w-4 h-4" />
-                      {lang}
-                    </div>
-                  );
-                })}
-              </div> */}
+              
               <div className="flex items-center gap-2 text-sm">
                 {languages.map((lang) => (
                   <Button
@@ -202,8 +227,8 @@ export function CodeEditor({
                 <Button 
                   variant="secondary" 
                   size="sm" 
-                  onClick={() => onRun?.(code, selectedLanguage)}
-                  disabled={isRunning}
+                  onClick={handleRunClick}
+                  disabled={isRunning || inputRequired}
                   className="h-8 px-4 bg-gray-800 text-cyan-50 hover:bg-gray-800 hover:text-cyan-50"
                 >
                   {isRunning ? (
@@ -211,7 +236,21 @@ export function CodeEditor({
                   ) : (
                     <Play className="w-4 h-4 mr-1" />
                   )}
-                  Run
+                  Run 
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={handleRunClick}
+                  disabled={isRunning || inputRequired}
+                  className="h-8 px-4 bg-gray-800 text-cyan-50 hover:bg-gray-800 hover:text-cyan-50"
+                >
+                  {isRunning ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4 mr-1" />
+                  )}
+                  Run All
                 </Button>
                 <Button 
                   size="sm" 
@@ -284,10 +323,14 @@ export function CodeEditor({
                     <Terminal className="w-3.5 h-3.5" />
                     Output
                   </TabsTrigger>
-                  <TabsTrigger value="custom" className="text-xs gap-1.5 data-[state=active]:bg-muted">
+                  <TabsTrigger value="custom" className="text-xs gap-1.5 relative data-[state=active]:bg-muted">
                     <TestTube2 className="w-3.5 h-3.5" />
                     Custom Input
+                    {code && /input\(|fs\.readFileSync|Scanner|readline/.test(code) && customInputs.every(i => !i.trim()) && (
+                      <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                    )}
                   </TabsTrigger>
+
                 </TabsList>
                 {outputTab === "custom" && (
                   <Button
@@ -318,23 +361,18 @@ export function CodeEditor({
               </TabsContent>
               
               <TabsContent value="custom" className="flex-1 m-0 overflow-hidden p-2">
-                {/* <Textarea
-                  value={customInput}
-                  onChange={(e) => setCustomInput(e.target.value)}
-                  placeholder="Enter custom input here..."
-                  className="h-full resize-none font-mono text-sm bg-muted/30 border-muted"
-                /> */}
+                
                 <div className={`h-full overflow-auto rounded-md p-3 font-mono text-sm ${isDarkMode ? 'bg-zinc-800 border-zinc-600' : 'bg-muted/30 border-muted'} border`}>
-                  {Array.from({ length: customInputCount }, (_, i) => (
+                  {detectedInputs.map((input, i) => (
                     <div key={i} className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs font-medium min-w-16 ${isDarkMode ? 'text-zinc-400' : 'text-muted-foreground'}`}>
-                        Input {i + 1}:
+                      <span className={`text-xs font-medium min-w-28 ${isDarkMode ? 'text-zinc-400' : 'text-muted-foreground'}`}>
+                        {input.label}
                       </span>
                       <input
                         type="text"
                         value={customInputs[i] || ""}
                         onChange={(e) => handleCustomInputChange(i, e.target.value)}
-                        placeholder="Enter value..."
+                        placeholder={`Enter ${input.label.replace(":", "")}`}
                         className={`flex-1 bg-transparent border-b text-sm py-1 outline-none ${
                           isDarkMode 
                             ? 'border-zinc-600 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-400' 
@@ -343,6 +381,8 @@ export function CodeEditor({
                       />
                     </div>
                   ))}
+
+
                   <p className={`text-xs mt-3 ${isDarkMode ? 'text-zinc-500' : 'text-muted-foreground'}`}>
                     Press Enter after each input value
                   </p>
