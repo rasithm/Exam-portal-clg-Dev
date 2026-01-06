@@ -10,12 +10,12 @@ import { submitToJudge0 } from '../services/judge0Service.js';
 
 const EXEC_TIMEOUT_MS = 120000; // 2 minutes
 
-export const runCodeWithCustomInput = async (req, res) => {
+export const runCode = async (req, res) => {
   try {
-    const { sourceCode, language, customInput = '' } = req.body;
+    const { sourceCode, language, customInput = "" } = req.body;
 
     if (!sourceCode?.trim()) {
-      return res.status(400).json({ message: 'Source code is required' });
+      return res.status(400).json({ message: "Source code is required" });
     }
 
     const languageId = mapLanguageToId(language);
@@ -24,26 +24,25 @@ export const runCodeWithCustomInput = async (req, res) => {
     const result = await Promise.race([
       resultPromise,
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Execution timed out')), EXEC_TIMEOUT_MS)
+        setTimeout(() => reject(new Error("Execution timed out after 2 minutes")), EXEC_TIMEOUT_MS)
       )
     ]);
 
-    if (result.stderr || result.compile_output) {
-      return res.status(200).json({
-        output: result.stderr || result.compile_output,
-        success: false
-      });
-    }
+    const combinedOutput = [result.compile_output, result.stdout, result.stderr]
+      .filter(Boolean)
+      .join("\n");
 
     return res.status(200).json({
-      output: result.stdout || '',
-      success: true
+      output: combinedOutput,
+      success: !result.stderr && !result.compile_output,
+      time: result.time,
     });
   } catch (err) {
-    console.error('Run code error:', err);
-    return res.status(500).json({ message: err.message || 'Execution failed' });
+    console.error("Run code error:", err);
+    return res.status(500).json({ message: err.message || "Execution failed" });
   }
 };
+
 
 const mapLanguageToId = (lang) => {
   const languageMap = {

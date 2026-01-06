@@ -52,7 +52,7 @@ export function CodeEditor({
   onRun, 
   onSubmit, 
   isRunning = false,
-  output = "",
+  output: initialOutput = "",
   editorTheme = "vs-dark"
 }: CodeEditorProps) {
 
@@ -60,25 +60,24 @@ export function CodeEditor({
 
   const [code, setCode] = useState(defaultCode[languageMap[selectedLanguage]] || "");
   const [customInput, setCustomInput] = useState("");
+  const [output, setOutput] = useState(initialOutput);
+
   const [outputTab, setOutputTab] = useState<"output" | "custom">("output");
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
-  
+  const [isWaitingForInput, setIsWaitingForInput] = useState(false);
+
 
     
   
-  const [customInputs, setCustomInputs] = useState<string[]>([""]);
-  const [detectedInputs, setDetectedInputs] = useState<{ label: string }[]>([]);
+ 
   const [inputRequired, setInputRequired] = useState(false);
 
   useEffect(() => {
     const needsInput = /input\(|fs\.readFileSync|Scanner|readline/.test(code);
     setInputRequired(needsInput);
 
-    if (!needsInput) {
-      setDetectedInputs([]);
-      return;
-    }
+    
 
     const nextCallMatches = [...code.matchAll(/(?:const|let|var)?\s*(\w+)?\s*=?\s*(?:Number\()?next\(\)?/g)];
 
@@ -102,13 +101,17 @@ export function CodeEditor({
       }
     }
 
-    setDetectedInputs(inputs);
-    setCustomInputs(Array(inputs.length).fill(""));
+    
   }, [code]);
 
+  useEffect(() => {
+    setOutput(initialOutput);
+  }, [initialOutput]);
 
 
-  const customInputCount = customInputs.length;
+
+
+  
   const isDarkMode = editorTheme !== "light";
   const defaultLang = languages?.[0] || "Python";
 
@@ -120,16 +123,7 @@ export function CodeEditor({
     }
   }, [languages]);
 
-  const handleCustomInputChange = (index: number, value: string) => {
-    setCustomInputs((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      if (index === prev.length - 1 && value.trim() !== "") {
-        next.push("");
-      }
-      return next;
-    });
-  };
+  
 
   const handleEditorMount = (editor: editor.IStandaloneCodeEditor, monaco: Monaco) => {
     editorRef.current = editor;
@@ -161,32 +155,38 @@ export function CodeEditor({
     setCode(defaultCode[languageMap[selectedLanguage]] || "");
   };
 
-  const handleRunWithCustomInput = () => {
-    const formattedInput = customInputs.filter(i => i.trim()).join("\n");
-
-    if (!formattedInput.trim()) {
-      toast({
-        title: "Input Required",
-        description: "Please fill in required inputs before running.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    onRun?.(code, selectedLanguage, formattedInput);
-  };
+ 
 
   const handleRunClick = () => {
-    if (inputRequired) {
+    if (isRunning) {
       toast({
-        title: "Custom Input Required",
-        description: "This code requires input. Please provide input values under the Custom Input tab.",
-        variant: "destructive",
+        title: "Execution Stopped",
+        description: "Program stopped manually by user.",
       });
+      setOutput(prev => prev + "\n\n[Execution manually stopped]");
+      // setIsRunning(false);
       return;
     }
+
+    // if (inputRequired && !output.trim()) {
+    //   toast({
+    //     title: "Input Required",
+    //     description: "Please provide input in the output console and click Submit Input.",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
+
+    if (inputRequired) {
+      setOutput("");
+      setIsWaitingForInput(true);
+      return;
+    }
+
     onRun?.(code, selectedLanguage);
+
   };
+
 
 
   return (
@@ -203,7 +203,6 @@ export function CodeEditor({
                     key={lang}
                     variant={selectedLanguage === lang ? "secondary" : "ghost"}
                     className="h-8 px-3 flex items-center gap-2"
-                    onClick={() => handleLanguageChange(lang)}
                   >
                     <LanguageIcon language={lang} className="w-4 h-4" />
                     {lang}
@@ -228,16 +227,21 @@ export function CodeEditor({
                   variant="secondary" 
                   size="sm" 
                   onClick={handleRunClick}
-                  disabled={isRunning || inputRequired}
                   className="h-8 px-4 bg-gray-800 text-cyan-50 hover:bg-gray-800 hover:text-cyan-50"
                 >
                   {isRunning ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      Stop
+                    </>
                   ) : (
-                    <Play className="w-4 h-4 mr-1" />
+                    <>
+                      <Play className="w-4 h-4 mr-1" />
+                      Run
+                    </>
                   )}
-                  Run 
                 </Button>
+
                 <Button 
                   variant="secondary" 
                   size="sm" 
@@ -323,16 +327,10 @@ export function CodeEditor({
                     <Terminal className="w-3.5 h-3.5" />
                     Output
                   </TabsTrigger>
-                  <TabsTrigger value="custom" className="text-xs gap-1.5 relative data-[state=active]:bg-muted">
-                    <TestTube2 className="w-3.5 h-3.5" />
-                    Custom Input
-                    {code && /input\(|fs\.readFileSync|Scanner|readline/.test(code) && customInputs.every(i => !i.trim()) && (
-                      <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
-                    )}
-                  </TabsTrigger>
+                  
 
                 </TabsList>
-                {outputTab === "custom" && (
+                {/* {outputTab === "custom" && (
                   <Button
                     variant="secondary"
                     size="sm"
@@ -347,47 +345,81 @@ export function CodeEditor({
                     )}
                     Run with Input
                   </Button>
-                )}
+                )} */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 px-3 text-muted-foreground hover:text-foreground"
+                  onClick={() => setOutput("")}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
+
               </div>
               
               <TabsContent value="output" className="flex-1 m-0 overflow-auto">
                 <div className="h-full overflow-auto p-4 font-mono text-sm scrollbar-thin">
-                  {output ? (
-                    <pre className="whitespace-pre-wrap text-foreground">{output}</pre>
-                  ) : (
+                  {/* {output && isWaitingForInput ? (
+                    <textarea
+                      value={output}
+                      onChange={(e) => setOutput(e.target.value)}
+                      placeholder="Waiting for input..."
+                      className="w-full h-full bg-black text-green-400 font-mono text-sm p-3 rounded-md resize-none focus:outline-none"
+                    />
+
+                  ) : output ? (<pre className="whitespace-pre-wrap text-foreground font-mono text-sm bg-black text-green-400 p-3 rounded-md">
+                                  {output}
+                                </pre>) : (
                     <span className="text-muted-foreground">Run your code to see output...</span>
+                  )} */}
+                  {isWaitingForInput ? (
+                    <div className="flex flex-col gap-2 h-full">
+                      <textarea
+                        value={output}
+                        onChange={(e) => setOutput(e.target.value)}
+                        placeholder="Example:\n5\n6"
+                        className="w-full h-full bg-black text-green-400 font-mono text-sm p-3 rounded-md resize-none focus:outline-none"
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          className="h-8 px-4"
+                          onClick={() => {
+                            setIsWaitingForInput(false);
+                            onRun?.(code, selectedLanguage, output.trim());
+                          }}
+                        >
+                          Submit Input
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <pre className="whitespace-pre-wrap text-foreground font-mono text-sm bg-black text-green-400 p-3 rounded-md">
+                      {output || "Run your code to see output..."}
+                    </pre>
                   )}
+
+
                 </div>
+                {isWaitingForInput && (
+                  <div className="px-4 py-2 border-t border-border bg-muted/40 flex justify-end">
+                    <Button
+                      size="sm"
+                      className="h-8 px-4"
+                      onClick={() => {
+                        setIsWaitingForInput(false);
+                        onRun?.(code, selectedLanguage, output.trim());
+                      }}
+                    >
+                      Submit Input
+                    </Button>
+                  </div>
+                )}
+
               </TabsContent>
               
-              <TabsContent value="custom" className="flex-1 m-0 overflow-hidden p-2">
-                
-                <div className={`h-full overflow-auto rounded-md p-3 font-mono text-sm ${isDarkMode ? 'bg-zinc-800 border-zinc-600' : 'bg-muted/30 border-muted'} border`}>
-                  {detectedInputs.map((input, i) => (
-                    <div key={i} className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs font-medium min-w-28 ${isDarkMode ? 'text-zinc-400' : 'text-muted-foreground'}`}>
-                        {input.label}
-                      </span>
-                      <input
-                        type="text"
-                        value={customInputs[i] || ""}
-                        onChange={(e) => handleCustomInputChange(i, e.target.value)}
-                        placeholder={`Enter ${input.label.replace(":", "")}`}
-                        className={`flex-1 bg-transparent border-b text-sm py-1 outline-none ${
-                          isDarkMode 
-                            ? 'border-zinc-600 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-400' 
-                            : 'border-muted text-foreground placeholder:text-muted-foreground focus:border-primary'
-                        }`}
-                      />
-                    </div>
-                  ))}
-
-
-                  <p className={`text-xs mt-3 ${isDarkMode ? 'text-zinc-500' : 'text-muted-foreground'}`}>
-                    Press Enter after each input value
-                  </p>
-                </div>
-              </TabsContent>
+              
             </Tabs>
           </div>
         </ResizablePanel>
