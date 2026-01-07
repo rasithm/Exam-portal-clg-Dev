@@ -63,80 +63,170 @@ const mapLanguageToId = (lang) => {
 };
 
 
-export const evaluateCodeSubmission = async (req, res) => {
+
+// Line: ADD NEW FUNCTION IN CONTROLLER
+export const runAllAndEvaluate = async (req, res) => {
   try {
-    const { examId, questionId } = req.params;
-    const { code, language, studentInput } = req.body;
+    const {
+      
+      examId,
+      questionId,
+      sourceCode,
+      language,
+      violationDetected = false
+    } = req.body;
     const studentId = req.user._id;
-
+    const student = await Student.findById(studentId);
     const question = await CompilerQuestion.findById(questionId);
-    if (!question) return res.status(404).json({ message: "Question not found" });
+    if (!student || !question) return res.status(404).json({ message: "Invalid student or question" });
 
-    // Use language map or Judge0 language IDs
-    const languageId = getJudge0LanguageId(language);
-    const results = [];
+    const attemptsUsed = await StudentCodeSubmission.countDocuments({ student: studentId, question: questionId });
+    const maxAttempts = question.attemptLimit || 3;
 
-    for (let tc of question.testCases) {
-      const input = (tc.inputs || []).join('\n');
+    if (attemptsUsed >= maxAttempts) {
+      return res.status(403).json({ message: "Attempt limit exceeded" });
+    }
 
-      const judgeRes = await submitToJudge0({
-        sourceCode: code,
-        languageId,
-        stdin: input,
+    const langId = mapLanguageToId(language);
+    const testCaseResults = [];
+    let passedWeight = 0;
+    let passedCount = 0;
+    let rawOutput = "";
+
+    for (let i = 0; i < question.testCases.length; i++) {
+      const tc = question.testCases[i];
+      const { stdout, stderr, compile_output } = await submitToJudge0({
+        sourceCode,
+        languageId: langId,
+        stdin: tc.inputs.join("\n"),
       });
 
-      const passed = judgeRes.stdout?.trim() === tc.expectedOutput?.trim();
-      results.push({
+      const out = [compile_output, stdout, stderr].filter(Boolean).join("\n");
+      const passed = stdout?.trim() === tc.expectedOutput?.trim();
+
+
+      if (passed) passedWeight += Number(tc.weight) || 1;
+      if (passed) passedCount++;
+
+      rawOutput += `Test Case ${i + 1} (${passed ? "✓" : "✗"}): ${stdout?.trim() || out.trim()}\n`;
+
+
+      testCaseResults.push({
         inputs: tc.inputs,
         expectedOutput: tc.expectedOutput,
-        actualOutput: judgeRes.stdout,
+        actualOutput: stdout?.trim() || "",
         passed,
       });
+
     }
 
-    const passedCount = results.filter(r => r.passed).length;
-    const totalCount = results.length;
-    const mode = question.evaluationMode || 'strict';
+    // Normalize weights
+    const weights = question.testCases.map(tc => Number(tc.weight) || 0);
+    let totalWeight = weights.reduce((a, b) => a + b, 0);
 
-    let status = 'failed';
-    if (mode === 'strict') {
-      status = passedCount === totalCount ? 'passed' : 'failed';
-    } else {
-      status = (passedCount / totalCount) >= 0.6 ? 'passed' : 'failed';
+    // If no weights defined, distribute equally
+    if (totalWeight === 0) {
+      totalWeight = question.testCases.length;
+      passedWeight = passedCount;
     }
 
-    await StudentCodeSubmission.findOneAndUpdate(
-      { studentId, examId, questionId },
-      {
-        studentId,
-        examId,
-        questionId,
-        code,
-        language,
-        results,
-        status,
-        score: status === 'passed' ? question.marks : 0,
-      },
-      { upsert: true }
-    );
+    // Ensure marks exists
+    const maxMarks = Number(question.marks) || 0;
 
-    return res.json({ message: "Code submitted", status, results });
+    // Prevent NaN
+    const percent = totalWeight > 0 ? (passedWeight / totalWeight) * 100 : 0;
+    const score = Math.round((percent / 100) * maxMarks);
+
+
+    const shouldAutoSubmit =
+      (question.strict && percent === 100) || (!question.strict && percent >= 60);
+
+    const submission = {
+      studentId,
+      examId,
+      questionId,
+      language,
+      code: sourceCode,
+      results: testCaseResults.map(tc => ({
+        inputs: tc.inputs,
+        expectedOutput: tc.expectedOutput,
+        actualOutput: tc.actualOutput || "",
+        passed: tc.passed,
+      })),
+      score,
+      status: percent === 100 ? "passed" : percent >= 60 ? "partial" : "failed",
+      attempts: attemptsUsed + 1,
+      autoSubmitted: shouldAutoSubmit,
+      violationDetected,
+    };
+
+    if (!Number.isFinite(score)) {
+      console.error("Invalid score computed:", { passedWeight, totalWeight, maxMarks });
+      return res.status(500).json({ message: "Internal scoring error" });
+    }
+
+    if (shouldAutoSubmit || violationDetected) {
+      await StudentCodeSubmission.create(submission);
+    }
+
+
+    return res.json({
+      testCasesResult: testCaseResults,
+      passedCount,
+      totalCases: question.testCases.length,
+      mark: score,
+      percent,
+      autoSubmit: shouldAutoSubmit,
+      violation: violationDetected,
+      rawOutput,
+    });
+
   } catch (err) {
-    console.error("Judge0 submit error", err);
-    return res.status(500).json({ message: "Execution failed" });
+    console.error("Run All Error:", err);
+    res.status(500).json({ message: "Server error during test execution" });
   }
 };
 
-const getJudge0LanguageId = (lang) => {
-  const map = {
-    Python: 71,
-    JavaScript: 63,
-    Java: 62,
-    'C++': 54,
-    C: 50,
-  };
-  return map[lang] || 71;
+// Line: ADD BELOW runAllTestCases
+export const manualSubmit = async (req, res) => {
+  try {
+    const { examId, questionId } = req.body;
+    const studentId = req.user._id;
+
+    const existing = await StudentCodeSubmission.findOne({ studentId, questionId });
+    if (existing) return res.status(409).json({ message: "Already submitted" });
+
+    const lastEval = await StudentCodeSubmission.findOne({ studentId, questionId }).sort({ submittedAt: -1 });
+
+    if (!lastEval) return res.status(400).json({ message: "Run evaluation first" });
+
+    lastEval.autoSubmitted = false;
+    await lastEval.save();
+    await Student.findByIdAndUpdate(studentId, {
+      $push: {
+        scores: {
+          examId,
+          score,
+          percentage: percent,
+          date: new Date(),
+        },
+      },
+    });
+
+
+    res.status(200).json({ message: "Submission confirmed", submission: lastEval });
+  } catch (err) {
+    console.error("Submit Error:", err);
+    res.status(500).json({ message: "Failed to submit" });
+  }
 };
+
+
+
+
+
+
+
 
 
 

@@ -38,6 +38,10 @@ export default function CompilerExam() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [codeMap, setCodeMap] = useState<Record<string, string>>({});
+  const [lastRunResult, setLastRunResult] = useState<any>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
 
   
   useEffect(() => {
@@ -58,10 +62,19 @@ export default function CompilerExam() {
 
 
 
-        setExamData({ ...exam, languages: [exam.language?.trim()] });
+        // setExamData({ ...exam, languages: [exam.language?.trim()] });
 
         
         setQuestions(exam.questions.map(q => ({ ...q, completed: !!q.completed })));
+        setExamData({
+          ...exam,
+          questions: exam.questions.map(q => ({
+            ...q,
+            id: q._id
+          })),
+          languages: [exam.language?.trim()]
+        });
+
         
       } catch (err: any) {
         console.error("Compiler exam fetch error:", err);
@@ -184,63 +197,120 @@ export default function CompilerExam() {
     await enterFullscreen();
     setExamStarted(true);
   };
+  if (hasUnsavedChanges) {
+    const ok = window.confirm("Unsaved code will be lost. Continue?");
+    if (!ok) return;
+  }
 
-  const handleRunAll = (code: string, language: string, customInput?: string) => {
-    setIsRunning(true);
-    setOutput("Running all test cases...\n");
-    
-    
-    setTimeout(() => {
-      const visibleTestCases = currentQuestion.testCases.filter(tc => !tc.hidden);
-      const statuses: { index: number; status: "passed" | "failed" }[] = [];
-      const results: Record<number, { status: "passed" | "failed"; actualOutput: string }> = {};
-      const allTableResults: typeof tableResults = [];
-      
-      let outputText = "";
-      
-      if (customInput) {
-        outputText = `=== Running ${language} with Custom Input ===\n\nInput:\n${customInput}\n\nOutput:\n[Simulated output for custom input]\n`;
-        setShowResultsTable(false);
-      } else {
-        outputText = `=== Running ${language} - All Test Cases ===\n\n`;
-        
-        visibleTestCases.forEach((tc, i) => {
-          const passed = Math.random() > 0.3;
-          const actualOutput = passed ? tc.expectedOutput : "Wrong output";
-          
-          results[i] = { status: passed ? "passed" : "failed", actualOutput };
-          statuses.push({ index: i, status: passed ? "passed" : "failed" });
-          
-          // Add to table results
-          allTableResults.push({
-            sno: i + 1,
-            name: `Test Case ${i + 1}`,
-            input: tc.inputs.join(", "),
-            expectedOutput: tc.expectedOutput,
-            actualOutput,
-            status: passed ? "passed" : "failed",
-          });
-          
-          outputText += `Test Case ${i + 1}: ${passed ? "✓ Passed" : "✗ Failed"}\n`;
-        });
-        
-        outputText += `\n--- Summary ---\n`;
-        outputText += `Passed: ${statuses.filter(s => s.status === "passed").length}/${visibleTestCases.length}\n`;
-        
-        // Show table results for all test cases
-        setTableResults(allTableResults);
-        setShowResultsTable(true);
-      }
-      
-      setOutput(outputText);
-      setTestCaseStatuses(statuses);
+
+
+
+ 
+
+// pages/student/compiler/CompilerExam.tsx
+// Function: handleRunAll (updated for validation, attempt limit, strict mode, UI sync)
+
+const handleRunAll = async (code: string, language: string) => {
+  if (!code?.trim()) {
+    toast({
+      title: "Code Required",
+      description: "Please write your code before evaluating.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (!currentQuestion?.testCases || currentQuestion.testCases.length === 0) {
+    toast({
+      title: "Test Cases Missing",
+      description: "No test cases found for this question.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const attempts = attemptsUsed[currentQuestion.id] || 0;
+  const limit = currentQuestion.attemptLimit ?? Infinity;
+
+  // if (attempts >= limit) {
+  //   toast({
+  //     title: "Attempt Limit Reached",
+  //     description: "You have used all attempts for this question.",
+  //     variant: "destructive",
+  //   });
+  //   return;
+  // }
+
+  setIsRunning(true);
+
+  try {
+    const res = await axios.post(
+      `${API_BASE}/api/student/compiler-exams/run-all`,
+      {
+        questionId: currentQuestion.id,
+        examId,
+        sourceCode: code,
+        language,
+        violationDetected: tabSwitchCount > 2 || !isFullscreen,
+      },
+      { withCredentials: true }
+    );
+
+    const data = res.data;
+
+    // if (data?.violation) {
+    //   toast({
+    //     title: "Violation Detected",
+    //     description: "Exam submitted due to violation.",
+    //     variant: "destructive",
+    //   });
+    //   handleFinalSubmit();
+    //   return;
+    // }
+
+    if (Array.isArray(data.testCasesResult)) {
+      const mappedResults: Record<number, any> = {};
+
+      data.testCasesResult.forEach((tc: any, i: number) => {
+        mappedResults[i] = {
+          status: tc.passed ? "passed" : "failed",
+          actualOutput: tc.actualOutput || "",
+        };
+      });
+
       setTestCaseResults(prev => ({
         ...prev,
-        [currentQuestion.id]: results,
+        [currentQuestion.id]: mappedResults,
       }));
-      setIsRunning(false);
-    }, 1500);
-  };
+    }
+
+    setOutput(data.rawOutput || "");
+
+    setAttemptsUsed(prev => ({
+      ...prev,
+      [currentQuestion.id]: attempts + 1,
+    }));
+
+    if (data.autoSubmit) {
+      toast({ title: "All test cases passed!" });
+    }
+
+  } catch (err: any) {
+    console.error("Run All Error:", err);
+    toast({
+      title: "Execution Error",
+      description: err.response?.data?.message || err.message,
+      variant: "destructive",
+    });
+  } finally {
+    setIsRunning(false);
+  }
+};
+
+
+
+
+
   
   const handleRun = async (code: string, language: string, customInput?: string) => {
     if (!code?.trim()) {
@@ -545,11 +615,17 @@ export default function CompilerExam() {
             <CodeEditor
               languages={examData.languages}
               onRun={handleRun}
+              onRunAll={handleRunAll}
               onSubmit={handleSubmit}
               isRunning={isRunning}
               output={output}
               editorTheme={editorTheme}
               testCaseStatuses={testCaseStatuses}
+              code={codeMap[currentQuestion.id] || ""}
+              onCodeChange={(c) => {
+                setHasUnsavedChanges(true);
+                setCodeMap(prev => ({ ...prev, [currentQuestion.id]: c }));
+              }}
             />
           </div>
 

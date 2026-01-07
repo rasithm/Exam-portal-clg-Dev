@@ -1,7 +1,5 @@
 // models/CompilerExam.js
 import mongoose from 'mongoose';
-
-
 const CompilerExamSchema = new mongoose.Schema({
   title: { type: String, required: true },
   language: { type: String, required: true }, // now dynamic via controller validation
@@ -20,7 +18,5 @@ const CompilerExamSchema = new mongoose.Schema({
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   createdAt: { type: Date, default: Date.now }
 });
-
-
 
 export default mongoose.model('CompilerExam', CompilerExamSchema);

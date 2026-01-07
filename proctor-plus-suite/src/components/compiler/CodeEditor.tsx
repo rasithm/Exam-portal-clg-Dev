@@ -17,11 +17,14 @@ import { TestCaseResultsTable } from "./TestCaseResultsTable";
 interface CodeEditorProps {
   languages: string[];
   onRun?: (code: string, language: string, customInput?: string) => void;
+  onRunAll?: (code: string, language: string,) => void;
   onSubmit?: (code: string, language: string) => void;
   isRunning?: boolean;
   output?: string;
   editorTheme?: EditorTheme;
   testCaseStatuses?: { index: number; status: "passed" | "failed" }[];
+  code: string;
+  onCodeChange: (code: string) => void;
 }
 
 const languageMap: Record<string, string> = {
@@ -49,8 +52,10 @@ const defaultCode: Record<string, string> = {
 
 export function CodeEditor({ 
   languages, 
-  onRun, 
-  onSubmit, 
+  onRun,
+  onRunAll, 
+  onSubmit,
+  onCodeChange, 
   isRunning = false,
   output: initialOutput = "",
   editorTheme = "vs-dark"
@@ -66,6 +71,9 @@ export function CodeEditor({
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const [isWaitingForInput, setIsWaitingForInput] = useState(false);
+  const [codeMap, setCodeMap] = useState<Record<string, string>>({});
+
+  
 
 
     
@@ -108,9 +116,10 @@ export function CodeEditor({
     setOutput(initialOutput);
   }, [initialOutput]);
 
+  
 
 
-
+  
   
   const isDarkMode = editorTheme !== "light";
   const defaultLang = languages?.[0] || "Python";
@@ -245,8 +254,8 @@ export function CodeEditor({
                 <Button 
                   variant="secondary" 
                   size="sm" 
-                  onClick={handleRunClick}
-                  disabled={isRunning || inputRequired}
+                  onClick={() => onRunAll?.(code, selectedLanguage)}
+                  disabled={isRunning}
                   className="h-8 px-4 bg-gray-800 text-cyan-50 hover:bg-gray-800 hover:text-cyan-50"
                 >
                   {isRunning ? (
@@ -256,6 +265,7 @@ export function CodeEditor({
                   )}
                   Run All
                 </Button>
+
                 <Button 
                   size="sm" 
                   onClick={() => onSubmit?.(code, selectedLanguage)}

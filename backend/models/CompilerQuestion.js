@@ -1,13 +1,10 @@
 // models/CompilerQuestion.js
 import mongoose from 'mongoose';
-
-
 const TestCaseSchema = new mongoose.Schema({
 inputs: [String],
 expectedOutput: { type: String, required: true },
 hidden: { type: Boolean, default: false }
 });
-
 const CompilerQuestionSchema = new mongoose.Schema({
 exam: { type: mongoose.Schema.Types.ObjectId, ref: 'CompilerExam', required: true },
 title: { type: String, required: true },

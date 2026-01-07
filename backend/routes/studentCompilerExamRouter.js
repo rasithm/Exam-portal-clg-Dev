@@ -3,13 +3,13 @@ import express from 'express';
 import { protect } from "../middlewares/auth.js";
 import {
 
-getCompilerExamById
-,evaluateCodeSubmission , runCode
+getCompilerExamById , runCode ,  runAllAndEvaluate, manualSubmit
 } from '../controllers/compilerExamStudentController.js';
 
 const router = express.Router();
-router.post('/:examId/questions/:questionId/submit', protect(["student"]), evaluateCodeSubmission);
 
+router.post("/run-all",protect(['student']),  runAllAndEvaluate);
+router.post("/submit", manualSubmit);
 router.get('/:examId', protect(["student"]), getCompilerExamById);
 router.post('/run-code', protect(['student']), runCode);
 export default router;
