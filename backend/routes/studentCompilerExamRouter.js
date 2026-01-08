@@ -9,7 +9,7 @@ getCompilerExamById , runCode ,  runAllAndEvaluate, manualSubmit
 const router = express.Router();
 
 router.post("/run-all",protect(['student']),  runAllAndEvaluate);
-router.post("/submit", manualSubmit);
+router.post("/submit",protect(['student']), manualSubmit);
 router.get('/:examId', protect(["student"]), getCompilerExamById);
 router.post('/run-code', protect(['student']), runCode);
 export default router;

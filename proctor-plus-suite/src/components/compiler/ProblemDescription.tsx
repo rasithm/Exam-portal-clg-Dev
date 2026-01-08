@@ -243,19 +243,18 @@ export function ProblemDescription({
               />
             ))}
             {testCases
-            .filter((tc) => tc.isHidden) // show only after run
-            .map((tc, i) => (
-              <TestCaseCard
-                key={`hidden-${i}`}
-                index={visibleTestCases.length + i}
-                inputs={tc.inputs}
-                expectedOutput={tc.expectedOutput}
-                isHidden={true}
-                showDetails={false}
-                // status={tc.status}
-                // actualOutput={tc.actualOutput}
-              />
+              .filter(tc => tc.isHidden)
+              .map((_, i) => (
+                <TestCaseCard
+                  key={`hidden-${i}`}
+                  index={visibleTestCases.length + i}
+                  inputs={[]}
+                  expectedOutput=""
+                  isHidden={true}
+                  showDetails={false}
+                />
             ))}
+
 
             {/* 🔧 Render hidden test cases properly */}
             

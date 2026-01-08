@@ -51,7 +51,8 @@ const defaultCode: Record<string, string> = {
 };
 
 export function CodeEditor({ 
-  languages, 
+  languages,
+  code: externalCode, 
   onRun,
   onRunAll, 
   onSubmit,
@@ -63,7 +64,9 @@ export function CodeEditor({
 
   const [selectedLanguage, setSelectedLanguage] = useState(() => languages?.[0] ?? "Python");
 
-  const [code, setCode] = useState(defaultCode[languageMap[selectedLanguage]] || "");
+  // const [code, setCode] = useState(defaultCode[languageMap[selectedLanguage]] || "");
+  const [code, setCode] = useState("");
+
   const [customInput, setCustomInput] = useState("");
   const [output, setOutput] = useState(initialOutput);
 
@@ -115,6 +118,11 @@ export function CodeEditor({
   useEffect(() => {
     setOutput(initialOutput);
   }, [initialOutput]);
+  
+  useEffect(() => {
+    setCode(externalCode || defaultCode[languageMap[selectedLanguage]] || "");
+  }, [externalCode, selectedLanguage]);
+
 
   
 
@@ -131,6 +139,9 @@ export function CodeEditor({
       setCode(defaultCode[languageMap[languages[0]]] || "");
     }
   }, [languages]);
+
+  
+
 
   
 
@@ -161,7 +172,11 @@ export function CodeEditor({
   };
 
   const handleClear = () => {
-    setCode(defaultCode[languageMap[selectedLanguage]] || "");
+    if (window.confirm("Clear your code?")) {
+      setCode(defaultCode[languageMap[selectedLanguage]] || "");
+      onCodeChange("");
+    }
+
   };
 
  
@@ -285,7 +300,12 @@ export function CodeEditor({
                   height="100%"
                   language={languageMap[selectedLanguage]}
                   value={code}
-                  onChange={(value) => setCode(value || "")}
+                  onChange={(value) => {
+                    const v = value || "";
+                    setCode(v);
+                    onCodeChange(v);
+                  }}
+
                   theme={editorTheme === "gray" ? "gray-theme" : monacoThemeMap[editorTheme]}
                   // onMount={handleEditorMount}
                   

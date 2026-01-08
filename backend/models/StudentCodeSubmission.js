@@ -39,6 +39,10 @@ StudentCodeSubmissionSchema.index(
   { submittedAt: 1 },
   { expireAfterSeconds: 2592000 }
 );
+StudentCodeSubmissionSchema.index(
+  { studentId: 1, examId: 1, questionId: 1 },
+  { unique: true }
+);
 
 export default mongoose.model(
   "StudentCodeSubmission",

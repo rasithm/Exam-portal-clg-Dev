@@ -141,6 +141,23 @@ export const runAllAndEvaluate = async (req, res) => {
     const shouldAutoSubmit =
       (question.strict && percent === 100) || (!question.strict && percent >= 60);
 
+    const existing = await StudentCodeSubmission.findOne({ studentId, examId, questionId });
+
+    if (existing && existing.autoSubmitted === false) {
+      return res.json({
+        testCasesResult: testCaseResults,
+        passedCount,
+        totalCases: question.testCases.length,
+        mark: existing.score,
+        percent,
+        autoSubmit: true,
+        violation: false,
+        rawOutput,
+      });
+    }
+
+
+
     const submission = {
       studentId,
       examId,
@@ -166,8 +183,13 @@ export const runAllAndEvaluate = async (req, res) => {
     }
 
     if (shouldAutoSubmit || violationDetected) {
-      await StudentCodeSubmission.create(submission);
+      await StudentCodeSubmission.findOneAndUpdate(
+        { studentId, examId, questionId },
+        { $set: submission },
+        { upsert: true, new: true }
+      );
     }
+
 
 
     return res.json({
@@ -193,10 +215,16 @@ export const manualSubmit = async (req, res) => {
     const { examId, questionId } = req.body;
     const studentId = req.user._id;
 
-    const existing = await StudentCodeSubmission.findOne({ studentId, questionId });
+    const existing = await StudentCodeSubmission.findOne({ studentId,examId, questionId ,autoSubmitted: false });
     if (existing) return res.status(409).json({ message: "Already submitted" });
 
-    const lastEval = await StudentCodeSubmission.findOne({ studentId, questionId }).sort({ submittedAt: -1 });
+    const lastEval = await StudentCodeSubmission.findOne({ studentId, examId, questionId });
+
+    if (!lastEval) return res.status(400).json({ message: "Run evaluation first" });
+    // if (lastEval.autoSubmitted) return res.status(409).json({ message: "Already submitted" });
+    if (lastEval.autoSubmitted === false) return res.status(409).json({ message: "Already submitted" });
+
+
 
     if (!lastEval) return res.status(400).json({ message: "Run evaluation first" });
 
@@ -206,8 +234,8 @@ export const manualSubmit = async (req, res) => {
       $push: {
         scores: {
           examId,
-          score,
-          percentage: percent,
+          score: submission.score,
+          percentage: submission.score > 0 ? (submission.score / (submission.score || 1)) * 100 : 0, // safe fallback
           date: new Date(),
         },
       },

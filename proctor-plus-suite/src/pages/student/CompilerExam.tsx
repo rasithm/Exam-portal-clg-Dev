@@ -25,7 +25,8 @@ export default function CompilerExam() {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
-  const [output, setOutput] = useState("");
+  
+
   const [isRunning, setIsRunning] = useState(false);
   const [attemptsUsed, setAttemptsUsed] = useState<Record<number, number>>({});
   const [editorTheme, setEditorTheme] = useState<EditorTheme>("vs-dark");
@@ -39,9 +40,14 @@ export default function CompilerExam() {
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [codeMap, setCodeMap] = useState<Record<string, string>>({});
-  const [lastRunResult, setLastRunResult] = useState<any>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [outputMap, setOutputMap] = useState<Record<string, string>>({});
+  
 
+
+  const [lastRunResult, setLastRunResult] = useState<any>(null);
+  // const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const [unsavedMap, setUnsavedMap] = useState<Record<string, boolean>>({});
 
   
   useEffect(() => {
@@ -75,7 +81,11 @@ export default function CompilerExam() {
           languages: [exam.language?.trim()]
         });
 
-        
+        if (!localStorage.getItem(`exam-${examId}-start`)) {
+          localStorage.setItem(`exam-${examId}-start`, Date.now().toString());
+        }
+
+
       } catch (err: any) {
         console.error("Compiler exam fetch error:", err);
         const message = err.response?.data?.message || err.message || "Unknown error";
@@ -97,13 +107,18 @@ export default function CompilerExam() {
     if (examId) fetchCompilerExam();
   }, [examId, navigate]);
 
-  const currentQuestion = examData?.questions?.[currentQuestionIndex];
+  const currentQuestion = examData?.questions?.[currentQuestionIndex] || null;
+  const currentQuestionId = currentQuestion?.id;
+  const output = currentQuestionId ? outputMap[currentQuestionId] || "" : "";
 
   useEffect(() => {
-    if (examData?.duration) {
-      setTimeRemaining(examData.duration * 60);
+    const start = Number(localStorage.getItem(`exam-${examId}-start`));
+    if (start && examData?.duration) {
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      setTimeRemaining(Math.max(examData.duration * 60 - elapsed, 0));
     }
   }, [examData]);
+
   useEffect(() => {
     if (examData?.questions) {
       setQuestions(examData.questions.map(q => ({ ...q, completed: false })));
@@ -165,12 +180,31 @@ export default function CompilerExam() {
     return () => clearInterval(interval);
   }, [examStarted]);
 
+  useEffect(() => {
+    const q = examData?.questions?.[currentQuestionIndex];
+    if (!q) return;
+
+    setOutputMap(prev => {
+      if (prev[q.id] !== undefined) return prev;
+      return { ...prev, [q.id]: "" };
+    });
+  }, [currentQuestionIndex, examData]);
+
+
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+  const navigateQuestion = (nextIndex:number) => {
+    if (unsavedMap[currentQuestion.id]) {
+      const ok = window.confirm("This code is not saved. Continue?");
+      if (!ok) return;
+    }
+    setCurrentQuestionIndex(nextIndex);
+  };
+
 
   if (loading) {
     return (
@@ -197,10 +231,10 @@ export default function CompilerExam() {
     await enterFullscreen();
     setExamStarted(true);
   };
-  if (hasUnsavedChanges) {
-    const ok = window.confirm("Unsaved code will be lost. Continue?");
-    if (!ok) return;
-  }
+  // if (hasUnsavedChanges) {
+  //   const ok = window.confirm("Unsaved code will be lost. Continue?");
+  //   if (!ok) return;
+  // }
 
 
 
@@ -242,6 +276,10 @@ const handleRunAll = async (code: string, language: string) => {
   // }
 
   setIsRunning(true);
+  
+  setOutputMap(prev => ({ ...prev, [currentQuestion.id]: "" }));
+
+
 
   try {
     const res = await axios.post(
@@ -271,29 +309,65 @@ const handleRunAll = async (code: string, language: string) => {
     if (Array.isArray(data.testCasesResult)) {
       const mappedResults: Record<number, any> = {};
 
-      data.testCasesResult.forEach((tc: any, i: number) => {
+      data.testCasesResult.forEach((tc:any, i:number) => {
         mappedResults[i] = {
           status: tc.passed ? "passed" : "failed",
           actualOutput: tc.actualOutput || "",
         };
       });
 
-      setTestCaseResults(prev => ({
-        ...prev,
-        [currentQuestion.id]: mappedResults,
-      }));
+
+
+      const visibleIndexes = currentQuestion.testCases
+        .map((tc, i) => ({ tc, i }))
+        .filter(x => !x.tc.hidden)
+        .map(x => x.i);
+
+      setTableResults(
+        data.testCasesResult
+          .filter((_:any, i:number) => visibleIndexes.includes(i))
+          .map((tc:any, visibleIdx:number) => ({
+            sno: visibleIdx + 1,
+            name: `Test Case ${visibleIdx + 1}`,
+            input: tc.inputs.join(", "),
+            expectedOutput: tc.expectedOutput,
+            actualOutput: tc.actualOutput,
+            status: tc.passed ? "passed" : "failed",
+          }))
+      );
+
+
+      setShowResultsTable(true);
+
     }
 
-    setOutput(data.rawOutput || "");
+    // setOutput(data.rawOutput || "");
+    setOutputMap(prev => ({ ...prev, [currentQuestion.id]: (data.rawOutput || "") }));
+
 
     setAttemptsUsed(prev => ({
       ...prev,
       [currentQuestion.id]: attempts + 1,
     }));
 
+    // if (data.autoSubmit) {
+    //   toast({ title: "All test cases passed!" });
+    // }
     if (data.autoSubmit) {
       toast({ title: "All test cases passed!" });
+      setQuestions(prev =>
+        prev.map(q => q.id === currentQuestion.id ? { ...q, completed: true } : q)
+      );
+
+      setExamData(prev => ({
+        ...prev,
+        questions: prev.questions.map(q =>
+          q.id === currentQuestion.id ? { ...q, completed: true } : q
+        )
+      }));
+
     }
+
 
   } catch (err: any) {
     console.error("Run All Error:", err);
@@ -334,10 +408,15 @@ const handleRunAll = async (code: string, language: string) => {
       });
       return;
     }
+    
+    setOutputMap(prev => ({ ...prev, [currentQuestion.id]: "" }));
+
 
     try {
       setIsRunning(true);
-      setOutput("Running your code...");
+      // setOutput("Running your code...");
+      setOutputMap(prev => ({ ...prev, [currentQuestion.id]: "Running your code..." }));
+
 
       const res = await axios.post(`${API_BASE}/api/student/compiler-exams/run-code`, {
         sourceCode: code,
@@ -345,9 +424,13 @@ const handleRunAll = async (code: string, language: string) => {
         customInput
       }, { withCredentials: true });
 
-      setOutput(res.data.output || '');
+      // setOutput(res.data.output || '');
+      setOutputMap(prev => ({ ...prev, [currentQuestion.id]: (res.data.output || '') }));
+
     } catch (err: any) {
-      setOutput(err.response?.data?.message || 'Execution error');
+      // setOutput(err.response?.data?.message || 'Execution error');
+      setOutputMap(prev => ({ ...prev, [currentQuestion.id]: (err.response?.data?.message || 'Execution error') }));
+
     } finally {
       setIsRunning(false);
       setShowResultsTable(false);
@@ -356,92 +439,90 @@ const handleRunAll = async (code: string, language: string) => {
   };
 
 
-
-  // Run a single test case
-  const handleRunTestCase = (testCaseIndex: number) => {
-    setRunningTestCaseIndex(testCaseIndex);
-    setShowResultsTable(false);
+  const handleRunTestCase = async (testCaseIndex:number) => {
+    const tc = currentQuestion.testCases.filter(tc => !tc.hidden)[testCaseIndex];
+    if (!tc) return;
     
-    setTimeout(() => {
-      const passed = Math.random() > 0.3;
-      const visibleTestCases = currentQuestion.testCases.filter(tc => !tc.hidden);
+    setRunningTestCaseIndex(testCaseIndex);
 
-      const testCase = currentQuestion.testCases.filter((tc) => !tc.hidden)[testCaseIndex];
-      const actualOutput = passed ? testCase.expectedOutput : "Wrong output";
-      
-      // Update test case results
-      setTestCaseResults((prev) => ({
+    try {
+      const res = await axios.post(`${API_BASE}/api/student/compiler-exams/run-code`, {
+        sourceCode: codeMap[currentQuestion.id],
+        language: examData.languages[0],
+        customInput: tc.inputs.join("\n")
+      }, { withCredentials:true });
+
+      const passed = res.data.output?.trim() === tc.expectedOutput?.trim();
+      const actualOutput = passed ? tc.expectedOutput : "Wrong output";
+      setTestCaseResults(prev => ({
         ...prev,
         [currentQuestion.id]: {
-          ...prev[currentQuestion.id],
+          ...(prev[currentQuestion.id] || {}),
           [testCaseIndex]: {
             status: passed ? "passed" : "failed",
-            actualOutput,
-          },
-        },
+            actualOutput: res.data.output
+          }
+        }
       }));
-      
-      // Create table result
+
       const tableResult = {
-        sno: testCaseIndex + 1,
-        name: `Test Case ${testCaseIndex + 1}`,
-        input: testCase?.inputs.join(", ") || "",
-        expectedOutput: testCase?.expectedOutput || "",
-        actualOutput,
-        status: (passed ? "passed" : "failed") as "pending" | "passed" | "failed",
-      };
-      
-      setTableResults([tableResult]);
-      setShowResultsTable(true);
-      
-      setOutput(`=== Test Case ${testCaseIndex + 1} ===\n\nInput:\n${testCase?.inputs.join("\n")}\n\nExpected: ${testCase?.expectedOutput}\nActual: ${actualOutput}\n\n${passed ? "✓ Passed" : "✗ Failed"}`);
+          sno: testCaseIndex + 1,
+          name: `Test Case ${testCaseIndex + 1}`,
+          input: tc?.inputs.join(", ") || "",
+          expectedOutput: tc?.expectedOutput || "",
+          actualOutput,
+          status: (passed ? "passed" : "failed") as "pending" | "passed" | "failed",
+        };
+        
+        setTableResults([tableResult]);
+        setShowResultsTable(true);
+        
+        // setOutput(`=== Test Case ${testCaseIndex + 1} ===\n\nInput:\n${testCase?.inputs.join("\n")}\n\nExpected: ${testCase?.expectedOutput}\nActual: ${actualOutput}\n\n${passed ? "✓ Passed" : "✗ Failed"}`);
+        setOutputMap(prev => ({ ...prev, [currentQuestion.id]: (`=== Test Case ${testCaseIndex + 1} ===\n\nInput:\n${tc?.inputs.join("\n")}\n\nExpected: ${tc?.expectedOutput}\nActual: ${actualOutput}\n\n${passed ? "✓ Passed" : "✗ Failed"}`) }));
+
+        setRunningTestCaseIndex(undefined);
+
+    } finally {
       setRunningTestCaseIndex(undefined);
-    }, 1000);
+    }
   };
 
-  const handleSubmit = (code: string, language: string) => {
-    const questionId = currentQuestion.id;
-    const currentAttempts = attemptsUsed[questionId] || 0;
 
-    if (currentAttempts >= currentQuestion.attemptLimit) {
-      toast({
-        title: "Attempt limit reached",
-        description: "You have used all attempts for this question.",
-        variant: "destructive",
-      });
+  const handleSubmit = async (code:string, language:string) => {
+    const qid = currentQuestion.id;
+    const lastResult = testCaseResults[qid];
+
+    if (!lastResult) {
+      await handleRunAll(code, language);
       return;
     }
 
-    setAttemptsUsed(prev => ({ ...prev, [questionId]: currentAttempts + 1 }));
-    setIsRunning(true);
+    const failed = Object.values(lastResult).some(r => r.status === "failed");
 
-    setTimeout(() => {
-      const passed = Math.random() > 0.3;
+    if (failed) {
+      const ok = window.confirm("Some test cases failed. Submit anyway?");
+      if (!ok) return;
+    }
 
-      if (passed) {
-        toast({ title: "Question submitted successfully" });
+    try {
+      await axios.post(`${API_BASE}/api/student/compiler-exams/submit`, {
+        examId,
+        questionId: qid,
+      }, { withCredentials:true });
 
-        setQuestions(prev =>
-          prev.map((q, i) =>
-            i === currentQuestionIndex ? { ...q, completed: true } : q
-          )
-        );
+      toast({ title: "Submission saved" });
 
-        // move to next question automatically
-        if (currentQuestionIndex < questions.length - 1) {
-          setCurrentQuestionIndex(i => i + 1);
-        }
-      } else {
-        toast({
-          title: "Some test cases failed",
-          description: "Fix your code and try again.",
-          variant: "destructive",
-        });
-      }
+      setQuestions(prev =>
+        prev.map(q => q.id === qid ? { ...q, completed: true } : q)
+      );
 
-      setIsRunning(false);
-    }, 1500);
+      setUnsavedMap(prev => ({ ...prev, [qid]: false }));
+
+    } catch (e:any) {
+      toast({ title: "Submit failed", description: e.response?.data?.message, variant:"destructive" });
+    }
   };
+
 
 
   const handleFinalSubmit = () => {
@@ -623,9 +704,10 @@ const handleRunAll = async (code: string, language: string) => {
               testCaseStatuses={testCaseStatuses}
               code={codeMap[currentQuestion.id] || ""}
               onCodeChange={(c) => {
-                setHasUnsavedChanges(true);
                 setCodeMap(prev => ({ ...prev, [currentQuestion.id]: c }));
+                setUnsavedMap(prev => ({ ...prev, [currentQuestion.id]: true }));
               }}
+
             />
           </div>
 
@@ -639,11 +721,10 @@ const handleRunAll = async (code: string, language: string) => {
                 current: q.id === currentQuestion.id,
               }))}
               currentIndex={currentQuestionIndex}
-              onNavigate={setCurrentQuestionIndex}
-              onPrevious={() => setCurrentQuestionIndex((i) => Math.max(0, i - 1))}
-              onNext={() =>
-                setCurrentQuestionIndex((i) => Math.min(examData.questions.length - 1, i + 1))
-              }
+              onNavigate={navigateQuestion}
+              onNext={() => navigateQuestion(currentQuestionIndex + 1)}
+              onPrevious={() => navigateQuestion(currentQuestionIndex - 1)}
+
             />
           </div>
         </div>
