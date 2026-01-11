@@ -24,6 +24,8 @@ interface CodeEditorProps {
   editorTheme?: EditorTheme;
   testCaseStatuses?: { index: number; status: "passed" | "failed" }[];
   code: string;
+  isLocked?: boolean;
+
   onCodeChange: (code: string) => void;
 }
 
@@ -58,6 +60,7 @@ export function CodeEditor({
   onSubmit,
   onCodeChange, 
   isRunning = false,
+  isLocked = false,
   output: initialOutput = "",
   editorTheme = "vs-dark"
 }: CodeEditorProps) {
@@ -251,6 +254,7 @@ export function CodeEditor({
                   variant="secondary" 
                   size="sm" 
                   onClick={handleRunClick}
+                  disabled={isLocked || isRunning}
                   className="h-8 px-4 bg-gray-800 text-cyan-50 hover:bg-gray-800 hover:text-cyan-50"
                 >
                   {isRunning ? (
@@ -269,8 +273,8 @@ export function CodeEditor({
                 <Button 
                   variant="secondary" 
                   size="sm" 
-                  onClick={() => onRunAll?.(code, selectedLanguage)}
-                  disabled={isRunning}
+                  onClick={() =>  onRunAll?.(code, selectedLanguage)}
+                  disabled={isRunning || isLocked}
                   className="h-8 px-4 bg-gray-800 text-cyan-50 hover:bg-gray-800 hover:text-cyan-50"
                 >
                   {isRunning ? (
@@ -284,7 +288,7 @@ export function CodeEditor({
                 <Button 
                   size="sm" 
                   onClick={() => onSubmit?.(code, selectedLanguage)}
-                  disabled={isRunning}
+                  disabled={isRunning || isLocked}
                   className="h-8 px-4"
                 >
                   <Send className="w-4 h-4 mr-1" />

@@ -80,7 +80,9 @@ export const runAllAndEvaluate = async (req, res) => {
     const question = await CompilerQuestion.findById(questionId);
     if (!student || !question) return res.status(404).json({ message: "Invalid student or question" });
 
-    const attemptsUsed = await StudentCodeSubmission.countDocuments({ student: studentId, question: questionId });
+    // const attemptsUsed = await StudentCodeSubmission.countDocuments({ student: studentId, question: questionId });
+    const attemptsUsed = await StudentCodeSubmission.countDocuments({ studentId, examId, questionId });
+
     const maxAttempts = question.attemptLimit || 3;
 
     if (attemptsUsed >= maxAttempts) {
@@ -138,8 +140,21 @@ export const runAllAndEvaluate = async (req, res) => {
     const score = Math.round((percent / 100) * maxMarks);
 
 
-    const shouldAutoSubmit =
-      (question.strict && percent === 100) || (!question.strict && percent >= 60);
+    // const isLastAttempt = attemptsUsed + 1 >= maxAttempts;
+
+    // const shouldAutoSubmit =
+    //   isLastAttempt || (question.evaluationMode === "strict" && percent === 100)
+
+
+      // (question.strict && percent === 100)
+      //  || 
+      // (!question.strict && percent >= 60);
+    const isLastAttempt = attemptsUsed === maxAttempts;
+    const isStrict = question.evaluationMode === "strict";
+
+    const shouldAutoSubmit = (isStrict && percent === 100) || (!isStrict && percent >= 60) || isLastAttempt;
+
+
 
     const existing = await StudentCodeSubmission.findOne({ studentId, examId, questionId });
 
@@ -188,6 +203,8 @@ export const runAllAndEvaluate = async (req, res) => {
         { $set: submission },
         { upsert: true, new: true }
       );
+
+
     }
 
 
@@ -199,6 +216,7 @@ export const runAllAndEvaluate = async (req, res) => {
       mark: score,
       percent,
       autoSubmit: shouldAutoSubmit,
+      isLastAttempt,
       violation: violationDetected,
       rawOutput,
     });

@@ -124,6 +124,9 @@ export default function CompilerExam() {
       setQuestions(examData.questions.map(q => ({ ...q, completed: false })));
     }
   }, [examData]);
+  
+
+
 
   
 
@@ -189,6 +192,52 @@ export default function CompilerExam() {
       return { ...prev, [q.id]: "" };
     });
   }, [currentQuestionIndex, examData]);
+
+  useEffect(() => {
+    if (!currentQuestion?.id) return;
+
+    setOutputMap(prev => ({
+      ...prev,
+      [currentQuestion.id]: prev[currentQuestion.id] || ""
+    }));
+  }, [currentQuestionIndex]);
+
+  useEffect(() => {
+    if (!currentQuestion?.id) return;
+
+    const qid = currentQuestion.id;
+    const stored = testCaseResults[qid];
+
+    if (!stored) {
+      setTableResults([]);
+      setShowResultsTable(false);
+      return;
+    }
+
+    const visibleIndexes = currentQuestion.testCases
+      .map((tc, i) => ({ tc, i }))
+      .filter(x => !x.tc.hidden)
+      .map(x => x.i);
+
+    const rebuilt = Object.entries(stored)
+      .filter(([i]) => visibleIndexes.includes(Number(i)))
+      .map(([i, r], idx) => {
+        const tc = currentQuestion.testCases[Number(i)];
+        return {
+          sno: idx + 1,
+          name: `Test Case ${idx + 1}`,
+          input: tc.inputs.join(", "),
+          expectedOutput: tc.expectedOutput,
+          actualOutput: r.actualOutput,
+          status: r.status,
+        };
+      });
+
+    setTableResults(rebuilt);
+    setShowResultsTable(rebuilt.length > 0);
+  }, [currentQuestionIndex, testCaseResults]);
+
+
 
 
   const formatTime = (seconds: number) => {
@@ -263,17 +312,19 @@ const handleRunAll = async (code: string, language: string) => {
     return;
   }
 
-  const attempts = attemptsUsed[currentQuestion.id] || 0;
+  const attempts = Number(attemptsUsed[currentQuestion.id] || 0);
+
   const limit = currentQuestion.attemptLimit ?? Infinity;
 
-  // if (attempts >= limit) {
-  //   toast({
-  //     title: "Attempt Limit Reached",
-  //     description: "You have used all attempts for this question.",
-  //     variant: "destructive",
-  //   });
-  //   return;
-  // }
+  if (attempts >= limit) {
+    toast({
+      title: "Attempts Exhausted",
+      description: "This question is already submitted.",
+      variant: "destructive",
+    });
+    return;
+  }
+
 
   setIsRunning(true);
   
@@ -307,14 +358,20 @@ const handleRunAll = async (code: string, language: string) => {
     // }
 
     if (Array.isArray(data.testCasesResult)) {
-      const mappedResults: Record<number, any> = {};
+      const mappedResults: Record<number, { status: "passed" | "failed"; actualOutput: string }> = {};
 
-      data.testCasesResult.forEach((tc:any, i:number) => {
+      data.testCasesResult.forEach((tc: any, i: number) => {
         mappedResults[i] = {
           status: tc.passed ? "passed" : "failed",
           actualOutput: tc.actualOutput || "",
         };
       });
+
+      setTestCaseResults(prev => ({
+        ...prev,
+        [currentQuestion.id]: mappedResults,
+      }));
+
 
 
 
@@ -345,16 +402,27 @@ const handleRunAll = async (code: string, language: string) => {
     setOutputMap(prev => ({ ...prev, [currentQuestion.id]: (data.rawOutput || "") }));
 
 
-    setAttemptsUsed(prev => ({
-      ...prev,
-      [currentQuestion.id]: attempts + 1,
-    }));
+    
+      setAttemptsUsed(prev => ({
+        ...prev,
+        [currentQuestion.id]: attempts + 1,
+      }));
+    
 
-    // if (data.autoSubmit) {
-    //   toast({ title: "All test cases passed!" });
-    // }
+
+    
     if (data.autoSubmit) {
-      toast({ title: "All test cases passed!" });
+      if(data.isLastAttempt){
+        toast({
+          title: "Last attempt used — auto submitted"
+            
+        });
+      }else{
+        toast({
+          title: "All test cases passed!",
+        });
+      }
+      
       setQuestions(prev =>
         prev.map(q => q.id === currentQuestion.id ? { ...q, completed: true } : q)
       );
@@ -365,6 +433,14 @@ const handleRunAll = async (code: string, language: string) => {
           q.id === currentQuestion.id ? { ...q, completed: true } : q
         )
       }));
+      setUnsavedMap(prev => ({ ...prev, [currentQuestion.id]: false }));
+
+      if (currentQuestionIndex < examData.questions.length - 1) {
+        setTimeout(() => {
+          setCurrentQuestionIndex(i => i + 1);
+        }, 800);
+      }
+      return;
 
     }
 
@@ -707,7 +783,7 @@ const handleRunAll = async (code: string, language: string) => {
                 setCodeMap(prev => ({ ...prev, [currentQuestion.id]: c }));
                 setUnsavedMap(prev => ({ ...prev, [currentQuestion.id]: true }));
               }}
-
+              isLocked={attemptsUsed[currentQuestion.id] >= currentQuestion.attemptLimit}
             />
           </div>
 
