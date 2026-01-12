@@ -41,7 +41,8 @@ export default function CompilerExam() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [codeMap, setCodeMap] = useState<Record<string, string>>({});
   const [outputMap, setOutputMap] = useState<Record<string, string>>({});
-  
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
 
 
   const [lastRunResult, setLastRunResult] = useState<any>(null);
@@ -81,9 +82,9 @@ export default function CompilerExam() {
           languages: [exam.language?.trim()]
         });
 
-        if (!localStorage.getItem(`exam-${examId}-start`)) {
-          localStorage.setItem(`exam-${examId}-start`, Date.now().toString());
-        }
+        // if (!localStorage.getItem(`exam-${examId}-start`)) {
+        //   localStorage.setItem(`exam-${examId}-start`, Date.now().toString());
+        // }
 
 
       } catch (err: any) {
@@ -194,6 +195,15 @@ export default function CompilerExam() {
   }, [currentQuestionIndex, examData]);
 
   useEffect(() => {
+    const start = Number(localStorage.getItem(`exam-${examId}-start`));
+    if (start && examData?.duration) {
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      setTimeRemaining(Math.max(examData.duration * 60 - elapsed, 0));
+    }
+  }, [examData]);
+
+
+  useEffect(() => {
     if (!currentQuestion?.id) return;
 
     setOutputMap(prev => ({
@@ -277,9 +287,41 @@ export default function CompilerExam() {
 
 
   const handleStartExam = async () => {
-    await enterFullscreen();
-    setExamStarted(true);
+    try {
+      const res = await axios.post(
+        `${API_BASE}/api/student/exams/${examId}/start`,
+        {},
+        { withCredentials: true }
+      );
+
+      const data = res.data;
+
+      setSessionId(data.sessionId);
+      setExamStarted(true);
+
+      if (data.endTime) {
+        const end = new Date(data.endTime).getTime();
+        const now = Date.now();
+        setTimeRemaining(Math.max(0, Math.floor((end - now) / 1000)));
+      } else if (examData?.duration) {
+        setTimeRemaining(examData.duration * 60);
+      }
+
+      await enterFullscreen();
+
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message;
+
+      toast({
+        title: "Cannot start exam",
+        description: msg,
+        variant: "destructive",
+      });
+
+      navigate("/student/dashboard");
+    }
   };
+
   // if (hasUnsavedChanges) {
   //   const ok = window.confirm("Unsaved code will be lost. Continue?");
   //   if (!ok) return;
@@ -601,7 +643,7 @@ const handleRunAll = async (code: string, language: string) => {
 
 
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = async () => {
     const incomplete = questions.filter(q => !q.completed);
     if (incomplete.length > 0) {
       toast({
@@ -611,8 +653,12 @@ const handleRunAll = async (code: string, language: string) => {
       });
       return;
     }
+    
 
     setShowSubmitModal(false);
+    if (sessionId) {
+      await axios.post(`${API_BASE}/api/student/exams/${examId}/submit`, { sessionId }, { withCredentials: true });
+    }
     exitFullscreen();
     toast({
       title: "Exam Submitted",

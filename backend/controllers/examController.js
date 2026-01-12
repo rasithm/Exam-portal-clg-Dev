@@ -7,7 +7,7 @@ import Student from "../models/Student.js";
 
 import ExamSession from "../models/ExamSession.js";
 import ExamEvent from "../models/ExamEvent.js";
-
+import CompilerExam from "../models/CompilerExam.js"
 
 
 import ExamAttempt from "../models/ExamAttempt.js";
@@ -474,10 +474,14 @@ export const startExam = async (req, res) => {
 
     // ✅ 3. Create new session
     const examDoc = await Exam.findById(exam);
-    if (!examDoc) return res.status(404).json({ message: "Exam not found" });
+    const CompilerExamDoc = await CompilerExam.findById(exam);
+    if (!examDoc && !CompilerExamDoc) return res.status(404).json({ message: "Exam not found" });
 
     const startTime = new Date();
-    const endTime = new Date(startTime.getTime() + (examDoc.duration || 120) * 60 * 1000);
+    const duration = examDoc?.duration || CompilerExamDoc?.duration || 120;
+
+    const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
+
     const token = crypto.randomBytes(32).toString("hex");
 
     const session = await ExamSession.create({
