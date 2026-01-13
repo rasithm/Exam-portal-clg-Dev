@@ -4,9 +4,14 @@ import CompilerQuestion from '../models/CompilerQuestion.js';
 import Student from '../models/Student.js';
 import { io } from '../sockets/socketManager.js';
 import Exam from '../models/Exam.js';
+import crypto from "crypto";
 
 import StudentCodeSubmission from '../models/StudentCodeSubmission.js';
 import { submitToJudge0 } from '../services/judge0Service.js';
+
+
+
+import CompilerExamAttempt from "../models/CompilerExamAttempt.js";
 
 const EXEC_TIMEOUT_MS = 120000; // 2 minutes
 
@@ -269,6 +274,94 @@ export const manualSubmit = async (req, res) => {
 
 
 
+
+export const endCompilerExam = async (req, res) => {
+  try {
+    const { examId, reason = "manual" } = req.body;
+    const studentId = req.user._id;
+
+    const exam = await CompilerExam.findById(examId).populate("questions");
+    if (!exam) return res.status(404).json({ message: "Exam not found" });
+
+    const submissions = await StudentCodeSubmission.find({ studentId, examId });
+
+    if (reason === "manual") {
+      if (submissions.length !== exam.questions.length) {
+        return res.status(400).json({ message: "All questions not completed" });
+      }
+    }
+
+    const maxScore = exam.questions.reduce((a, q) => a + (q.marks || 0), 0);
+    const totalScore = submissions.reduce((a, s) => a + (s.score || 0), 0);
+
+    const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+    const pass = percentage >= 40;
+
+    const stats = {
+      totalQuestions: exam.questions.length,
+      attempted: submissions.length,
+      passed: submissions.filter(s => s.status === "passed").length,
+      partial: submissions.filter(s => s.status === "partial").length,
+      failed: submissions.filter(s => s.status === "failed").length,
+    };
+
+    const certificateEnabled = exam.generateCertificate === true;
+    let certificateId = null;
+
+    if (certificateEnabled && pass) {
+      certificateId = `CERT:CMP-${crypto.randomUUID()}`;
+    }
+
+
+    const attempt = await CompilerExamAttempt.findOneAndUpdate(
+      { student: studentId, exam: examId },
+      {
+        student: studentId,
+        exam: examId,
+        submissions: submissions.map(s => s._id),
+        totalScore,
+        maxScore,
+        percentage,
+        pass,
+        reason,
+        submittedAt: new Date(),
+        certificateEligible: certificateEnabled && pass,
+        certificateId,
+        stats,
+      },
+      { upsert: true, new: true }
+    );
+
+
+    await Student.findByIdAndUpdate(studentId, {
+      $push: {
+        scores: {
+          examId,
+          score: totalScore,
+          percentage,
+          date: new Date(),
+        },
+      },
+    });
+
+    return res.json({ message: "Exam ended", attempt });
+
+  } catch (err) {
+    console.error("End Compiler Exam Error:", err);
+    res.status(500).json({ message: "Failed to end exam" });
+  }
+};
+
+export const getCompilerExamStatus = async (req, res) => {
+  const { examId } = req.params;
+  const studentId = req.user._id;
+
+  const submissions = await StudentCodeSubmission.find({ studentId, examId });
+
+  return res.json({
+    completedQuestionIds: submissions.map(s => s.questionId.toString()),
+  });
+};
 
 
 

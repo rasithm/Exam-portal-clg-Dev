@@ -414,6 +414,12 @@ const handleRunAll = async (code: string, language: string) => {
         [currentQuestion.id]: mappedResults,
       }));
 
+      const total = data.testCasesResult.length;
+      const passed = data.testCasesResult.filter(tc => tc.passed).length;
+      const failed = total - passed;
+
+      
+
 
 
 
@@ -641,31 +647,57 @@ const handleRunAll = async (code: string, language: string) => {
     }
   };
 
+  const openEndExamModal = async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE}/api/student/compiler-exams/${examId}/status`,
+        { withCredentials: true }
+      );
+
+      const { completedQuestionIds } = res.data;
+
+      setQuestions(prev =>
+        prev.map(q => ({
+          ...q,
+          completed: completedQuestionIds.includes(q.id),
+        }))
+      );
+
+      setShowSubmitModal(true);
+
+    } catch (err:any) {
+      toast({
+        title: "Unable to verify exam status",
+        description: err.response?.data?.message || err.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+
 
 
   const handleFinalSubmit = async () => {
-    const incomplete = questions.filter(q => !q.completed);
-    if (incomplete.length > 0) {
+    try {
+      const res = await axios.post(`${API_BASE}/api/student/compiler-exams/end`, {
+        examId,
+        reason: "manual"
+      }, { withCredentials: true });
+
+      exitFullscreen();
+      navigate(`/student/compiler-exams/${examId}/result`);
+
+    } catch (err:any) {
       toast({
-        title: "Incomplete Questions",
-        description: `You must complete all questions before ending the exam.`,
+        title: "Cannot submit exam",
+        description: err.response?.data?.message || err.message,
         variant: "destructive"
       });
-      return;
     }
-    
-
-    setShowSubmitModal(false);
-    if (sessionId) {
-      await axios.post(`${API_BASE}/api/student/exams/${examId}/submit`, { sessionId }, { withCredentials: true });
-    }
-    exitFullscreen();
-    toast({
-      title: "Exam Submitted",
-      description: "Your exam has been submitted successfully.",
-    });
-    navigate("/");
   };
+
+
+
 
   return (
     <div className={`min-h-screen bg-background flex flex-col compiler-theme ${isThemeDark(editorTheme) ? "dark" : ""}`}>
@@ -762,7 +794,7 @@ const handleRunAll = async (code: string, language: string) => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setShowSubmitModal(true)}
+              onClick={openEndExamModal}
               disabled={!examStarted}
             >
               End Exam

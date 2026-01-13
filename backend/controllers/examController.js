@@ -954,7 +954,7 @@ const finalizeExam = async (sessionId, studentId, reason) => {
     if (!attempt.certificateId) {
       const shortSession = session._id.toString().slice(-6).toUpperCase();
       const random = Math.random().toString(36).slice(-4).toUpperCase();
-      attempt.certificateId = `CERT-${shortSession}-${random}`;
+      attempt.certificateId = `CERT:MCQ-${shortSession}-${random}`;
     }
   }
 
