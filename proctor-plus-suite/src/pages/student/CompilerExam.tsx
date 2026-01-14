@@ -42,6 +42,7 @@ export default function CompilerExam() {
   const [codeMap, setCodeMap] = useState<Record<string, string>>({});
   const [outputMap, setOutputMap] = useState<Record<string, string>>({});
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
 
 
 
@@ -127,6 +128,30 @@ export default function CompilerExam() {
   }, [examData]);
   
 
+  useEffect(() => {
+    if (examStarted && !isFullscreen) {
+      setFullscreenExitCount(prev => prev + 1);
+    }
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    if (!examStarted) return;
+
+    const tabViolation = tabSwitchCount >= 15;
+    const fullscreenViolation = fullscreenExitCount >= 3;
+
+    if (tabViolation || fullscreenViolation) {
+      toast({
+        title: "Security violation",
+        description: "Exam auto-submitted due to repeated violations",
+        variant: "destructive"
+      });
+
+      handleFinalSubmit("violation");
+    }
+
+  }, [tabSwitchCount, fullscreenExitCount, examStarted]);
+
 
 
   
@@ -160,7 +185,7 @@ export default function CompilerExam() {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          handleFinalSubmit();
+          handleFinalSubmit("time");
           return 0;
         }
         // Warning toasts
@@ -263,6 +288,8 @@ export default function CompilerExam() {
     }
     setCurrentQuestionIndex(nextIndex);
   };
+
+  
 
 
   if (loading) {
@@ -616,10 +643,17 @@ const handleRunAll = async (code: string, language: string) => {
     const qid = currentQuestion.id;
     const lastResult = testCaseResults[qid];
 
-    if (!lastResult) {
-      await handleRunAll(code, language);
+    if (questions[currentQuestionIndex].completed) {
+      toast({ title: "Already submitted" });
       return;
     }
+
+    if (!lastResult) {
+      toast({ title: "Please run evaluation first", variant: "destructive" });
+      return;
+    }
+
+    
 
     const failed = Object.values(lastResult).some(r => r.status === "failed");
 
@@ -632,7 +666,10 @@ const handleRunAll = async (code: string, language: string) => {
       await axios.post(`${API_BASE}/api/student/compiler-exams/submit`, {
         examId,
         questionId: qid,
+        code: codeMap[qid],
+        results: testCaseResults[qid],
       }, { withCredentials:true });
+
 
       toast({ title: "Submission saved" });
 
@@ -677,11 +714,11 @@ const handleRunAll = async (code: string, language: string) => {
 
 
 
-  const handleFinalSubmit = async () => {
+  const handleFinalSubmit = async (reason: "manual" | "time" | "violation" = "manual") => {
     try {
-      const res = await axios.post(`${API_BASE}/api/student/compiler-exams/end`, {
+      await axios.post(`${API_BASE}/api/student/compiler-exams/end`, {
         examId,
-        reason: "manual"
+        reason
       }, { withCredentials: true });
 
       exitFullscreen();
@@ -695,6 +732,7 @@ const handleRunAll = async (code: string, language: string) => {
       });
     }
   };
+
 
 
 

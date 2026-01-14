@@ -224,5 +224,174 @@ export const addCompilerQuestion = async (req, res) => {
   }
 };
 
+// Line: ADD BELOW runAllTestCases
+export const manualSubmit = async (req, res) => {
+  try {
+    const { examId, questionId } = req.body;
+    
+    const studentId = req.user._id;
+
+    const existing = await StudentCodeSubmission.findOne({ studentId,examId, questionId ,autoSubmitted: false });
+    if (existing) return res.status(409).json({ message: "Already submitted" });
+
+    let lastEval = await StudentCodeSubmission.findOne({ studentId, examId, questionId });
+
+    if (!lastEval){
+      return res.status(400).json({ message: "Run evaluation first" });
+    } 
+    // if (lastEval.autoSubmitted) return res.status(409).json({ message: "Already submitted" });
+    if (lastEval.autoSubmitted === false) return res.status(409).json({ message: "Already submitted" });
 
 
+
+    if (!lastEval) return res.status(400).json({ message: "Run evaluation first" });
+
+    lastEval.autoSubmitted = false;
+    await lastEval.save();
+    await Student.findByIdAndUpdate(studentId, {
+      $push: {
+        scores: {
+          examId,
+          score: submission.score,
+          percentage: submission.score > 0 ? (submission.score / (submission.score || 1)) * 100 : 0, // safe fallback
+          date: new Date(),
+        },
+      },
+    });
+
+
+    res.status(200).json({ message: "Submission confirmed", submission: lastEval });
+  } catch (err) {
+    console.error("Submit Error:", err);
+    res.status(500).json({ message: "Failed to submit" });
+  }
+};
+
+export const endCompilerExam = async (req, res) => {
+  try {
+    const { examId, reason = "manual" } = req.body;
+    const studentId = req.user._id;
+
+    const exam = await CompilerExam.findById(examId).populate("questions");
+    if (!exam) return res.status(404).json({ message: "Exam not found" });
+
+    const submissions = await StudentCodeSubmission.find({ studentId, examId });
+
+    if (reason === "manual") {
+      if (submissions.length !== exam.questions.length) {
+        return res.status(400).json({ message: "All questions not completed" });
+      }
+    }
+
+    const maxScore = exam.questions.reduce((a, q) => a + (q.marks || 0), 0);
+    const totalScore = submissions.reduce((a, s) => a + (s.score || 0), 0);
+
+    const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+    const pass = percentage >= 40;
+
+    const stats = {
+      totalQuestions: exam.questions.length,
+      attempted: submissions.length,
+      passed: submissions.filter(s => s.status === "passed").length,
+      partial: submissions.filter(s => s.status === "partial").length,
+      failed: submissions.filter(s => s.status === "failed").length,
+    };
+
+    const certificateEnabled = exam.generateCertificate === true;
+    let certificateId = null;
+
+    if (certificateEnabled && pass) {
+      certificateId = `CERT:CMP-${crypto.randomUUID()}`;
+    }
+
+
+    const attempt = await CompilerExamAttempt.findOneAndUpdate(
+      { student: studentId, exam: examId },
+      {
+        student: studentId,
+        exam: examId,
+        submissions: submissions.map(s => s._id),
+        totalScore,
+        maxScore,
+        percentage,
+        pass,
+        reason,
+        submittedAt: new Date(),
+        certificateEligible: certificateEnabled && pass,
+        certificateId,
+        stats,
+      },
+      { upsert: true, new: true }
+    );
+
+
+    await Student.findByIdAndUpdate(studentId, {
+      $push: {
+        scores: {
+          examId,
+          score: totalScore,
+          percentage,
+          date: new Date(),
+        },
+      },
+    });
+
+    await ExamSession.updateOne(
+      { student: studentId, exam: examId, active: true },
+      { $set: { active: false } }
+    );
+
+
+    return res.json({ message: "Exam ended", attempt });
+
+  } catch (err) {
+    console.error("End Compiler Exam Error:", err);
+    res.status(500).json({ message: "Failed to end exam" });
+  }
+};
+
+//calculation problem
+export const manualSubmitCalculationPro = async (req, res) => {
+  try {
+    const { examId, questionId, code, results } = req.body;
+    const studentId = req.user._id;
+
+    // 1. Block duplicates
+    const existing = await StudentCodeSubmission.findOne({ studentId, examId, questionId });
+    if (existing) {
+      return res.status(409).json({ message: "Already submitted" });
+    }
+
+    // 2. Ensure evaluation exists
+    if (!results || Object.keys(results).length === 0) {
+      return res.status(400).json({ message: "Run evaluation first" });
+    }
+
+    const passedCount = Object.values(results).filter(r => r.status === "passed").length;
+    const total = Object.keys(results).length;
+    const percent = total > 0 ? (passedCount / total) * 100 : 0;
+
+    const submission = await StudentCodeSubmission.create({
+      studentId,
+      examId,
+      questionId,
+      code,
+      results: Object.values(results),
+      score: Math.round(percent),
+      status: percent === 100 ? "passed" : percent >= 60 ? "partial" : "failed",
+      autoSubmitted: false,
+    });
+
+    return res.json({ message: "Submission saved", submission });
+
+  } catch (err) {
+    console.error("Manual Submit Error:", err);
+
+    // Handle duplicate race condition safely
+    if (err.code === 11000) {
+      return res.status(409).json({ message: "Already submitted" });
+    }
+
+    res.status(500).json({ message: "Failed to submit" });
+  }
+};
