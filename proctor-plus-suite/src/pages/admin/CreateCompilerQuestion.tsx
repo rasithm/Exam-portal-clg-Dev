@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/uis/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/uis/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/uis/card";
 import { Badge } from "@/components/uis/badge";
-import { ArrowLeft, Plus, Trash2, FileText, TestTube, Settings } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileText, TestTube, Settings , Loader2} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import axios from 'axios';
 import { baseUrl } from "@/constant/Url";
@@ -42,14 +42,47 @@ export default function CreateCompilerQuestion() {
     evaluationMode: "strict" as "strict" | "non-strict",
     testCases: [{ inputs: [""], expectedOutput: "", hidden: false }] as TestCase[],
   });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
+
+  // useEffect(() => {
+  //   const storedQuestions = JSON.parse(localStorage.getItem("compilerQuestions") || "[]");
+  //   const saved = storedQuestions[currentQuestion - 1];
+  //   if (saved) {
+  //     setFormData(saved);
+  //   }
+  // }, [currentQuestion]);
   useEffect(() => {
     const storedQuestions = JSON.parse(localStorage.getItem("compilerQuestions") || "[]");
     const saved = storedQuestions[currentQuestion - 1];
+
     if (saved) {
       setFormData(saved);
+    } else {
+      setFormData({
+        title: "",
+        shortDescription: "",
+        longDescription: "",
+        inputFormat: "",
+        outputFormat: "",
+        sampleInput: "",
+        sampleOutput: "",
+        attemptLimit: 3,
+        evaluationMode: "strict",
+        testCases: [{ inputs: [""], expectedOutput: "", hidden: false }],
+      });
     }
+
+    setIsDirty(false);
   }, [currentQuestion]);
+
+
+  useEffect(() => {
+    setIsDirty(true);
+  }, [formData]);
+
 
   const addTestCase = () => {
     setFormData((prev) => ({
@@ -187,6 +220,32 @@ export default function CreateCompilerQuestion() {
     }
   };
 
+  const handleSaveOnly = async () => {
+    setIsSaving(true);
+    try {
+      let draft = JSON.parse(localStorage.getItem("compilerExamDraft") || "{}");
+      let existingQuestions = JSON.parse(localStorage.getItem("compilerQuestions") || "[]");
+
+      const updatedQuestions = [...existingQuestions];
+      updatedQuestions[currentQuestion - 1] = {
+        ...formData,
+        memoryLimit: 128,
+        marks: draft.totalMarks ? Math.floor(draft.totalMarks / draft.questionCount) : 10
+      };
+
+      localStorage.setItem("compilerQuestions", JSON.stringify(updatedQuestions));
+
+      setIsDirty(false);
+      toast({ title: "Saved", description: "Question saved locally" });
+
+    } catch {
+      toast({ title: "Error", description: "Failed to save question", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
 
   // const handleSubmit = async (isLast: boolean) => {
   //   if (!formData.title.trim()) {
@@ -251,10 +310,18 @@ export default function CreateCompilerQuestion() {
   //     });
   //   }
   // };
+  // const confirmBack = () => {
+  //   const confirmLeave = window.confirm("Going back will reset the current unsaved question. Continue?");
+  //   if (confirmLeave) navigate(-1);
+  // };
   const confirmBack = () => {
-    const confirmLeave = window.confirm("Going back will reset the current unsaved question. Continue?");
-    if (confirmLeave) navigate(-1);
+    if (isDirty) {
+      const confirmLeave = window.confirm("You have unsaved changes. Save before leaving?");
+      if (!confirmLeave) return;
+    }
+    navigate(-1);
   };
+
 
 
 
@@ -533,14 +600,40 @@ export default function CreateCompilerQuestion() {
               Cancel
             </Button>
             <div className="flex gap-3">
+              <Button onClick={handleSaveOnly} disabled={isSaving}>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Save Question"}
+              </Button>
+
               {currentQuestion < totalQuestions ? (
-                <Button onClick={() => handleSubmit(false)}>
-                  Next Question
+                // <Button onClick={() => handleSubmit(false)}>
+                //   Next Question
+                // </Button>
+                <Button
+                  disabled={isSubmitting}
+                  onClick={async () => {
+                    setIsSubmitting(true);
+                    await handleSubmit(false);
+                    setIsSubmitting(false);
+                  }}
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Next Question"}
                 </Button>
+
               ) : (
-                <Button onClick={() => handleSubmit(true)}>
-                  Submit Exam
+                // <Button onClick={() => handleSubmit(true)}>
+                //   Submit Exam
+                // </Button>
+                <Button
+                  disabled={isSubmitting}
+                  onClick={async () => {
+                    setIsSubmitting(true);
+                    await handleSubmit(true);
+                    setIsSubmitting(false);
+                  }}
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Submit Exam"}
                 </Button>
+
               )}
             </div>
           </div>

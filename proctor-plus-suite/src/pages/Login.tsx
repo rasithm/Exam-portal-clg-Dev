@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GraduationCap, Shield, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff ,Loader2 } from "lucide-react";
 import { baseUrl } from "../constant/Url";
 
 
@@ -26,6 +26,8 @@ const Login = () => {
     password: ""
   });
   
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [studentLoading, setStudentLoading] = useState(false);
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -59,7 +61,7 @@ const Login = () => {
       });
       return;
     }
-
+    setAdminLoading(true);
     try {
       const res = await fetch(`${baseUrl}/api/auth/admin/login`, {
         method: "POST",
@@ -70,6 +72,14 @@ const Login = () => {
       
       const data = await res.json();
       
+      if (!res.ok) {
+        if (data.message === "Admin not found") {
+          toast({ title: "Error", description: "Email is not registered", variant: "destructive" });
+        } else {
+          toast({ title: "Error", description: "Email or password is invalid", variant: "destructive" });
+        }
+        return;
+      }
 
       if (res.ok) {
         if (data.role === "creator") {
@@ -84,6 +94,8 @@ const Login = () => {
       }
     } catch (err) {
       toast({ title: "Error", description: "Server not reachable", variant: "destructive" });
+    } finally {
+      setAdminLoading(false);
     }
   };
 
@@ -117,7 +129,7 @@ const Login = () => {
       });
       return;
     }
-
+    setStudentLoading(true);
     try {
       const res = await fetch(`${baseUrl}/api/auth/student/login`, {
         method: "POST",
@@ -127,6 +139,15 @@ const Login = () => {
       });
       const data = await res.json();
 
+      if (!res.ok) {
+        if (data.message === "Student not found") {
+          toast({ title: "Error", description: "Register number not assigned. Contact admin", variant: "destructive" });
+        } else {
+          toast({ title: "Error", description: "Register number or password is invalid", variant: "destructive" });
+        }
+        return;
+      }
+
       if (res.ok) {
         toast({ title: "Login Success", description: "Welcome Student" });
         navigate("/student/dashboard");
@@ -135,6 +156,8 @@ const Login = () => {
       }
     } catch (err) {
       toast({ title: "Error", description: "Server not reachable", variant: "destructive" });
+    }finally {
+      setStudentLoading(false);
     }
   };
 
@@ -249,9 +272,13 @@ const Login = () => {
                   </div>
 
 
-                  <Button type="submit" variant="hero" className="w-full h-12">
+                  {/* <Button type="submit" variant="hero" className="w-full h-12">
                     Sign In as Admin
+                  </Button> */}
+                  <Button type="submit" variant="hero" className="w-full h-12" disabled={adminLoading}>
+                    {adminLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Sign In as Admin"}
                   </Button>
+
                 </form>
               </TabsContent>
 
@@ -309,9 +336,13 @@ const Login = () => {
                   </div>
 
 
-                  <Button type="submit" variant="secondary" className="w-full h-12">
+                  {/* <Button type="submit" variant="secondary" className="w-full h-12">
                     Sign In as Student
+                  </Button> */}
+                  <Button type="submit" variant="secondary" className="w-full h-12" disabled={studentLoading}>
+                    {studentLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Sign In as Student"}
                   </Button>
+
                 </form>
               </TabsContent>
             </Tabs>
