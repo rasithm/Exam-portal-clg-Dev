@@ -454,8 +454,16 @@ const CompilerExamStudentResult = () => {
 
                 {/* Student Info */}
                 <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="w-6 h-6 text-primary" />
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    {student.profileImage ? (
+                      <img
+                        src={student.profileImage}
+                        alt="Profile"
+                        className="w-full h-full object-cover rounded-3xl"
+                      />
+                    ) : (
+                      <User className="w-6 h-6 text-primary" />
+                    )}
                   </div>
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                     <div>
@@ -641,7 +649,7 @@ const CompilerExamStudentResult = () => {
                       <span>
                         Language:{" "}
                         <Badge variant="outline" className="font-mono ml-1">
-                          {submission.language.toUpperCase()}
+                          {(submission.language || "unknown").toUpperCase()}
                         </Badge>
                       </span>
                       <span>Attempts: {submission.attempts}</span>

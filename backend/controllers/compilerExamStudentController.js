@@ -480,7 +480,7 @@ export const getCompilerExamResult = async (req, res) => {
       title: s.questionId.title,
       shortDescription: s.questionId.shortDescription,
       longDescription: s.questionId.longDescription,
-      language: s.language,
+      language: s.language || attempt.exam.language || "unknown",
       code: s.code || null,
       results: s.results || null,
       score: s.score,
