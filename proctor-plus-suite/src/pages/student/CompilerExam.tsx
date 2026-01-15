@@ -28,6 +28,7 @@ export default function CompilerExam() {
   
 
   const [isRunning, setIsRunning] = useState(false);
+  const [isRunningAll, setIsRunningAll] = useState(false);
   const [attemptsUsed, setAttemptsUsed] = useState<Record<number, number>>({});
   const [editorTheme, setEditorTheme] = useState<EditorTheme>("vs-dark");
   const [runningTestCaseIndex, setRunningTestCaseIndex] = useState<number | undefined>(undefined);
@@ -395,7 +396,7 @@ const handleRunAll = async (code: string, language: string) => {
   }
 
 
-  setIsRunning(true);
+  setIsRunningAll(true);
   
   setOutputMap(prev => ({ ...prev, [currentQuestion.id]: "" }));
 
@@ -528,7 +529,7 @@ const handleRunAll = async (code: string, language: string) => {
       variant: "destructive",
     });
   } finally {
-    setIsRunning(false);
+    setIsRunningAll(false);
   }
 };
 
@@ -715,6 +716,7 @@ const handleRunAll = async (code: string, language: string) => {
 
 
   const handleFinalSubmit = async (reason: "manual" | "time" | "violation" = "manual") => {
+  
     try {
       await axios.post(`${API_BASE}/api/student/compiler-exams/end`, {
         examId,
@@ -754,7 +756,7 @@ const handleRunAll = async (code: string, language: string) => {
       <SubmitConfirmModal
         open={showSubmitModal}
         onClose={() => setShowSubmitModal(false)}
-        onConfirm={handleFinalSubmit}
+        onConfirm={() => handleFinalSubmit("manual")}
         questions={questions.map(q => ({
           id: q.id,
           title: q.title,
@@ -766,7 +768,7 @@ const handleRunAll = async (code: string, language: string) => {
       <SubmitResultModal
         open={showSubmitResultModal}
         onClose={() => setShowSubmitResultModal(false)}
-        onConfirmSubmit={handleFinalSubmit}
+        onConfirmSubmit={() => handleFinalSubmit("manual")}
         totalTestCases={submitTestResults.total}
         passedTestCases={submitTestResults.passed}
         failedTestCases={submitTestResults.failed}
@@ -891,6 +893,7 @@ const handleRunAll = async (code: string, language: string) => {
               onRunAll={handleRunAll}
               onSubmit={handleSubmit}
               isRunning={isRunning}
+              isRunningAll={isRunningAll}
               output={output}
               editorTheme={editorTheme}
               testCaseStatuses={testCaseStatuses}

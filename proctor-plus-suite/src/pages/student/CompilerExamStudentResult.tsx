@@ -36,7 +36,8 @@ import {
 } from "@/components/uir/collapsible";
 import { ScrollArea } from "@/components/uir/scroll-area";
 import { Separator } from "@/components/uir/separator";
-
+import { baseUrl } from "@/constant/Url";
+const API_BASE = baseUrl || "http://localhost:5000";
 // Types based on backend models
 interface TestCaseResult {
   inputs: string[];
@@ -285,24 +286,51 @@ const CompilerExamStudentResult = () => {
 
   
 
-  useEffect(() => {
+  // useEffect(() => {
     // Force light mode for this page
-    document.documentElement.classList.remove("dark");
+    // document.documentElement.classList.remove("dark");
 
     // Simulate API call with dummy data
-    const fetchData = async () => {
-      setLoading(true);
+    // const fetchData = async () => {
+    //   setLoading(true);
       // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // await new Promise((resolve) => setTimeout(resolve, 500));
       // In production, replace with actual API call:
       // const res = await fetch(`${API_BASE}/api/student/compiler-exams/${examId}/result`, { credentials: "include" });
       // const json = await res.json();
-      setData(dummyResultData);
-      setLoading(false);
+  //     setData(dummyResultData);
+  //     setLoading(false);
+  //   };
+
+  //   fetchData();
+  // }, [examId]);
+
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(
+          `${API_BASE}/api/student/compiler-exams/${examId}/result`,
+          { credentials: "include" }
+        );
+        const json = await res.json();
+
+        if (!res.ok) throw new Error(json.message || "Failed to fetch result");
+
+        setData(json);
+      } catch (err: any) {
+        console.error(err);
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();
   }, [examId]);
+
 
   const toggleQuestion = (questionId: string) => {
     setExpandedQuestions((prev) => {
@@ -415,12 +443,12 @@ const CompilerExamStudentResult = () => {
                       {exam.language.toUpperCase()}
                     </Badge>
                     <span>•</span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 font-medium">
                       <Clock className="w-3 h-3" />
                       {exam.duration} mins
                     </span>
                     <span>•</span>
-                    <span>{exam.questionCount} Questions</span>
+                    <span className="font-medium">{exam.questionCount} Questions</span>
                   </div>
                 </div>
 
@@ -432,19 +460,19 @@ const CompilerExamStudentResult = () => {
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                     <div>
                       <span className="text-muted-foreground">Name:</span>{" "}
-                      <span className="font-medium">{student.name}</span>
+                      <span className="font-medium capitalize">{student.name}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Roll No:</span>{" "}
-                      <span className="font-medium">{student.rollNumber}</span>
+                      <span className="font-medium capitalize">{student.rollNumber}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Department:</span>{" "}
-                      <span className="font-medium">{student.department}</span>
+                      <span className="font-medium capitalize">{student.department}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Year:</span>{" "}
-                      <span className="font-medium">{student.year}</span>
+                      <span className="font-medium">{student.year}nd year</span>
                     </div>
                     <div className="md:col-span-2">
                       <span className="text-muted-foreground">College:</span>{" "}

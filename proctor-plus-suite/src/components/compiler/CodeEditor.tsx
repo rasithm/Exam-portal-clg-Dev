@@ -20,6 +20,7 @@ interface CodeEditorProps {
   onRunAll?: (code: string, language: string,) => void;
   onSubmit?: (code: string, language: string) => void;
   isRunning?: boolean;
+  isRunningAll?: boolean;
   output?: string;
   editorTheme?: EditorTheme;
   testCaseStatuses?: { index: number; status: "passed" | "failed" }[];
@@ -60,6 +61,7 @@ export function CodeEditor({
   onSubmit,
   onCodeChange, 
   isRunning = false,
+  isRunningAll = false,
   isLocked = false,
   output: initialOutput = "",
   editorTheme = "vs-dark"
@@ -245,6 +247,7 @@ export function CodeEditor({
                   variant="ghost" 
                   size="sm" 
                   onClick={handleClear}
+                  disabled={isLocked || isRunning || isRunningAll}
                   className="h-8 px-3 text-muted-foreground hover:text-foreground"
                 >
                   <Trash2 className="w-4 h-4 mr-1" />
@@ -254,7 +257,7 @@ export function CodeEditor({
                   variant="secondary" 
                   size="sm" 
                   onClick={handleRunClick}
-                  disabled={isLocked || isRunning}
+                  disabled={isLocked || isRunning || isRunningAll}
                   className="h-8 px-4 bg-gray-800 text-cyan-50 hover:bg-gray-800 hover:text-cyan-50"
                 >
                   {isRunning ? (
@@ -274,10 +277,10 @@ export function CodeEditor({
                   variant="secondary" 
                   size="sm" 
                   onClick={() =>  onRunAll?.(code, selectedLanguage)}
-                  disabled={isRunning || isLocked}
+                  disabled={isRunning || isLocked || isRunningAll}
                   className="h-8 px-4 bg-gray-800 text-cyan-50 hover:bg-gray-800 hover:text-cyan-50"
                 >
-                  {isRunning ? (
+                  {isRunningAll ? (
                     <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                   ) : (
                     <Play className="w-4 h-4 mr-1" />
@@ -288,7 +291,7 @@ export function CodeEditor({
                 <Button 
                   size="sm" 
                   onClick={() => onSubmit?.(code, selectedLanguage)}
-                  disabled={isRunning || isLocked}
+                  disabled={isRunning || isLocked || isRunningAll}
                   className="h-8 px-4"
                 >
                   <Send className="w-4 h-4 mr-1" />

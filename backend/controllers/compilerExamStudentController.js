@@ -293,6 +293,7 @@ export const manualSubmit = async (req, res) => {
 export const endCompilerExam = async (req, res) => {
   try {
     const { examId, reason = "manual" } = req.body;
+    if (typeof reason !== "string") reason = "manual";
     const studentId = req.user._id;
 
     const exam = await CompilerExam.findById(examId).populate("questions");
@@ -300,10 +301,15 @@ export const endCompilerExam = async (req, res) => {
 
     const submissions = await StudentCodeSubmission.find({ studentId, examId });
 
+    
+
+
     // ❗ Manual requires all submitted
     if (reason === "manual" && submissions.length !== exam.questions.length) {
       return res.status(400).json({ message: "All questions not completed" });
     }
+
+    
 
     // ⚠ TIME / VIOLATION → auto fail missing
     if (reason === "time" || reason === "violation") {
@@ -364,9 +370,23 @@ export const endCompilerExam = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    await Student.findByIdAndUpdate(studentId, {
-      $push: { scores: { examId, score: totalScore, percentage, date: new Date() } },
-    });
+    // await Student.findByIdAndUpdate(studentId, {
+    //   $push: { scores: { examId, score: totalScore, percentage, date: new Date() } },
+    // });
+    await Student.findOneAndUpdate(
+      { _id: studentId, "scores.examId": { $ne: examId } },
+      {
+        $push: {
+          scores: {
+            examId,
+            score: totalScore,
+            percentage,
+            date: new Date()
+          }
+        }
+      }
+    );
+
 
     await ExamSession.updateOne(
       { student: studentId, exam: examId, active: true },
@@ -436,70 +456,95 @@ export const getCompilerExamById = async (req, res) => {
 }
 
 
-
-
-
-
-
 export const getCompilerExamResult = async (req, res) => {
   try {
     const { examId } = req.params;
     const studentId = req.user._id;
 
-    // Find the attempt
-    const attempt = await CompilerExamAttempt.findOne({
-      student: studentId,
-      exam: examId,
-    })
-    .populate({
-      path: "student",
-      select: "name rollNumber department collegeName profileImage email",
-    })
-    .populate({
-      path: "exam",
-      select: "title totalMarks duration",
-    })
-    .populate({
-      path: "submissions",
-      populate: {
-        path: "questionId",
-        select: "title marks problemStatement difficulty",
-      },
-    });
+    const attempt = await CompilerExamAttempt.findOne({ student: studentId, exam: examId })
+      .populate("exam")
+      .populate({
+        path: "submissions",
+        populate: { path: "questionId" }
+      });
 
     if (!attempt) {
-      return res.status(404).json({ message: "Result not found or exam not attempted." });
+      return res.status(404).json({ message: "Result not found" });
     }
 
-    // Structure data for frontend
-    const responseData = {
-      examTitle: attempt.exam.title,
+
+    const student = await Student.findById(studentId);
+
+    const submissions = attempt.submissions.map(s => ({
+      questionId: s.questionId._id,
+      title: s.questionId.title,
+      shortDescription: s.questionId.shortDescription,
+      longDescription: s.questionId.longDescription,
+      language: s.language,
+      code: s.code || null,
+      results: s.results || null,
+      score: s.score,
+      maxScore: s.questionId.marks,
+      status: s.status,
+      attempts: s.attempts,
+      autoSubmitted: s.autoSubmitted,
+      violationDetected: s.violationDetected,
+      submittedAt: s.submittedAt,
+      isDeleted: !s.code || !s.results,
+    }));
+
+    const session = await ExamSession.findOne({
+      student: studentId,
+      exam: examId
+    }).sort({ startTime: 1 }); // earliest session
+
+
+    return res.json({
+      student: {
+        id: student._id,
+        name: student.name,
+        rollNumber: student.rollNumber,
+        email: student.email,
+        department: student.department,
+        year: student.year,
+        collegeName: student.collegeName,
+        profileImage: student.profileImage,
+      },
+      exam: {
+        id: attempt.exam._id,
+        title: attempt.exam.title,
+        language: attempt.exam.language,
+        duration: attempt.exam.duration,
+        totalMarks: attempt.maxScore,
+        questionCount: attempt.exam.questionCount,
+        perQuestionMark: attempt.exam.perQuestionMark,
+        generateCertificate: attempt.exam.generateCertificate,
+        startTime: attempt.startedAt,
+        endTime: attempt.submittedAt,
+      },
       totalScore: attempt.totalScore,
       maxScore: attempt.maxScore,
       percentage: attempt.percentage,
       pass: attempt.pass,
-      stats: attempt.stats, // { attempted, passed, partial, failed }
-      student: attempt.student,
+      reason: attempt.reason,
+      startedAt: session?.startTime || attempt.submittedAt,
+      submittedAt: attempt.submittedAt,
+      stats: attempt.stats,
       certificateEligible: attempt.certificateEligible,
       certificateId: attempt.certificateId,
-      submissions: attempt.submissions.map((sub) => ({
-        questionTitle: sub.questionId.title,
-        difficulty: sub.questionId.difficulty,
-        maxMarks: sub.questionId.marks,
-        score: sub.score,
-        status: sub.status, // passed, partial, failed
-        code: sub.code,
-        language: sub.language,
-        attempts: sub.attempts,
-        testCasesPassed: sub.results.filter((r) => r.passed).length,
-        totalTestCases: sub.results.length,
-      })),
-    };
+      submissions,
+      reviewCompleted: false,
+    });
 
-    return res.json(responseData);
   } catch (err) {
-    console.error("Get Compiler Result Error:", err);
-    return res.status(500).json({ message: "Failed to fetch result" });
+    console.error("Result fetch error:", err);
+    res.status(500).json({ message: "Failed to load result" });
   }
 };
+
+
+
+
+
+
 
