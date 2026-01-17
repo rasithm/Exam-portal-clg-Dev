@@ -24,6 +24,7 @@ import CreateCompilerExam from "./pages/admin/CreateCompilerExam";
 import CreateCompilerQuestion from "./pages/admin/CreateCompilerQuestion";
 import CompilerExam from "./pages/student/CompilerExam";
 import CompilerExamStudentResult from "./pages/student/CompilerExamStudentResult";
+import CompilerExamReport from "./pages/student/CompilerExamReport";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/student/exam/result/:examId" element={<ExamResultPage />} />
           <Route path="/exam/completed/:certificateId" element={<ExamCompleted />} />
           <Route path="/student/exam/report/:examId" element={<ExamReport />} />
+          <Route path="/student/exam/compiler/:examId/report" element={<CompilerExamReport />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset/verify" element={<OtpVerification />} />
           <Route path="/reset/complete" element={<ResetVerification />} />

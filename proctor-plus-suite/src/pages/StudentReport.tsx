@@ -40,6 +40,8 @@ interface ExamStats {
   totalQs: number;
   correct: number;
   wrong: number;
+  totalMarks: number;
+  maxMarks: number;
 }
 
 interface ProctoringData {
@@ -71,11 +73,24 @@ const ExamReport: React.FC = () => {
   const chartInstance = useRef<Chart | null>(null);
 
   // --- Derived Metrics (safe defaults when no data yet) ---
-  const marksPerQ = 2;
-  const maxScore = reportData ? reportData.exam.totalQs * marksPerQ : 0;
-  const studentScore = reportData ? reportData.exam.correct * marksPerQ : 0;
+  // const marksPerQ = 2;
+  // const maxScore = reportData ? reportData.exam.totalQs * marksPerQ : 0;
+  // const studentScore = reportData ? reportData.exam.correct * marksPerQ : 0;
+  // const percentage =
+  //   maxScore > 0 ? Math.round((studentScore / maxScore) * 100) : 0;
+
+  // const studentScore = reportData?.exam.totalMarks || 0;
+  // const maxScore = reportData?.exam.maxMarks || 0;
+
+  // const percentage =
+  //   maxScore > 0 ? Math.round((studentScore / maxScore) * 100) : 0;
+
+  const studentScore = reportData?.exam.totalMarks ?? 0;
+  const maxScore = reportData?.exam.maxMarks ?? 0;
+
   const percentage =
     maxScore > 0 ? Math.round((studentScore / maxScore) * 100) : 0;
+
   
 
 

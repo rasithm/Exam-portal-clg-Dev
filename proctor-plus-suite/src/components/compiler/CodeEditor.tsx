@@ -46,10 +46,10 @@ const monacoThemeMap: Record<EditorTheme, string> = {
 };
 
 const defaultCode: Record<string, string> = {
-  python: '# Write your solution here\n\ndef solution():\n    pass\n',
-  java: '// Write your solution here\n\npublic class Solution {\n    public static void main(String[] args) {\n        \n    }\n}',
+  python: '# Write your solution here\n\ndef Main():\n    pass\n',
+  java: '// Write your solution here\n\npublic class Main {\n    public static void main(String[] args) {\n        \n    }\n}',
   cpp: '// Write your solution here\n\n#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}',
-  javascript: '// Write your solution here\n\nfunction solution() {\n    \n}\n',
+  javascript: '// Write your solution here\n\nfunction Main() {\n    \n}\n',
   c: '// Write your solution here\n\n#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}',
 };
 
@@ -439,7 +439,7 @@ export function CodeEditor({
 
 
                 </div>
-                {isWaitingForInput && (
+                {/* {isWaitingForInput && (
                   <div className="px-4 py-2 border-t border-border bg-muted/40 flex justify-end">
                     <Button
                       size="sm"
@@ -452,7 +452,7 @@ export function CodeEditor({
                       Submit Input
                     </Button>
                   </div>
-                )}
+                )} */}
 
               </TabsContent>
               

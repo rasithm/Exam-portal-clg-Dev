@@ -544,6 +544,77 @@ export const getCompilerExamResult = async (req, res) => {
 
 
 
+export const getStudentCompilerReportCard = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const studentId = req.user._id;
+
+    // 1. Get attempt
+    const attempt = await CompilerExamAttempt.findOne({
+      student: studentId,
+      exam: examId,
+    }).populate("exam");
+
+    if (!attempt) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    // 2. Get student
+    const student = await Student.findById(studentId);
+
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // 3. Build response EXACTLY as frontend expects
+    return res.json({
+      reportId: `COMP-RPT-${attempt._id.toString().slice(-6).toUpperCase()}`,
+
+      student: {
+        name: student.name,
+        id: student.rollNumber,
+        rollNumber: student.rollNumber,
+        department: student.department,
+        year: student.year,
+        collegeName: student.collegeName,
+        examDate: attempt.submittedAt
+          ? attempt.submittedAt.toISOString().split("T")[0]
+          : "",
+        photoUrl: student.profileImage || "",
+      },
+
+      exam: {
+        examName: attempt.exam.title,
+        language: attempt.exam.language,
+        duration: attempt.exam.duration,
+        totalQuestions: attempt.stats.totalQuestions,
+        attempted: attempt.stats.attempted,
+        passed: attempt.stats.passed,
+        partial: attempt.stats.partial,
+        failed: attempt.stats.failed,
+        totalMarks: attempt.totalScore,
+        maxMarks: attempt.maxScore,
+      },
+
+      proctoring: {
+        cheatingCount: attempt.reason === "violation" ? 1 : 0,
+        cheatingReason:
+          attempt.reason === "violation"
+            ? "Violation detected during exam"
+            : "None",
+      },
+
+      certificateEligible: attempt.certificateEligible,
+      certificateId: attempt.certificateId || null,
+    });
+  } catch (err) {
+    console.error("Compiler report error:", err);
+    res.status(500).json({ message: "Failed to load report" });
+  }
+};
+
+
+
 
 
 

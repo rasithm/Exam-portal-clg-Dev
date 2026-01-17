@@ -4,7 +4,7 @@ import { protect } from "../middlewares/auth.js";
 import {
 
 getCompilerExamById , runCode ,  runAllAndEvaluate, manualSubmit , endCompilerExam ,getCompilerExamStatus , getCompilerExamResult
-} from '../controllers/compilerExamStudentController.js';
+,getStudentCompilerReportCard} from '../controllers/compilerExamStudentController.js';
 
 const router = express.Router();
 
@@ -15,5 +15,5 @@ router.post('/run-code', protect(['student']), runCode);
 router.get("/:examId/status", protect(['student']), getCompilerExamStatus);
 router.get("/:examId/result", protect(["student"]), getCompilerExamResult);
 router.post("/end", protect(["student"]), endCompilerExam);
-
+router.get("/:examId/student-report", protect(["student"]), getStudentCompilerReportCard);
 export default router;
