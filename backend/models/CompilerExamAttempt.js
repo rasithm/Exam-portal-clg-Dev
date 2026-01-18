@@ -14,6 +14,18 @@ const CompilerExamAttemptSchema = new mongoose.Schema({
 
   reason: { type: String, enum: ["manual", "timeout", "violation"], default: "manual" },
 
+  violationDetails: {
+    tabSwitchCount: { type: Number, default: 0 },
+    fullscreenExitCount: { type: Number, default: 0 },
+    devToolCount: { type: Number, default: 0 },
+    shortcutCount: { type: Number, default: 0 },
+    violationReason: {
+      type: String,
+      enum: ["tab", "fullscreen", "devtools", "shortcut", null],
+      default: null,
+    },
+  },
+
   startedAt: Date,
   submittedAt: Date,
 

@@ -61,6 +61,21 @@ interface ReportData {
   certificateId?: string;
 }
 
+interface ViolationDetails {
+  tabSwitchCount: number;
+  fullscreenExitCount: number;
+  devToolCount: number;
+  shortcutCount: number;
+  violationReason: "tab" | "fullscreen" | "devtools" | "shortcut" | null;
+}
+
+interface ProctoringData {
+  cheatingCount: number;
+  cheatingReason: string;
+  violationDetails?: ViolationDetails | null;
+}
+
+
 // Dummy data for development
 const dummyReportData: ReportData = {
   reportId: "COMP-RPT-2024-001",
@@ -475,10 +490,49 @@ const CompilerExamReport: React.FC = () => {
                       <span className="font-medium">Flags:</span>{" "}
                       {reportData.proctoring.cheatingCount}
                     </p>
-                    <p className="text-slate-700">
+                    <p className="text-slate-700 text-sm">
                       <span className="font-medium">Reason:</span>{" "}
                       {reportData.proctoring.cheatingReason}
                     </p>
+
+                    {reportData.proctoring.violationDetails && (
+                      <div className="mt-3 grid grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                        <p className="text-slate-700">
+                          <span className="font-medium">Tab Switches:</span>{" "}
+                          {reportData.proctoring.violationDetails.tabSwitchCount}
+                        </p>
+
+                        <p className="text-slate-700">
+                          <span className="font-medium">Fullscreen Exits:</span>{" "}
+                          {reportData.proctoring.violationDetails.fullscreenExitCount}
+                        </p>
+
+                        <p className="text-slate-700">
+                          <span className="font-medium">DevTools Attempts:</span>{" "}
+                          {reportData.proctoring.violationDetails.devToolCount}
+                        </p>
+
+                        <p className="text-slate-700">
+                          <span className="font-medium">Shortcut Attempts:</span>{" "}
+                          {reportData.proctoring.violationDetails.shortcutCount}
+                        </p>
+
+                        {reportData.proctoring.violationDetails.violationReason && (
+                          <p className="col-span-2 text-red-700 mt-2">
+                            <span className="font-medium">Auto-Trigger Reason:</span>{" "}
+                            {reportData.proctoring.violationDetails.violationReason === "tab" &&
+                              "Multiple tab switches"}
+                            {reportData.proctoring.violationDetails.violationReason === "fullscreen" &&
+                              "Repeated fullscreen exits"}
+                            {reportData.proctoring.violationDetails.violationReason === "shortcut" &&
+                              "Unauthorized keyboard shortcuts"}
+                            {reportData.proctoring.violationDetails.violationReason === "devtools" &&
+                              "Developer tools access detected"}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                   </div>
                 </div>
               </div>

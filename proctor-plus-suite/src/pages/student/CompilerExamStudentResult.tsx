@@ -104,6 +104,13 @@ interface CompilerExamResultData {
   percentage: number;
   pass: boolean;
   reason: "manual" | "timeout" | "violation";
+  violationDetails?: {
+    tabSwitchCount: number;
+    fullscreenExitCount: number;
+    devToolCount: number;
+    shortcutCount: number;
+    violationReason: "tab" | "fullscreen" | "devtools" | "shortcut" | null;
+  };
   startedAt: string;
   submittedAt: string;
   stats: ExamAttemptStats;
@@ -379,12 +386,13 @@ const CompilerExamStudentResult = () => {
 
   const handleDownloadCertificate = () => {
     if (data?.certificateId) {
-      navigate(`/student/certificate/${data.certificateId}`);
+      navigate(`/exam/completed/:certificateId`);
     }
   };
 
   const handleReport = () => {
     // Navigate to report page or open report modal
+    navigate(`/student/exam/compiler/${examId}/report`)
     console.log("Report issue for exam:", examId);
   };
 
@@ -510,6 +518,52 @@ const CompilerExamStudentResult = () => {
                     </Badge>
                   )}
                 </div>
+
+                {data.reason === "violation" && data.violationDetails && (
+                  <div className="mt-3 p-4 rounded-lg border border-red-200 bg-red-50">
+                    <div className="flex items-center gap-2 mb-2 text-red-700 font-semibold">
+                      <AlertCircle className="w-4 h-4" />
+                      Security Violation Summary
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="destructive">Tab</Badge>
+                        <span>{data.violationDetails.tabSwitchCount}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge variant="destructive">Fullscreen</Badge>
+                        <span>{data.violationDetails.fullscreenExitCount}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">DevTools</Badge>
+                        <span>{data.violationDetails.devToolCount}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">Shortcuts</Badge>
+                        <span>{data.violationDetails.shortcutCount}</span>
+                      </div>
+                    </div>
+
+                    {data.violationDetails.violationReason && (
+                      <div className="mt-3 text-sm text-red-800">
+                        <strong>Final Reason:</strong>{" "}
+                        {data.violationDetails.violationReason === "tab" &&
+                          "Multiple tab switching detected"}
+                        {data.violationDetails.violationReason === "fullscreen" &&
+                          "Fullscreen exited repeatedly"}
+                        {data.violationDetails.violationReason === "shortcut" &&
+                          "Unauthorized keyboard shortcuts used"}
+                        {data.violationDetails.violationReason === "devtools" &&
+                          "Developer tools access detected"}
+                      </div>
+                    )}
+                  </div>
+                )}
+
               </div>
 
               {/* Right: Score Card */}

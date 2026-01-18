@@ -320,14 +320,27 @@ export default function CreateCompilerExam() {
           </Card>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => navigate(-1)}>
-              Cancel
-            </Button>
-            <Button type="submit">
-              Continue to Questions
-            </Button>
+          <div className="flex justify-between">
+            <div className="gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/admin/dashboard")}
+                className="w-full sm:w-auto"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Dashboard
+              </Button>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Continue to Questions
+              </Button>
+            </div>
           </div>
+          
         </form>
       </main>
     </div>

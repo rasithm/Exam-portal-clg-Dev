@@ -367,6 +367,14 @@ useEffect(() => {
 
   }, [tabSwitchCount, fullscreenExitCount, examStarted]);
 
+  const getFinalViolationReason = () => {
+    if (tabSwitchCount >= 15) return "tab";
+    if (fullscreenExitCount >= 15) return "fullscreen";
+    if (devToolCount >= 3) return "devtools";
+    if (shortcutCount >= 60) return "shortcut";
+
+    return violationReason; // fallback (soft violations)
+  };
 
 
   
@@ -951,10 +959,11 @@ const handleRunAll = async (code: string, language: string) => {
 
 
 
-  const handleFinalSubmit = async (reason: "manual" | "time" | "violation" = "manual") => {
+  const handleFinalSubmit = async (reason: "manual" | "time" | "violation" ) => {
     if (isSubmitting) return; // 🔒 STOP duplicate calls
     setIsSubmitting(true);
     try {
+      const finalReason = reason === "violation" ? getFinalViolationReason() : null;
       localStorage.removeItem(`compiler-exam-lock-${examId}`);
       await axios.post(`${API_BASE}/api/student/compiler-exams/end`, {
         examId,
@@ -964,7 +973,7 @@ const handleRunAll = async (code: string, language: string) => {
           fullscreenExitCount,
           devToolCount,
           shortcutCount,
-          violationReason,
+          violationReason : finalReason,
         },
       }, { withCredentials: true });
 

@@ -31,12 +31,20 @@ interface CodeEditorProps {
 }
 
 const languageMap: Record<string, string> = {
-  "Python": "python",
-  "Java": "java",
+  Python: "python",
+  Java: "java",
   "C++": "cpp",
-  "JavaScript": "javascript",
-  "C": "c",
+  C: "c",
+  "C#": "csharp",
+  JavaScript: "javascript",
+  TypeScript: "typescript",
+  Kotlin: "kotlin",
+  SQL: "sql",
+  Go: "go",
+  Rust: "rust",
+  Ruby: "ruby",
 };
+
 
 const monacoThemeMap: Record<EditorTheme, string> = {
   "light": "light",
@@ -45,13 +53,113 @@ const monacoThemeMap: Record<EditorTheme, string> = {
   "gray": "gray-theme",
 };
 
+// const defaultCode: Record<string, string> = {
+//   python: '# Write your solution here\n\ndef Main():\n    pass\n',
+//   java: '// Write your solution here\n\npublic class Main {\n    public static void main(String[] args) {\n        \n    }\n}',
+//   cpp: '// Write your solution here\n\n#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}',
+//   javascript: '// Write your solution here\n\nfunction Main() {\n    \n}\n',
+//   c: '// Write your solution here\n\n#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}',
+// };
 const defaultCode: Record<string, string> = {
-  python: '# Write your solution here\n\ndef Main():\n    pass\n',
-  java: '// Write your solution here\n\npublic class Main {\n    public static void main(String[] args) {\n        \n    }\n}',
-  cpp: '// Write your solution here\n\n#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}',
-  javascript: '// Write your solution here\n\nfunction Main() {\n    \n}\n',
-  c: '// Write your solution here\n\n#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}',
+  python: `# Write your solution here
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()
+`,
+
+  java: `// Write your solution here
+public class Main {
+    public static void main(String[] args) {
+        
+    }
+}
+`,
+
+  cpp: `// Write your solution here
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    
+    return 0;
+}
+`,
+
+  c: `// Write your solution here
+#include <stdio.h>
+
+int main() {
+    
+    return 0;
+}
+`,
+
+  javascript: `// Write your solution here
+function main() {
+    
+}
+
+main();
+`,
+
+  typescript: `// Write your solution here
+function main(): void {
+    
+}
+
+main();
+`,
+
+  csharp: `// Write your solution here
+using System;
+
+class Program {
+    static void Main() {
+        
+    }
+}
+`,
+
+  kotlin: `// Write your solution here
+fun main() {
+    
+}
+`,
+
+  sql: `-- Write your SQL query here
+SELECT * FROM table_name;
+`,
+
+  go: `// Write your solution here
+package main
+
+import "fmt"
+
+func main() {
+    
+    fmt.Println("")
+}
+`,
+
+  rust: `// Write your solution here
+use std::io;
+
+fn main() {
+    
+}
+`,
+
+  ruby: `# Write your solution here
+def main
+end
+
+main
+`,
 };
+
 
 export function CodeEditor({ 
   languages,
@@ -302,7 +410,7 @@ export function CodeEditor({
 
             {/* Editor - Full height */}
             <div className="flex-1 min-h-0 ">
-              <div className="monaco-wrapper">
+              <div className="monaco-wrapper h-full min-h-[420px]">
                 <Editor
                   height="100%"
                   language={languageMap[selectedLanguage]}
@@ -319,6 +427,33 @@ export function CodeEditor({
                   onMount={(editor, monaco) => {
                     editorRef.current = editor;
                     monacoRef.current = monaco;
+                    monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
+                    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+                      target: monaco.languages.typescript.ScriptTarget.ES2020,
+                      allowNonTsExtensions: true,
+                      noEmit: true,
+                    });
+
+                    monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
+                    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+                      target: monaco.languages.typescript.ScriptTarget.ES2020,
+                      allowNonTsExtensions: true,
+                      noEmit: true,
+                      strict: true,
+                    });
+
+                    // ===============================
+                    // ✅ Enable word-based suggestions for ALL languages
+                    // ===============================
+                    editor.updateOptions({
+                      quickSuggestions: {
+                        other: true,
+                        comments: false,
+                        strings: false,
+                      },
+                      suggestOnTriggerCharacters: true,
+                      wordBasedSuggestions: "allDocuments",
+                    });
                     setTimeout(() => editor.layout(), 100);
                   }}
 
@@ -343,6 +478,9 @@ export function CodeEditor({
                     renderWhitespace: "none",
                     renderControlCharacters: false,
                     contextmenu: false,
+                    quickSuggestions: true,
+                    suggestOnTriggerCharacters: true,
+                    wordBasedSuggestions: "allDocuments",
                   
                   }}
                 />

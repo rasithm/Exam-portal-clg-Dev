@@ -353,6 +353,9 @@ export const endCompilerExam = async (req, res) => {
     const certificateEnabled = exam.generateCertificate === true;
     let certificateId = null;
     if (certificateEnabled && pass) certificateId = `CERT:CMP-${crypto.randomUUID()}`;
+    
+
+    if (reason === "time") reason = "timeout";
 
     const attempt = await CompilerExamAttempt.findOneAndUpdate(
       { student: studentId, exam: examId },
@@ -537,6 +540,7 @@ export const getCompilerExamResult = async (req, res) => {
       percentage: attempt.percentage,
       pass: attempt.pass,
       reason: attempt.reason,
+      violationDetails: attempt.violationDetails || null,
       startedAt: session?.startTime || attempt.submittedAt,
       submittedAt: attempt.submittedAt,
       stats: attempt.stats,
@@ -612,6 +616,7 @@ export const getStudentCompilerReportCard = async (req, res) => {
           attempt.reason === "violation"
             ? "Violation detected during exam"
             : "None",
+        violationDetails: attempt.violationDetails || null,
       },
 
       certificateEligible: attempt.certificateEligible,
