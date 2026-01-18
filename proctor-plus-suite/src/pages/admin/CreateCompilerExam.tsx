@@ -18,10 +18,15 @@ const API_BASE = baseUrl || "http://localhost:5000";
 const languageConfig = [
   { name: "Python", color: "bg-yellow-500/10 border-yellow-500/30 text-yellow-600" },
   { name: "Java", color: "bg-orange-500/10 border-orange-500/30 text-orange-600" },
-  { name: "C++", color: "bg-blue-500/10 border-blue-500/30 text-blue-600" },
-  { name: "JavaScript", color: "bg-amber-500/10 border-amber-500/30 text-amber-600" },
   { name: "C", color: "bg-slate-500/10 border-slate-500/30 text-slate-600" },
+  { name: "C++", color: "bg-blue-500/10 border-blue-500/30 text-blue-600" },
+  { name: "C#", color: "bg-purple-500/10 border-purple-500/30 text-purple-600" },
+  { name: "JavaScript", color: "bg-amber-500/10 border-amber-500/30 text-amber-600" },
+  { name: "TypeScript", color: "bg-sky-500/10 border-sky-500/30 text-sky-600" },
+  { name: "Kotlin", color: "bg-pink-500/10 border-pink-500/30 text-pink-600" },
+  { name: "SQL", color: "bg-emerald-500/10 border-emerald-500/30 text-emerald-600" }
 ];
+
 
 export default function CreateCompilerExam() {
   const navigate = useNavigate();

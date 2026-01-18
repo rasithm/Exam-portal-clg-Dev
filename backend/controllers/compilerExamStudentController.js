@@ -65,6 +65,9 @@ const mapLanguageToId = (lang) => {
     TypeScript: 74,
     SQL: 82
   };
+  if (!languageMap[lang]) {
+    throw new Error(`Unsupported language: ${lang}`);
+  }
   return languageMap[lang] || 71; // default Python
 };
 
@@ -292,7 +295,7 @@ export const manualSubmit = async (req, res) => {
 
 export const endCompilerExam = async (req, res) => {
   try {
-    const { examId, reason = "manual" } = req.body;
+    const { examId, reason = "manual",violations = {} } = req.body;
     if (typeof reason !== "string") reason = "manual";
     const studentId = req.user._id;
 
@@ -366,6 +369,13 @@ export const endCompilerExam = async (req, res) => {
         certificateEligible: certificateEnabled && pass,
         certificateId,
         stats,
+        violationDetails: {
+          tabSwitchCount: violations.tabSwitchCount || 0,
+          fullscreenExitCount: violations.fullscreenExitCount || 0,
+          devToolCount: violations.devToolCount || 0,
+          shortcutCount: violations.shortcutCount || 0,
+          violationReason: violations.violationReason || null,
+        },
       },
       { upsert: true, new: true }
     );

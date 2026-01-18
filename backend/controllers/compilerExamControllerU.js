@@ -7,7 +7,7 @@ import { io } from '../sockets/socketManager.js';
 import Exam from '../models/Exam.js';
 
 const allowedLanguages = [
-  'C', 'C++', 'Java', 'Python', 'JavaScript', 'C#', 'Go', 'Ruby', 'Rust', 'Kotlin'
+  'C', 'C++', 'Java', 'Python', 'JavaScript', 'C#', 'Go', 'Ruby', 'Rust', 'Kotlin', 'TypeScript' , 'SQL'
 ];
 
 export const createExamWithQuestions = async (req, res) => {

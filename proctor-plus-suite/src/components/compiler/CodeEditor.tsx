@@ -342,7 +342,7 @@ export function CodeEditor({
                     cursorSmoothCaretAnimation: "on",
                     renderWhitespace: "none",
                     renderControlCharacters: false,
-                    contextmenu: true,
+                    contextmenu: false,
                   
                   }}
                 />

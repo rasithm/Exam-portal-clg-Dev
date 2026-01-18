@@ -21,11 +21,17 @@ const API_BASE = baseUrl || "http://localhost:5000";
 
 export default function CompilerExam() {
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tabViolationCount, setTabViolationCount] = useState(0);
+  const [softTabCount, setSoftTabCount] = useState(0);
+
   const [examStarted, setExamStarted] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
-  
+  const [showReenter, setShowReenter] = useState(false);
+  const [violationReason, setViolationReason] = useState<null | "tab" | "fullscreen" | "devtools" | "shortcut">(null);
+
 
   const [isRunning, setIsRunning] = useState(false);
   const [isRunningAll, setIsRunningAll] = useState(false);
@@ -44,6 +50,9 @@ export default function CompilerExam() {
   const [outputMap, setOutputMap] = useState<Record<string, string>>({});
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
+  const [devToolCount, setDevToolCount] = useState(0);
+  const [shortcutCount, setShortcutCount] = useState(0);
+  const [lastVisibilityHiddenAt, setLastVisibilityHiddenAt] = useState<number | null>(null);
 
 
 
@@ -127,21 +136,226 @@ export default function CompilerExam() {
       setQuestions(examData.questions.map(q => ({ ...q, completed: false })));
     }
   }, [examData]);
+
+
+  useEffect(() => {
+    if (!examStarted) return;
+
+    setDevToolCount(0);
+    setShortcutCount(0);
+    setFullscreenExitCount(0);
+  }, [examStarted]);
+
   
 
   useEffect(() => {
-    if (examStarted && !isFullscreen) {
-      setFullscreenExitCount(prev => prev + 1);
+    if (!examStarted) return;
+
+    const detectDevTools = (e: KeyboardEvent) => {
+      const blocked =
+        e.key === "F12" ||
+        (e.ctrlKey && e.shiftKey && ["I", "J", "C"].includes(e.key)) ||
+        (e.ctrlKey && e.key === "u");
+
+      if (!blocked) return;
+
+      e.preventDefault();
+
+      setDevToolCount(c => {
+        const next = c + 1;
+
+        if (next === 1) {
+          toast({ title: "Warning", description: "DevTools detected" });
+        } else if (next === 2) {
+          toast({
+            title: "Second Warning",
+            description: "You will be logged out",
+            variant: "destructive",
+          });
+          setTimeout(() => {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.replace("/login"); // hard reload
+
+          }, 1500);
+        } else if (next >= 3) {
+          handleFinalSubmit("violation");
+        }
+
+        return next;
+      });
+    };
+
+    document.addEventListener("keydown", detectDevTools);
+    return () => document.removeEventListener("keydown", detectDevTools);
+  }, [examStarted]);
+
+  useEffect(() => {
+  if (!examStarted) return;
+
+  const lockKey = `compiler-exam-lock-${examId}`;
+  const myId = crypto.randomUUID();
+
+  localStorage.setItem(lockKey, myId);
+
+  const interval = setInterval(() => {
+    if (isSubmitting) return;
+
+    const activeId = localStorage.getItem(lockKey);
+
+    if (activeId && activeId !== myId) {
+      const now = Date.now();
+      const recentlyHidden =
+        lastVisibilityHiddenAt && now - lastVisibilityHiddenAt < 3000; // 3s window
+
+      const isLikelyCheating = !recentlyHidden;
+
+
+      if (isLikelyCheating) {
+        setTabViolationCount(c => c + 1);
+        setViolationReason("tab");
+
+        toast({
+          title: "Warning",
+          description: "Multiple exam tabs detected",
+          variant: "destructive",
+        });
+      } else {
+        setSoftTabCount(c => c + 1); // back/refresh
+      }
     }
-  }, [isFullscreen]);
+
+  }, 2000);
+
+  return () => {
+    clearInterval(interval);
+  };
+}, [examStarted]);
+
+useEffect(() => {
+  if (!examStarted) return;
+
+  const blockClipboard = (e: ClipboardEvent) => {
+    e.preventDefault();
+    setViolationReason("shortcut");
+
+    toast({
+      title: "Action blocked",
+      description: "Copy / Paste / Cut is disabled during exam",
+      variant: "destructive",
+    });
+  };
+
+  document.addEventListener("copy", blockClipboard);
+  document.addEventListener("cut", blockClipboard);
+  document.addEventListener("paste", blockClipboard);
+
+  return () => {
+    document.removeEventListener("copy", blockClipboard);
+    document.removeEventListener("cut", blockClipboard);
+    document.removeEventListener("paste", blockClipboard);
+  };
+}, [examStarted]);
+
+
+useEffect(() => {
+  if (!examStarted) return;
+
+  const onVisibilityChange = () => {
+    if (document.visibilityState === "hidden") {
+      setLastVisibilityHiddenAt(Date.now());
+    }
+  };
+
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+}, [examStarted]);
+
+
+  useEffect(() => {
+    const handleUnload = () => {
+      localStorage.removeItem(`compiler-exam-lock-${examId}`);
+    };
+
+    window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("pagehide", handleUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("pagehide", handleUnload);
+    };
+  }, [examId]);
+
+  useEffect(() => {
+    if (!examStarted || isSubmitting) return;
+
+    // HARD cheating
+    if (tabViolationCount >= 3) {
+      handleFinalSubmit("violation");
+    }
+
+    // Soft actions (back/refresh abuse)
+    if (softTabCount >= 5) {
+      handleFinalSubmit("violation");
+    }
+  }, [tabViolationCount, softTabCount]);
+
+
+
+
+
+  useEffect(() => {
+    if (!examStarted) return;
+
+    const onShortcut = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInEditor = !!target.closest(".monaco-editor");
+
+      // ✅ Ignore editor shortcuts
+      if (isInEditor) return;
+
+      // ❌ Only count dangerous shortcuts
+      const dangerous =
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey;
+
+      if (!dangerous) return;
+
+      e.preventDefault();
+
+      setShortcutCount(c => {
+        const next = c + 1;
+
+        toast({
+          title: "Shortcut Disabled",
+          description: `Unauthorized shortcut detected (${next}/60)`,
+          variant: next % 5 === 0 ? "destructive" : "default",
+        });
+
+        if (next >= 60) {
+          handleFinalSubmit("violation");
+        }
+
+        return next;
+      });
+    };
+
+    document.addEventListener("keydown", onShortcut);
+    return () => document.removeEventListener("keydown", onShortcut);
+  }, [examStarted]);
+
+
+
 
   useEffect(() => {
     if (!examStarted) return;
 
     const tabViolation = tabSwitchCount >= 15;
-    const fullscreenViolation = fullscreenExitCount >= 3;
+    const fullscreenViolation = fullscreenExitCount >= 15;
 
-    if (tabViolation || fullscreenViolation) {
+
+    if ((tabViolation || fullscreenViolation) && !isSubmitting) {
       toast({
         title: "Security violation",
         description: "Exam auto-submitted due to repeated violations",
@@ -272,6 +486,26 @@ export default function CompilerExam() {
     setTableResults(rebuilt);
     setShowResultsTable(rebuilt.length > 0);
   }, [currentQuestionIndex, testCaseResults]);
+
+
+  useEffect(() => {
+    if (!examStarted) return;
+
+    const handleFsChange = () => {
+      const active = !!document.fullscreenElement;
+
+      if (!active) {
+        setFullscreenExitCount(c => c + 1);
+        setShowReenter(true);
+      } else {
+        setShowReenter(false);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, [examStarted]);
+
 
 
 
@@ -410,7 +644,7 @@ const handleRunAll = async (code: string, language: string) => {
         examId,
         sourceCode: code,
         language,
-        violationDetected: tabSwitchCount > 2 || !isFullscreen,
+        violationDetected: tabSwitchCount >= 15  || !isFullscreen,
       },
       { withCredentials: true }
     );
@@ -686,6 +920,8 @@ const handleRunAll = async (code: string, language: string) => {
   };
 
   const openEndExamModal = async () => {
+     if (isSubmitting) return;
+    setShowSubmitModal(true);
     try {
       const res = await axios.get(
         `${API_BASE}/api/student/compiler-exams/${examId}/status`,
@@ -716,15 +952,24 @@ const handleRunAll = async (code: string, language: string) => {
 
 
   const handleFinalSubmit = async (reason: "manual" | "time" | "violation" = "manual") => {
-  
+    if (isSubmitting) return; // 🔒 STOP duplicate calls
+    setIsSubmitting(true);
     try {
+      localStorage.removeItem(`compiler-exam-lock-${examId}`);
       await axios.post(`${API_BASE}/api/student/compiler-exams/end`, {
         examId,
-        reason
+        reason,
+        violations: {
+          tabSwitchCount,
+          fullscreenExitCount,
+          devToolCount,
+          shortcutCount,
+          violationReason,
+        },
       }, { withCredentials: true });
 
       exitFullscreen();
-      navigate(`/student/compiler-exams/${examId}/result`);
+      navigate(`/student/compiler-exams/${examId}/result` , { replace: true });
 
     } catch (err:any) {
       toast({
@@ -740,6 +985,7 @@ const handleRunAll = async (code: string, language: string) => {
 
 
   return (
+    
     <div className={`min-h-screen bg-background flex flex-col compiler-theme ${isThemeDark(editorTheme) ? "dark" : ""}`}>
       {/* Exam Start Modal */}
       <ExamStartModal
@@ -924,6 +1170,19 @@ const handleRunAll = async (code: string, language: string) => {
           </div>
         </div>
       </main>
+      {showReenter && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-white text-lg font-semibold mb-4">
+              Fullscreen is required to continue the exam
+            </p>
+            <Button variant="destructive" onClick={enterFullscreen}>
+              Re-Enter Fullscreen
+            </Button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

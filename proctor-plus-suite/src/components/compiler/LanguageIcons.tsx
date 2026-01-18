@@ -48,13 +48,38 @@ export const CIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
   </svg>
 );
 
+export const SqlIcon = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <rect x="3" y="4" width="18" height="4" rx="1"/>
+    <rect x="3" y="10" width="18" height="4" rx="1"/>
+    <rect x="3" y="16" width="18" height="4" rx="1"/>
+  </svg>
+);
+
+export const CSharpIcon = ({ className = "w-4 h-4" }) => (
+  <span className={className}>#</span>
+);
+
+export const TypeScriptIcon = ({ className = "w-4 h-4" }) => (
+  <span className={className}>TS</span>
+);
+
+export const KotlinIcon = ({ className = "w-4 h-4" }) => (
+  <span className={className}>K</span>
+);
+
+
 // Map of language names to icon components
 export const LanguageIconMap: Record<string, React.FC<{ className?: string }>> = {
-  "Python": PythonIcon,
-  "Java": JavaIcon,
+  Python: PythonIcon,
+  Java: JavaIcon,
   "C++": CppIcon,
-  "JavaScript": JavaScriptIcon,
-  "C": CIcon,
+  C: CIcon,
+  JavaScript: JavaScriptIcon,
+  "C#": CSharpIcon,
+  TypeScript: TypeScriptIcon,
+  Kotlin: KotlinIcon,
+  SQL: SqlIcon
 };
 
 export function LanguageIcon({ language, className = "w-4 h-4" }: { language: string; className?: string }) {

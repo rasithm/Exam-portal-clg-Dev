@@ -15,11 +15,6 @@ export function useExamSecurity(enabled: boolean = true) {
 
   const addViolation = useCallback((type: string, details?: string) => {
     setViolations((prev) => [...prev, { type, timestamp: new Date(), details }]);
-    toast({
-      title: "Security Warning",
-      description: `${type} detected. This action has been logged.`,
-      variant: "destructive",
-    });
   }, []);
 
   const enterFullscreen = useCallback(async () => {
@@ -49,32 +44,33 @@ export function useExamSecurity(enabled: boolean = true) {
 
     // Disable copy/paste and keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U
-      if (
-        e.key === "F12" ||
-        (e.ctrlKey && e.shiftKey && ["I", "J", "C"].includes(e.key)) ||
-        (e.ctrlKey && e.key === "u")
-      ) {
+      const target = e.target as HTMLElement;
+      const isInEditor = !!target.closest(".monaco-editor");
+
+      // ❌ Block copy / paste / cut EVEN inside editor
+      if (e.ctrlKey && ["c", "v", "x"].includes(e.key.toLowerCase())) {
         e.preventDefault();
-        addViolation("Dev tools shortcut", e.key);
+        toast({
+          title: "Action blocked",
+          description: "Copy / Paste / Cut is disabled during exam",
+          variant: "destructive",
+        });
+        addViolation("Copy/Paste/Cut attempt");
         return;
       }
 
-      // Disable Ctrl+C, Ctrl+V, Ctrl+X (outside editor)
-      if (e.ctrlKey && ["c", "v", "x"].includes(e.key.toLowerCase())) {
-        const target = e.target as HTMLElement;
-        const isInEditor = target.closest(".monaco-editor");
-        if (!isInEditor) {
-          e.preventDefault();
-          addViolation("Copy/Paste attempt outside editor");
-        }
+      // ❌ Block print
+      if (e.ctrlKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        return;
       }
 
-      // Disable Ctrl+P (print)
-      if (e.ctrlKey && e.key === "p") {
-        e.preventDefault();
+      // ✅ Allow productivity shortcuts inside editor
+      if (isInEditor) {
+        return; // allow Ctrl+Z, Ctrl+A, Ctrl+Space, etc.
       }
     };
+
 
     // Track tab/window visibility changes
     const handleVisibilityChange = () => {
