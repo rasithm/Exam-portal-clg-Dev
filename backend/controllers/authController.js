@@ -74,7 +74,7 @@ export const studentLogin = async (req, res) => {
   
   const match = await bcrypt.compare(String(password), String(student.password));
   if (!match) {
-    return res.status(401).json({ message: "Invalid credentials" });
+    return res.status(401).json({ message: "Password Mismatch" });
   }
 
   // Prevent login if the student already has an active exam session
@@ -146,6 +146,13 @@ export const studentLogout = async (req, res) => {
     console.error("Error in studentLogout:", error);
     res.status(500).json({ message: "Internal server error during logout" });
   }
+};
+
+export const getMe = async (req, res) => {
+  res.json({
+    authenticated: true,
+    role: req.user.role,
+  });
 };
 
 

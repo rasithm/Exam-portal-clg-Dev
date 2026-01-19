@@ -24,6 +24,8 @@ const examAttemptSchema = new mongoose.Schema({
   totalMarks: Number,   // obtained marks
   maxMarks: Number,     // total possible marks for this attempt
   percentage: Number,
+  timeTakenSeconds: Number,
+
   pass: Boolean,
   submittedAt: { type: Date, default: Date.now },
   reason: {

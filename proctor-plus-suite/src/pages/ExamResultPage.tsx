@@ -118,7 +118,7 @@ const ExamResultPage = () => {
             {data.pass && data.certificateEligible && (
               <Button
                 variant="hero"
-                onClick={() => navigate(`/student/certificate/${examId}`)}
+                onClick={() => navigate(`/exam/completed/${data.certificateId}`)}
               >
                 View Certificate
               </Button>

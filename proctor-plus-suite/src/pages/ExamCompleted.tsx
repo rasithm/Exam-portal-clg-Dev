@@ -157,7 +157,7 @@ const ExamCompleted = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isStudentView = location.state?.from === "student";
+  
   const examIdFromState = location.state?.examId || null;
 
   const [loading, setLoading] = useState(true);
@@ -183,11 +183,27 @@ const ExamCompleted = () => {
 
     if (certificateId) fetchData();
   }, [certificateId]);
+  const [role , setRole] = useState("");
+
+  useEffect(() => {
+    axios
+      .get(`${API_BASE}/api/auth/me`, { withCredentials: true })
+      .then(res => setRole(res.data.role))
+      .catch(() => setRole("guest"));
+  }, []);
+
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
+
+  const timeEfficiency = (used?: number, allowed?: number) => {
+    if (used == null || allowed == null || allowed <= 0) return "N/A";
+    return `${Math.min(100, Math.round((used / allowed) * 100))}%`;
+  };
+
+
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -204,6 +220,24 @@ const ExamCompleted = () => {
       </div>
     );
   }
+
+  // const efficiencyLabel =
+  // timeEfficiencyPercent < 40 ? "Fast ⚡" :
+  // timeEfficiencyPercent < 70 ? "Balanced ⚖️" :
+  // "Slow ";
+
+
+  const formatMinutes = (sec?: number) =>
+  sec != null ? `${Math.round(sec / 60)}m` : "N/A";
+
+const formatAvg = (sec?: number) =>
+  sec != null ? `${Math.round(sec / 60)}m / Q` : "N/A";
+
+
+  
+
+
+
 
 
   return (
@@ -286,9 +320,22 @@ const ExamCompleted = () => {
                       <span className="text-xs font-semibold text-slate-500 uppercase">{exam.date}</span>
                    </div>
                    <h2 className="text-2xl font-bold text-slate-900 mb-2 capitalize">{exam.title}</h2>
-                   <p className="text-slate-500 text-sm mb-6">
+                   {/* <p className="text-slate-500 text-sm mb-6">
                      Completed in {result.timeTaken} • {exam.maxMarks} Total Marks
-                   </p>
+                   </p> */}
+                   <p className="text-slate-500 text-sm mb-6">
+                    {result.examType === "mcq" && result.timeTakenSeconds != null && (
+                      <>Completed in {formatMinutes(result.timeTakenSeconds)} • </>
+                    )}
+
+                    {result.examType === "compiler" && exam.language && (
+                      <>Language: {exam.language} • </>
+                    )}
+
+                    {exam.maxMarks} Total Marks
+                  </p>
+
+
                    
                    <div className="flex flex-wrap gap-3 justify-center md:justify-start">
                       <div className="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-lg">
@@ -300,8 +347,14 @@ const ExamCompleted = () => {
                          <p className="text-lg font-bold text-slate-700">{result.grade}</p>
                       </div>
                       <div className="px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-lg">
-                         <p className="text-xs text-indigo-500 font-bold uppercase">Percentile</p>
-                         <p className="text-lg font-bold text-indigo-700">{result.percentile}%</p>
+                         <p className="text-xs text-indigo-500 font-bold uppercase">
+                            Performance
+                          </p>
+                          <p className="text-lg font-bold text-indigo-700">
+                            {`${result.percentage.toFixed(2)}%`} 
+                          </p>
+
+
                       </div>
                    </div>
                 </div>
@@ -328,24 +381,56 @@ const ExamCompleted = () => {
               <StatBox 
                 label="Accuracy" 
                 value={`${result.percentage}%`} 
-                sub={`${result.correct}/${result.correct + result.wrong} Correct`}
+                sub={`${(result.correct || 0) + (result.partial || 0)}/${
+                  (result.correct || 0) + (result.wrong || 0) + (result.partial || 0)
+                } Correct`}
+
                 icon={CheckCircle} 
                 color="bg-emerald-500"
               />
-              <StatBox 
-                label="Time Efficiency" 
-                value="86%" 
-                sub="Avg 1.5m / question"
-                icon={Clock} 
+              <StatBox
+                label="Time Efficiency"
+                value={
+                  result.timeEfficiencyPercent != null
+                    ? `${Math.round(result.timeEfficiencyPercent)}%`
+                    : "N/A"
+                }
+                sub={`Avg: ${
+                  result.avgTimePerQuestionSeconds != null
+                    ? `${Math.round(result.avgTimePerQuestionSeconds / 60)} min / Q`
+                    : "N/A"
+                }`}
+
+                icon={Clock}
                 color="bg-blue-500"
               />
-              <StatBox 
-                label="Class Rank" 
-                value="Top 8%" 
-                sub="12th out of 150"
-                icon={Award} 
-                color="bg-amber-500"
+
+
+
+              <StatBox
+                label="Exam Integrity"
+                value={
+                  result.violationDetails &&
+                  (result.violationDetails.tabSwitchCount > 0 ||
+                  result.violationDetails.fullscreenExitCount > 0)
+                    ? "Violation"
+                    : "Clean"
+                }
+                sub={
+                  result.violationDetails?.violationReason
+                    ? result.violationDetails.violationReason
+                    : "No issues detected"
+                }
+                icon={ShieldCheck}
+                color={
+                  result.violationDetails &&
+                  (result.violationDetails.violationReason != null)
+                    ? "bg-red-500"
+                    : "bg-emerald-500"
+                }
               />
+
+
             </div>
 
             {/* Tabular Summary */}
@@ -361,7 +446,14 @@ const ExamCompleted = () => {
                   <InfoRow label="Correct Answers" value={result.correct} />
                   <InfoRow label="Incorrect Answers" value={result.wrong} />
                   <InfoRow label="Skipped Questions" value={result.skipped} />
-                  <InfoRow label="Grace Mark" value="0" />
+                  {result.examType === "mcq" && (
+                    <InfoRow label="Grace Marks" value={result.grace} />
+                  )}
+
+                  {result.examType === "compiler" && (
+                    <InfoRow label="Partial Solutions" value={result.partial} />
+                  )}
+
                   <InfoRow label="Final Score" value={`${result.score} / ${exam.maxMarks}`} isMono={true} />
                </div>
                <div className="bg-amber-50 px-6 py-3 border-t border-amber-100 flex items-start gap-3">
@@ -374,7 +466,8 @@ const ExamCompleted = () => {
 
             {/* Footer Actions */}
             <div className="flex flex-col sm:flex-row gap-4 justify-end mt-4">
-              {isStudentView && (
+              {(role === "student" || location.state?.from === "student") && (
+
                 <>
                   <button
                     className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 transition-colors"

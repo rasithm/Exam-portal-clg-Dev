@@ -352,8 +352,12 @@ export const endCompilerExam = async (req, res) => {
 
     const certificateEnabled = exam.generateCertificate === true;
     let certificateId = null;
-    if (certificateEnabled && pass) certificateId = `CERT:CMP-${crypto.randomUUID()}`;
-    
+    // if (certificateEnabled && pass) certificateId = `CERT:CMP-${crypto.randomUUID()}`;
+     if (certificateEnabled && pass){
+      const shortSession = session._id.toString().slice(-8).toUpperCase();
+      const random = Math.random().toString(36).slice(-6).toUpperCase();
+      certificateId = `CERT:CMP-${shortSession}-${random}`;
+    }
 
     if (reason === "time") reason = "timeout";
 

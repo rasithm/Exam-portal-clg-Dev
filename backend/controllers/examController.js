@@ -9,6 +9,7 @@ import ExamSession from "../models/ExamSession.js";
 import ExamEvent from "../models/ExamEvent.js";
 import CompilerExam from "../models/CompilerExam.js"
 
+import CompilerExamAttempt from "../models/CompilerExamAttempt.js";
 
 import ExamAttempt from "../models/ExamAttempt.js";
 
@@ -749,6 +750,14 @@ export const saveAnswer = async (req, res) => {
         changedAnswer: false,
       });
     }
+    // ✅ REAL submission time
+    attempt.submittedAt = new Date();
+
+    // ✅ REAL time taken
+    attempt.timeTakenSeconds = Math.max(
+      0,
+      (attempt.submittedAt - session.startTime) / 1000
+    );
 
     await attempt.save();
     res.json({ message: "Saved" });
@@ -1148,7 +1157,7 @@ export const clearExamReview = async (req, res) => {
     attempt.reviewCompleted = true;  // ✅ flag as verified
     await attempt.save();
 
-    return res.json({ message: "Review data cleared successfully" });
+    return res.json({ message: "Review data cleared successfully" , certificateId : attempt.certificateId });
   } catch (err) {
     console.error("clearExamReview error:", err);
     return res.status(500).json({ message: "Failed to clear review data" });
@@ -1377,73 +1386,312 @@ export const getStudentReportCard = async (req, res) => {
   }
 };
 
-// backend/controllers/examController.js (or a separate verifyController)
+
+
+// export const getCertificateView = async (req, res) => {
+//   try {
+//     const { certificateId } = req.params;
+
+//     const attempt = await ExamAttempt.findOne({ certificateId })
+//       .populate("student", "name rollNumber department year email collegeName profileImage")
+//       .populate({
+//         path: "examSessionId",
+//         populate: [
+//           { path: "exam", model: "Exam" }
+//         ]
+//       });
+
+
+//     if (!attempt || !attempt.examSessionId || !attempt.examSessionId.exam) {
+//       return res.status(404).json({ message: "Certificate not found" });
+//     }
+
+//     const exam = attempt.examSessionId.exam;
+//     const student = attempt.student;
+//     const session = attempt.examSessionId;
+
+    
+//     const allExamAttempts = await ExamAttempt.find({
+//       examSessionId: { $in: await ExamSession.find({ exam: exam._id }).distinct("_id") }
+//     });
+
+//     const allPercentages = allExamAttempts
+//       .map(a => a.percentage || 0)
+//       .filter(p => p >= 0);
+
+//     let percentile = 0;
+//     if (allPercentages.length > 0) {
+//       const belowOrEqual = allPercentages.filter(p => p <= attempt.percentage).length;
+//       percentile = (belowOrEqual / allPercentages.length) * 100;
+//     }
+
+    
+//     const pct = attempt.percentage || 0;
+//     let grade = "C";
+//     let classification = "Pass";
+
+//     if (pct >= 75) {
+//       grade = "A";
+//       classification = "First Class with Distinction";
+//     } else if (pct >= 60) {
+//       grade = "B";
+//       classification = "First Class";
+//     } else if (pct >= 50) {
+//       grade = "C";
+//       classification = "Second Class";
+//     } else {
+//       grade = "D";
+//       classification = "Fail";
+//     }
+
+//     const stats = attempt.stats || {};
+//     const totalAnswered = (stats.correct || 0) + (stats.wrong || 0);
+//     const accuracy = totalAnswered > 0
+//       ? ((stats.correct || 0) / totalAnswered) * 100
+//       : 0;
+
+//     return res.json({
+//       certificateId,
+      
+//       student: {
+//         name: student.name,
+//         id: student.rollNumber,
+//         course: student.department,
+//         semester: `Year ${student.year}`,
+//         avatarUrl: student.profileImage || "",
+//         email: student.email,
+//         institution: student.collegeName,
+//       },
+      
+//       exam: {
+//         title: exam.examName,
+//         code: exam._id.toString().slice(-6).toUpperCase(),
+//         session: session.startTime?.getFullYear() || "",
+//         date: session.startTime,
+//         time: null, 
+//         totalQuestions: stats.totalQuestions || 0,
+//         maxMarks: attempt.maxMarks || exam.totalMarks || 0,
+//         passingMarks: Math.round(((exam.totalMarks || attempt.maxMarks || 0) * 40) / 100),
+//       },
+      
+//       result: {
+//         score: attempt.totalMarks || 0,
+//         percentage: Number((attempt.percentage || 0).toFixed(2)),
+//         status: attempt.pass ? "PASSED" : "FAILED",
+//         grade,
+//         classification,
+//         correct: stats.correct || 0,
+//         wrong: stats.wrong || 0,
+//         skipped: (stats.totalQuestions || 0) - (stats.attempted || 0),
+//         timeTaken: null,              
+//         percentile: Number(percentile.toFixed(2)),
+//       },
+//     });
+//   } catch (err) {
+//     console.error("getCertificateView error:", err);
+//     return res.status(500).json({ message: "Error loading certificate" });
+//   }
+// };
+
+
+// backend/controllers/examController.js
+
+
 
 export const getCertificateView = async (req, res) => {
   try {
     const { certificateId } = req.params;
 
-    const attempt = await ExamAttempt.findOne({ certificateId })
+    /* ======================================================
+       1️⃣ MCQ CERTIFICATE (NO CHANGE IN LOGIC)
+    ====================================================== */
+    const mcqAttempt = await ExamAttempt.findOne({ certificateId })
       .populate("student", "name rollNumber department year email collegeName profileImage")
       .populate({
         path: "examSessionId",
-        populate: [
-          { path: "exam", model: "Exam" }
-        ]
+        populate: { path: "exam", model: "Exam" }
       });
+    // const session = mcqAttempt.examSessionId;
+
+    // const timeTakenSeconds =
+    //   session?.startTime
+    //     ? Math.max(
+    //         0,
+    //         (
+    //           (session.endTime || new Date()) -
+    //           session.startTime
+    //         ) / 1000
+    //       )
+    //     : null;
+    
 
 
-    if (!attempt || !attempt.examSessionId || !attempt.examSessionId.exam) {
+    if (mcqAttempt && mcqAttempt.examSessionId?.exam) {
+      const exam = mcqAttempt.examSessionId.exam;
+      const student = mcqAttempt.student;
+      const stats = mcqAttempt.stats || {};
+      
+
+      const allowedTimeSeconds = (exam.duration || 120) * 60;
+
+      const McqtimeEfficiencyPercent =
+        mcqAttempt.timeTakenSeconds != null
+          ? Math.min(
+              100,
+              (mcqAttempt.timeTakenSeconds / allowedTimeSeconds) * 100
+            )
+          : null;
+
+      const McqavgTimePerQuestionSeconds =
+        mcqAttempt.timeTakenSeconds && stats.totalQuestions
+          ? mcqAttempt.timeTakenSeconds / stats.totalQuestions
+          : null;
+
+
+      return res.json({
+        student: {
+          name: student.name,
+          id: student.rollNumber,
+          course: student.department,
+          semester: `Year ${student.year}`,
+          avatarUrl: student.profileImage || "",
+          email: student.email,
+          institution: student.collegeName,
+        },
+
+        exam: {
+          title: exam.examName,
+          code: exam._id.toString().slice(-6).toUpperCase(),
+          session: mcqAttempt.examSessionId.startTime?.getFullYear() || "",
+          date: mcqAttempt.examSessionId.startTime,
+          time: null,
+          totalQuestions: stats.totalQuestions || 0,
+          maxMarks: mcqAttempt.maxMarks,
+          allowedTimeSeconds: (exam.duration || 120) * 60,
+
+          passingMarks: Math.round(mcqAttempt.maxMarks * 0.4),
+        },
+
+        result: {
+          score: mcqAttempt.totalMarks,
+          percentage: Number(mcqAttempt.percentage.toFixed(2)),
+          status: mcqAttempt.pass ? "PASSED" : "FAILED",
+          grade:
+            mcqAttempt.percentage >= 75 ? "A" :
+            mcqAttempt.percentage >= 60 ? "B" :
+            mcqAttempt.percentage >= 50 ? "C" : "D",
+          classification:
+            mcqAttempt.pass
+              ? mcqAttempt.percentage >= 75
+                ? "First Class with Distinction"
+                : "First Class"
+              : "Fail",
+          timeTakenSeconds: mcqAttempt.timeTakenSeconds || null,
+          McqavgTimePerQuestionSeconds,
+          McqtimeEfficiencyPercent,
+          totalQuestions: stats.totalQuestions || 0,
+          violationDetails: mcqAttempt.examSessionId
+            ? {
+                tabSwitchCount: mcqAttempt.examSessionId.violations || 0,
+                fullscreenExitCount: 0,
+                devToolCount: 0,
+                shortcutCount: 0,
+                violationReason:
+                  mcqAttempt.reason === "violation" ? "Proctoring violation" : null,
+              }
+            : null,
+
+          correct: stats.correct || 0,
+          wrong: stats.wrong || 0,
+          examType: "mcq",
+          grace: stats.graceCount || 0,
+          skipped: (stats.totalQuestions || 0) - (stats.attempted || 0),
+          timeTaken: null,
+          percentile: null,
+          certificateId,
+        },
+      });
+    }
+
+    /* ======================================================
+       2️⃣ COMPILER CERTIFICATE (REAL DATA ONLY)
+    ====================================================== */
+    const compilerAttempt = await CompilerExamAttempt.findOne({ certificateId })
+      .populate("student", "name rollNumber department year email collegeName profileImage")
+      .populate("exam");
+    // 1️⃣ get exam session (earliest start)
+const session = await ExamSession.findOne({
+  student: compilerAttempt.student,
+  exam: compilerAttempt.exam
+}).sort({ startTime: 1 });
+
+
+
+// 3️⃣ allowed duration
+
+
+// 4️⃣ efficiency percentage
+// const timeEfficiencyPercent =
+//   totalTimeTakenSeconds
+//     ? Math.min(
+//         100,
+//         (totalTimeTakenSeconds / allowedTimeSeconds) * 100
+//       )
+//     : null;
+
+// const totalQuestions =
+//   compilerAttempt.stats?.totalQuestions ||
+//   compilerAttempt.submissions.length;
+
+// const avgTimePerQuestionSeconds =
+//   totalTimeTakenSeconds && totalQuestions
+//     ? totalTimeTakenSeconds / totalQuestions
+//     : null;
+  
+    
+    
+    // avg time per question using real submissions
+    
+
+    
+
+    
+    if (!compilerAttempt || !compilerAttempt.exam) {
       return res.status(404).json({ message: "Certificate not found" });
     }
 
-    const exam = attempt.examSessionId.exam;
-    const student = attempt.student;
-    const session = attempt.examSessionId;
+    const student = compilerAttempt.student;
+    const exam = compilerAttempt.exam;
+    const stats = compilerAttempt.stats || {};
 
-    // ✅ For percentile: compare with all attempts of same exam
-    const allExamAttempts = await ExamAttempt.find({
-      examSessionId: { $in: await ExamSession.find({ exam: exam._id }).distinct("_id") }
-    });
+    const allowedTimeSeconds = (exam.duration || 120) * 60;
 
-    const allPercentages = allExamAttempts
-      .map(a => a.percentage || 0)
-      .filter(p => p >= 0);
+const totalTimeTakenSeconds =
+  session?.startTime && compilerAttempt.submittedAt
+    ? Math.max(
+        0,
+        (compilerAttempt.submittedAt - session.startTime) / 1000
+      )
+    : null;
 
-    let percentile = 0;
-    if (allPercentages.length > 0) {
-      const belowOrEqual = allPercentages.filter(p => p <= attempt.percentage).length;
-      percentile = (belowOrEqual / allPercentages.length) * 100;
-    }
+    const timeEfficiencyPercent =
+      totalTimeTakenSeconds != null
+        ? Math.min(
+            100,
+            (totalTimeTakenSeconds / allowedTimeSeconds) * 100
+          )
+        : null;
 
-    // ✅ Simple grade + classification
-    const pct = attempt.percentage || 0;
-    let grade = "C";
-    let classification = "Pass";
+    const totalQuestions =
+      stats.totalQuestions || compilerAttempt.submissions?.length || 0;
 
-    if (pct >= 75) {
-      grade = "A";
-      classification = "First Class with Distinction";
-    } else if (pct >= 60) {
-      grade = "B";
-      classification = "First Class";
-    } else if (pct >= 50) {
-      grade = "C";
-      classification = "Second Class";
-    } else {
-      grade = "D";
-      classification = "Fail";
-    }
+    const avgTimePerQuestionSeconds =
+      totalTimeTakenSeconds && totalQuestions
+        ? totalTimeTakenSeconds / totalQuestions
+        : null;
 
-    const stats = attempt.stats || {};
-    const totalAnswered = (stats.correct || 0) + (stats.wrong || 0);
-    const accuracy = totalAnswered > 0
-      ? ((stats.correct || 0) / totalAnswered) * 100
-      : 0;
 
     return res.json({
-      certificateId,
-      // Student block
       student: {
         name: student.name,
         id: student.rollNumber,
@@ -1453,40 +1701,53 @@ export const getCertificateView = async (req, res) => {
         email: student.email,
         institution: student.collegeName,
       },
-      // Exam block
+
       exam: {
-        title: exam.examName,
+        title: exam.title,
         code: exam._id.toString().slice(-6).toUpperCase(),
-        session: session.startTime?.getFullYear() || "",
-        date: session.startTime,
-        time: null, // you can split start/end if you want
-        totalQuestions: stats.totalQuestions || 0,
-        maxMarks: attempt.maxMarks || exam.totalMarks || 0,
-        passingMarks: Math.round(((exam.totalMarks || attempt.maxMarks || 0) * 40) / 100),
+        session: compilerAttempt.submittedAt?.getFullYear() || "",
+        date: compilerAttempt.submittedAt,
+        language : compilerAttempt.exam.language,
+        time: null,
+        totalQuestions: stats.totalQuestions || exam.questions.length,
+        maxMarks: compilerAttempt.maxScore,
+        passingMarks: Math.round(compilerAttempt.maxScore * 0.4),
+        allowedTimeSeconds: (exam.duration || 120) * 60,
+
       },
-      // Result block
+
       result: {
-        score: attempt.totalMarks || 0,
-        percentage: Number((attempt.percentage || 0).toFixed(2)),
-        status: attempt.pass ? "PASSED" : "FAILED",
-        grade,
-        classification,
-        correct: stats.correct || 0,
-        wrong: stats.wrong || 0,
+        score: compilerAttempt.totalScore,
+        percentage: Number(compilerAttempt.percentage.toFixed(2)),
+        status: compilerAttempt.pass ? "PASSED" : "FAILED",
+        grade:
+          compilerAttempt.percentage >= 75 ? "A" :
+          compilerAttempt.percentage >= 60 ? "B" :
+          compilerAttempt.percentage >= 50 ? "C" : "D",
+        classification:
+          compilerAttempt.pass
+            ? compilerAttempt.percentage >= 75
+              ? "First Class with Distinction"
+              : "First Class"
+            : "Fail",
+        totalQuestions: stats.totalQuestions || 0,
+        violationDetails : compilerAttempt.violationDetails,
+        correct: stats.passed || 0,
+        wrong: stats.failed || 0,
+        timeTakenSeconds: totalTimeTakenSeconds,
+        timeEfficiencyPercent,
+        avgTimePerQuestionSeconds,
+        examType: "compiler",
+        partial: stats.partial || 0,
         skipped: (stats.totalQuestions || 0) - (stats.attempted || 0),
-        timeTaken: null,              // if you later store this in session, fill here
-        percentile: Number(percentile.toFixed(2)),
+        timeTaken: null,
+        percentile: null,
+        certificateId,
       },
     });
+
   } catch (err) {
     console.error("getCertificateView error:", err);
     return res.status(500).json({ message: "Error loading certificate" });
   }
 };
-
-
-
-
-
-
-

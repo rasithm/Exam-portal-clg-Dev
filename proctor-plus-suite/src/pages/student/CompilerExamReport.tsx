@@ -625,7 +625,8 @@ const CompilerExamReport: React.FC = () => {
             <div className="flex justify-center">
               <Button
                 onClick={() =>
-                  navigate(`/student/certificate/${reportData.certificateId}`)
+                  navigate(`/exam/completed/${reportData.certificateId}`, { state: { from: "student" } })
+
                 }
                 className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
               >
