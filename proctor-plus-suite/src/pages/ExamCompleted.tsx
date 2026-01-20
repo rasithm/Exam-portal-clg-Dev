@@ -126,9 +126,19 @@ const CertificateCard = ({ result, student }) => (
         </div>
         <div className="flex-1">
           <p className="text-xs text-slate-400 mb-1">Certificate Actions</p>
-          <button className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-md text-sm font-medium transition-all shadow-lg shadow-indigo-900/20">
-            <Download className="w-4 h-4" /> Download PDF
+          <button
+            onClick={() =>
+              window.open(
+                `${API_BASE}/api/public/certificate/${result.certificateId}/pdf`,
+                "_blank"
+              )
+            }
+            className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-md text-sm font-medium transition-all shadow-lg shadow-indigo-900/20"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
           </button>
+
         </div>
       </div>
     </div>
