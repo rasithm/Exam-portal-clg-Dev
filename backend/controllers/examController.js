@@ -1,6 +1,6 @@
 
 // backend/controllers/examController.js
-import Exam from "../models/Exam.js";
+import Exam from "../models/Exam.js"; 
 import QuestionSet from "../models/QuestionSet.js";
 import { io } from "../sockets/socketManager.js";
 import Student from "../models/Student.js";
@@ -1386,118 +1386,6 @@ export const getStudentReportCard = async (req, res) => {
   }
 };
 
-
-
-// export const getCertificateView = async (req, res) => {
-//   try {
-//     const { certificateId } = req.params;
-
-//     const attempt = await ExamAttempt.findOne({ certificateId })
-//       .populate("student", "name rollNumber department year email collegeName profileImage")
-//       .populate({
-//         path: "examSessionId",
-//         populate: [
-//           { path: "exam", model: "Exam" }
-//         ]
-//       });
-
-
-//     if (!attempt || !attempt.examSessionId || !attempt.examSessionId.exam) {
-//       return res.status(404).json({ message: "Certificate not found" });
-//     }
-
-//     const exam = attempt.examSessionId.exam;
-//     const student = attempt.student;
-//     const session = attempt.examSessionId;
-
-    
-//     const allExamAttempts = await ExamAttempt.find({
-//       examSessionId: { $in: await ExamSession.find({ exam: exam._id }).distinct("_id") }
-//     });
-
-//     const allPercentages = allExamAttempts
-//       .map(a => a.percentage || 0)
-//       .filter(p => p >= 0);
-
-//     let percentile = 0;
-//     if (allPercentages.length > 0) {
-//       const belowOrEqual = allPercentages.filter(p => p <= attempt.percentage).length;
-//       percentile = (belowOrEqual / allPercentages.length) * 100;
-//     }
-
-    
-//     const pct = attempt.percentage || 0;
-//     let grade = "C";
-//     let classification = "Pass";
-
-//     if (pct >= 75) {
-//       grade = "A";
-//       classification = "First Class with Distinction";
-//     } else if (pct >= 60) {
-//       grade = "B";
-//       classification = "First Class";
-//     } else if (pct >= 50) {
-//       grade = "C";
-//       classification = "Second Class";
-//     } else {
-//       grade = "D";
-//       classification = "Fail";
-//     }
-
-//     const stats = attempt.stats || {};
-//     const totalAnswered = (stats.correct || 0) + (stats.wrong || 0);
-//     const accuracy = totalAnswered > 0
-//       ? ((stats.correct || 0) / totalAnswered) * 100
-//       : 0;
-
-//     return res.json({
-//       certificateId,
-      
-//       student: {
-//         name: student.name,
-//         id: student.rollNumber,
-//         course: student.department,
-//         semester: `Year ${student.year}`,
-//         avatarUrl: student.profileImage || "",
-//         email: student.email,
-//         institution: student.collegeName,
-//       },
-      
-//       exam: {
-//         title: exam.examName,
-//         code: exam._id.toString().slice(-6).toUpperCase(),
-//         session: session.startTime?.getFullYear() || "",
-//         date: session.startTime,
-//         time: null, 
-//         totalQuestions: stats.totalQuestions || 0,
-//         maxMarks: attempt.maxMarks || exam.totalMarks || 0,
-//         passingMarks: Math.round(((exam.totalMarks || attempt.maxMarks || 0) * 40) / 100),
-//       },
-      
-//       result: {
-//         score: attempt.totalMarks || 0,
-//         percentage: Number((attempt.percentage || 0).toFixed(2)),
-//         status: attempt.pass ? "PASSED" : "FAILED",
-//         grade,
-//         classification,
-//         correct: stats.correct || 0,
-//         wrong: stats.wrong || 0,
-//         skipped: (stats.totalQuestions || 0) - (stats.attempted || 0),
-//         timeTaken: null,              
-//         percentile: Number(percentile.toFixed(2)),
-//       },
-//     });
-//   } catch (err) {
-//     console.error("getCertificateView error:", err);
-//     return res.status(500).json({ message: "Error loading certificate" });
-//   }
-// };
-
-
-// backend/controllers/examController.js
-
-
-
 export const getCertificateView = async (req, res) => {
   try {
     const { certificateId } = req.params;
@@ -1511,18 +1399,7 @@ export const getCertificateView = async (req, res) => {
         path: "examSessionId",
         populate: { path: "exam", model: "Exam" }
       });
-    // const session = mcqAttempt.examSessionId;
-
-    // const timeTakenSeconds =
-    //   session?.startTime
-    //     ? Math.max(
-    //         0,
-    //         (
-    //           (session.endTime || new Date()) -
-    //           session.startTime
-    //         ) / 1000
-    //       )
-    //     : null;
+    
     
 
 

@@ -17,6 +17,7 @@ export const generateCertificatePDF = async (req, res) => {
 
   try {
     const { certificateId } = req.params;
+    
 
     const baseUrl =
       process.env.BASE_URL ||
@@ -42,7 +43,7 @@ export const generateCertificatePDF = async (req, res) => {
     doc.image(
       path.resolve("assets/certificates/certificate-template.png"),
       0,
-      0,
+      225,
       { width: 595 }
     );
 
@@ -50,113 +51,105 @@ export const generateCertificatePDF = async (req, res) => {
     const PAGE_WIDTH = 595;
     const CENTER_X = PAGE_WIDTH / 2;
 
-    // ===== STUDENT NAME =====
-    const NAME_CENTER_Y = 175;
+    // ===== TEMPLATE SLOT ANCHORS =====
+    const NAME_SLOT_CENTER_Y = 410;      // visually between "certify that" & line
+    const EXAM_SLOT_CENTER_Y = 465;      // reserved exam title white space
 
-    doc
-    .font(path.resolve("assets/fonts/NameFont.ttf"))
-    .fontSize(44)
-    .fillColor("#000");
+    const META_X = 180;
+    const META_START_Y = 520;
 
-    // Measure text height FIRST
-    const nameHeight = doc.heightOfString(student.name, {
-    width: PAGE_WIDTH,
-    align: "center",
-    });
-
-    // Center vertically around NAME_CENTER_Y
-    doc.text(student.name, 0, NAME_CENTER_Y - nameHeight / 2, {
-    width: PAGE_WIDTH,
-    align: "center",
-    ellipsis: true,
-    });
-
-
-    // ===== EXAM TITLE =====
-    const EXAM_CENTER_Y = 245;
-
-    doc
-    .font(path.resolve("assets/fonts/Montserrat-Bold.ttf"))
-    .fontSize(11)
-    .fillColor("#000");
-
-    const examHeight = doc.heightOfString(exam.title.toUpperCase(), {
-    width: PAGE_WIDTH - 140,
-    align: "center",
-    });
-
-    doc.text(exam.title.toUpperCase(), 70, EXAM_CENTER_Y - examHeight / 2, {
-    width: PAGE_WIDTH - 140,
-    align: "center",
-    ellipsis: true,
-    });
-
-
-    // ===== CERTIFICATE ID =====
-    const META_X = 360;
-    const META_WIDTH = 200;
-    let metaY = 255;
-
-    doc
-    .fontSize(10)
-    .fillColor("#000")
-    .text(`Certificate ID: ${certificateId}`, META_X, metaY, {
-        width: META_WIDTH,
-        align: "left",
-    });
-
-    metaY = doc.y + 4;
-
-
-    // ===== ISSUE DATE =====
-    doc.text(
-    `Issued on: ${new Date(result.submittedAt || Date.now()).toLocaleDateString(
-        "en-IN",
-        {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        }
-    )}`,
-    META_X,
-    metaY,
-    {
-        width: META_WIDTH,
-        align: "left",
-    }
-    );
-
-
-    // ===== STUDENT PHOTO =====
     const PHOTO_X = 430;
-    const PHOTO_Y = 295;
-    const PHOTO_SIZE = 70;
+    const PHOTO_Y = 565;
+
+    const QR_X = 505;
+    const QR_Y = 565;
+
+
+    doc
+  .font(path.resolve("assets/fonts/NameFont.ttf"))
+  .fontSize(44)
+  .fillColor("#000");
+
+const nameHeight = doc.heightOfString(student.name, {
+  width: PAGE_WIDTH,
+  align: "center",
+});
+
+doc.text(student.name, 35, NAME_SLOT_CENTER_Y - nameHeight / 2, {
+  width: PAGE_WIDTH,
+  align: "center",
+  ellipsis: true,
+});
+
+
+
+    doc
+  .font(path.resolve("assets/fonts/Montserrat-Bold.ttf"))
+  .fontSize(11)
+  .fillColor("#000");
+
+const examText = exam.title.toUpperCase();
+
+const examHeight = doc.heightOfString(examText, {
+  width: PAGE_WIDTH - 140,
+  align: "center",
+});
+
+doc.text(examText, 90, EXAM_SLOT_CENTER_Y - examHeight / 2, {
+  width: PAGE_WIDTH - 140,
+  align: "center",
+  ellipsis: true,
+});
+
+
+
+    let metaY = META_START_Y;
+
+doc
+  .fontSize(10)
+  .fillColor("#000")
+  .text(`Certificate ID: ${certificateId}`, META_X, metaY, {
+    width: 300,
+    align: 'center',
+  });
+
+metaY = doc.y + 6;
+
+doc.text(
+  `Issued on: ${new Date(result.submittedAt || Date.now()).toLocaleDateString(
+    "en-IN",
+    { day: "2-digit", month: "long", year: "numeric" }
+  )}`,
+  META_X,
+  metaY,
+  {
+    width: 300,
+    align: "center",
+  }
+);
+
+
 
     if (student.avatarUrl?.startsWith("http")) {
-    try {
-        const img = await fetchImageBuffer(student.avatarUrl);
-        doc.image(img, PHOTO_X, PHOTO_Y, {
-        width: PHOTO_SIZE,
-        height: PHOTO_SIZE,
-        });
-    } catch {
-        console.warn("Student photo skipped");
-    }
-    }
+  const img = await fetchImageBuffer(student.avatarUrl);
+  doc.image(img, PHOTO_X, PHOTO_Y, {
+    width: 70,
+    height: 70,
+  });
+}
 
 
-    // ===== QR CODE =====
-    const QR_X = 515;
-    const QR_Y = 295;
-    const QR_SIZE = 70;
+    
+
 
     const qrUrl = `${process.env.FRONTEND_URL}/exam/completed/${certificateId}`;
-    const qr = await QRCode.toDataURL(qrUrl);
+const qr = await QRCode.toDataURL(qrUrl);
 
-    doc.image(qr, QR_X, QR_Y, {
-    width: QR_SIZE,
-    height: QR_SIZE,
-    });
+doc.image(qr, QR_X, QR_Y, {
+  width: 70,
+  height: 70,
+});
+
 
 
     doc.end();

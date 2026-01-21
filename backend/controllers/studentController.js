@@ -3,6 +3,9 @@ import Exam from "../models/Exam.js";
 import Student from "../models/Student.js";
 import ExamAttempt from "../models/ExamAttempt.js";
 import CompilerExam from "../models/CompilerExam.js";
+import CompilerExamAttempt from "../models/CompilerExamAttempt.js";
+import ExamSession from "../models/ExamSession.js";
+
 
 export const getStudentDashboard = async (req, res) => {
   try {
@@ -32,20 +35,40 @@ export const getStudentDashboard = async (req, res) => {
     const completedExams = [];
 
     
+    
 
 
-    allExams.forEach(exam => {
+    for (const exam of allExams) {
       const start = new Date(exam.startDateTime);
       const end = new Date(exam.endDateTime);
 
-      const scoreEntry = Array.isArray(student.scores)
-        ? student.scores.find(s => s.examId == exam._id.toString())
+      // const scoreEntry = Array.isArray(student.scores)
+      //   ? student.scores.find(s => s.examId == exam._id.toString())
+      //   : null;
+      // const attempt = await ExamAttempt.findOne({
+      //   student: student._id,
+      //   exam: exam._id,
+      // });
+
+      const session = await ExamSession.findOne({
+        student: student._id,
+        exam: exam._id,
+      }).sort({ createdAt: -1 });
+
+      const attempt = session
+        ? await ExamAttempt.findOne({
+            student: student._id,
+            examSessionId: session._id,
+          })
         : null;
 
 
-      const attempted = !!scoreEntry;
+
+      const attempted = !!attempt && attempt.submittedAt;
+
 
       
+
 
       let status;
 
@@ -58,6 +81,7 @@ export const getStudentDashboard = async (req, res) => {
       } else {
         status = "missed";
       }
+      
 
       const examObj = {
         id: exam._id,
@@ -71,17 +95,32 @@ export const getStudentDashboard = async (req, res) => {
         endTime: end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         duration: exam.duration,
         status,
-        score: scoreEntry?.score || 0,
-        totalMarks: exam.totalMarks || 100,
-        percentage: scoreEntry?.percentage || 0,
-        pass: (scoreEntry?.percentage || 0) >= 40,
+        score: attempt?.totalMarks || 0,              // ✅ obtained marks
+totalMarks: attempt?.maxMarks || exam.totalMarks || 100,
+percentage: attempt?.percentage || 0,
+pass: attempt?.pass || false,                 // ✅ boolean
+
+certificateEligible: attempt?.certificateEligible || false,
+certificateId: attempt?.certificateId || null,
+
+isCompiler: false,
+completedAt: attempt?.submittedAt || end,     // ✅ real submission time
+
+      
+        
+        
+        
+        certificateType: "mcq",
+        
+        
+
       };
 
 
       if (status === "upcoming" || status === "active")
         upcomingExams.push(examObj);
       else completedExams.push(examObj);
-    });
+    };
 
   
 
@@ -91,47 +130,57 @@ export const getStudentDashboard = async (req, res) => {
       assignedStudents: { $in: [student._id] },
     }).sort({ startTime: 1 });
 
-    compilerExams.forEach(exam => {
+    
+
+    for (const exam of compilerExams) {
       const start = new Date(exam.startTime);
       const end = new Date(exam.endTime);
       const now = new Date();
 
-      let status;
-      const attempted = exam.submissions?.some(sub => sub.student.toString() === student._id.toString());
+      const compilerAttempt = await CompilerExamAttempt.findOne({
+        student: student._id,
+        exam: exam._id,
+      });
 
-      if (attempted) {
-        status = "completed";
-      } else if (now < start) {
-        status = "upcoming";
-      } else if (now >= start && now <= end) {
-        status = "active";
-      } else {
-        status = "missed";
-      }
+      let status;
+      const attempted = !!compilerAttempt;
+
+      if (attempted) status = "completed";
+      else if (now < start) status = "upcoming";
+      else if (now >= start && now <= end) status = "active";
+      else status = "missed";
 
       const examObj = {
         id: exam._id,
         title: exam.title,
         description: exam.description || "",
-        category: "coding", // to filter in frontend
+        category: "coding",
         subject: exam.language,
         startDate: start.toISOString().split("T")[0],
         startTime: start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         endDate: end.toISOString().split("T")[0],
         endTime: end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         duration: exam.duration,
+
         status,
-        score: 0, // compiler score logic placeholder
-        totalMarks: exam.totalMarks,
-        percentage: 0, // placeholder for future
-        isCompiler: true
+        score: compilerAttempt?.totalScore || 0,
+        totalMarks: compilerAttempt?.maxScore || exam.totalMarks,
+        percentage: compilerAttempt?.percentage || 0,
+        pass: compilerAttempt?.pass || false,
+
+        certificateEligible: compilerAttempt?.certificateEligible || false,
+        certificateId: compilerAttempt?.certificateId || null,
+
+        isCompiler: true,
+        completedAt: compilerAttempt?.submittedAt || null,
       };
 
       if (status === "upcoming" || status === "active")
         upcomingExams.push(examObj);
       else
         completedExams.push(examObj);
-    });
+    }
+
 
 
     

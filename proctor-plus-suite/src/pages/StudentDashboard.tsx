@@ -24,6 +24,7 @@ const API_BASE = baseUrl || "http://localhost:5000";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+
 const StudentDashboard = () => {
 
   const navigate = useNavigate();
@@ -40,6 +41,22 @@ const StudentDashboard = () => {
 
   const [activeTab, setActiveTab] = useState("tech");
   const [compilerExams, setCompilerExams] = useState<any[]>([]);
+
+  const LANGUAGE_COLOR: Record<string, string> = {
+    python: "border-l-yellow-400",
+    java: "border-l-blue-600",
+    javascript: "border-l-amber-400",
+    typescript: "border-l-sky-500",
+    c: "border-l-gray-500",
+    "c++": "border-l-indigo-500",
+    csharp: "border-l-purple-500",
+    go: "border-l-cyan-500",
+    rust: "border-l-orange-600",
+    kotlin: "border-l-pink-500",
+    ruby: "border-l-red-500",
+  };
+
+
 
   
 
@@ -360,7 +377,55 @@ useEffect(() => {
     );
   }
 
-  
+  // const sortedCompletedExams = [...recentExams].sort((a, b) => {
+  //   if (a.isCompiler && !b.isCompiler) return -1;
+  //   if (!a.isCompiler && b.isCompiler) return 1;
+  //   return 0;
+  // });
+
+  const sortedCompletedExams = [...recentExams].sort((a, b) => {
+    const aTime = new Date(a.completedAt || a.endDate || 0).getTime();
+    const bTime = new Date(b.completedAt || b.endDate || 0).getTime();
+    return bTime - aTime; // newest first
+  });
+
+
+  const certificates = [...recentExams]
+  .filter(e => e.certificateEligible && e.certificateId)
+  .sort((a, b) => {
+    const aTime = new Date(a.completedAt || 0).getTime();
+    const bTime = new Date(b.completedAt || 0).getTime();
+    return bTime - aTime;
+  });
+
+  // 🔹 MCQ exams only
+const mcqExams = recentExams.filter(e => !e.isCompiler);
+
+// 🔹 MCQ Average
+const mcqAverage =
+  mcqExams.length > 0
+    ? Math.round(
+        mcqExams.reduce(
+          (acc, e) => acc + (e.score / e.totalMarks) * 100,
+          0
+        ) / mcqExams.length
+      )
+    : 0;
+
+// 🔹 Compiler Average (already correct)
+const compilerExamsavg = recentExams.filter(e => e.isCompiler);
+
+const compilerAverage =
+  compilerExamsavg.length > 0
+    ? Math.round(
+        compilerExamsavg.reduce(
+          (acc, e) => acc + (e.score / e.totalMarks) * 100,
+          0
+        ) / compilerExamsavg.length
+      )
+    : 0;
+
+
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -445,15 +510,7 @@ useEffect(() => {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">MCQ Average Score</p>
                   <p className="text-3xl font-bold text-card-foreground">
-                    {recentExams.length > 0
-                      ? Math.round(
-                          recentExams.reduce(
-                            (acc, exam) => acc + (exam.score / exam.totalMarks) * 100,
-                            0
-                          ) / recentExams.length
-                        )
-                      : 0
-                    }%
+                    {mcqAverage}%
 
                   </p>
                 </div>
@@ -468,17 +525,8 @@ useEffect(() => {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Coding Average Score</p>
                   <p className="text-3xl font-bold text-card-foreground">
-                    {recentExams.length > 0
-                      ? Math.round(
-                          recentExams
-                            .filter(exam => exam.isCompiler)
-                            .reduce((acc, exam) => acc + (exam.score / exam.totalMarks) * 100, 0) /
-                          recentExams.filter(exam => exam.isCompiler).length || 1
-                        )
-                      : 0
-                    }%
-
-                  </p>
+                    
+                  {compilerAverage}%</p>
                 </div>
                 <BarChart3 className="h-8 w-8 text-secondary" />
               </div>
@@ -513,7 +561,7 @@ useEffect(() => {
 
                   <CardContent className="space-y-4">
                     {/* Demo Certificate Data */}
-                    {[
+                    {/* {[
                       { id: 1, examName: "Full Stack Web Development", date: "2025-05-10" },
                       { id: 2, examName: "Blockchain Fundamentals", date: "2025-06-21" },
                       { id: 3, examName: "AI & Machine Learning", date: "2025-07-15" },
@@ -535,7 +583,47 @@ useEffect(() => {
                           Download
                         </Button>
                       </div>
-                    ))}
+                    ))} */}
+                    {certificates.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-6">
+                        No certificates available yet.
+                      </p>
+                    ) : (
+                      certificates.map(cert => (
+                        <div
+                          key={cert.certificateId}
+                          className="flex items-center justify-between p-4 border rounded-lg bg-card"
+                        >
+                          <div>
+                            <h4 className="font-semibold text-card-foreground">
+                              {cert.title}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              Issued on {new Date(cert.completedAt).toLocaleDateString()}
+                            </p>
+                            {cert.isCompiler && (
+                              <Badge variant="outline" className="mt-1">
+                                {cert.subject}
+                              </Badge>
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                              {cert.isCompiler ? "Compiler Exam" : "MCQ Exam"}
+                            </p>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              navigate(`/exam/completed/${cert.certificateId}`)
+                            }
+                          >
+                            View Certificate
+                          </Button>
+                        </div>
+                      ))
+                    )}
+
                   </CardContent>
                 </Card>
               </div>
@@ -561,7 +649,7 @@ useEffect(() => {
                         </p>
                       </div>
                     ) : (
-                      recentExams.map((exam) => (
+                      sortedCompletedExams.map((exam) => (
                         <div
                           key={exam.id}
                           className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-lg border bg-card gap-3"
@@ -590,10 +678,14 @@ useEffect(() => {
                               variant="outline"
                               size="sm"
                               onClick={() =>
-                                navigate(`/student/exam/report/${exam.id}`, {
-                                state: { averageScore }
-                              }) 
+                                navigate(
+                                  exam.isCompiler
+                                    ? `/student/exam/compiler/${exam.id}/report`
+                                    : `/student/exam/report/${exam.id}`,
+                                  { state: { averageScore } }
+                                )
                               }
+
                             >
                               View Detailed Result
                             </Button>
@@ -745,11 +837,22 @@ useEffect(() => {
                         <p className="text-muted-foreground">No completed exams yet</p>
                       </div>
                     ) : (
-                      recentExams.map((exam) => {
+                      sortedCompletedExams.map((exam) => {
                         const percentage = (exam.score / exam.totalMarks) * 100;
 
                         return (
-                          <div key={exam.id} className="p-4 rounded-lg border bg-card">
+                          // <div key={exam.id} className="p-4 rounded-lg border bg-card">
+                          <div
+                            key={exam.id}
+                            className={`p-4 rounded-lg border bg-card ${
+                              exam.isCompiler
+                                ? `border-l-4 ${
+                                    LANGUAGE_COLOR[exam.subject?.toLowerCase()] || "border-l-primary"
+                                  }`
+                                : ""
+                            }`}
+                          >
+
                             
                             {/* Top Section */}
                             <div className="flex items-start justify-between mb-3">
@@ -769,6 +872,12 @@ useEffect(() => {
                                 <p className="text-sm text-muted-foreground">
                                   Duration: {exam.duration} mins
                                 </p>
+                                {exam.isCompiler && (
+                                  <Badge variant="outline" className="mt-1">
+                                    {exam.subject}
+                                  </Badge>
+                                )}
+
                               </div>
 
                               <Badge variant={percentage >= 40 ? "success" : "destructive"}>
@@ -793,12 +902,19 @@ useEffect(() => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => navigate(`/student/exam/result/${exam.id}`)}
+                                onClick={() =>
+                                  navigate(
+                                    exam.isCompiler
+                                      ? `/student/compiler-exams/${exam.id}/result`
+                                      : `/student/exam/result/${exam.id}`
+                                  )
+                                }
+
                               >
                                 View Detailed Result
                               </Button>
 
-                              {exam.pass && exam.certificateEligible && (
+                              {/* {exam.pass && exam.certificateEligible && (
                                 <Button
                                   variant="hero"
                                   size="sm"
@@ -807,7 +923,7 @@ useEffect(() => {
                                   <FileText className="h-4 w-4 mr-2" />
                                   Download Certificate
                                 </Button>
-                              )}
+                              )} */}
                             </div>
                           </div>
                         );
