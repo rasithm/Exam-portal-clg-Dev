@@ -304,7 +304,14 @@ export const endCompilerExam = async (req, res) => {
 
     const submissions = await StudentCodeSubmission.find({ studentId, examId });
 
-    
+    const session = await ExamSession.findOne({
+      student: studentId,
+      exam: examId,
+      active: true
+    }).sort({ startTime: -1 });
+
+    if (!session) throw new Error("Session not found");
+
 
 
     // ❗ Manual requires all submitted

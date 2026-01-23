@@ -37,6 +37,7 @@ import {
 import { ScrollArea } from "@/components/uir/scroll-area";
 import { Separator } from "@/components/uir/separator";
 import { baseUrl } from "@/constant/Url";
+
 const API_BASE = baseUrl || "http://localhost:5000";
 // Types based on backend models
 interface TestCaseResult {
@@ -385,10 +386,14 @@ const CompilerExamStudentResult = () => {
   };
 
   const handleDownloadCertificate = () => {
-    if (data?.certificateId) {
-      navigate(`/exam/completed/:certificateId`);
+    if (!data?.certificateId) {
+      console.warn("Certificate ID missing:", data);
+      return;
     }
+
+    navigate(`/exam/completed/${data.certificateId}`, { replace: true });
   };
+
 
   const handleReport = () => {
     // Navigate to report page or open report modal
