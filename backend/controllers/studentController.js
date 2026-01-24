@@ -5,6 +5,66 @@ import ExamAttempt from "../models/ExamAttempt.js";
 import CompilerExam from "../models/CompilerExam.js";
 import CompilerExamAttempt from "../models/CompilerExamAttempt.js";
 import ExamSession from "../models/ExamSession.js";
+import { finalizeExam } from "./examController.js";
+import { endCompilerExam } from "./compilerExamStudentController.js";
+
+// ✅ AUTO FINALIZE BOTH MCQ + COMPILER
+const autoFinalizeExpiredSessions = async (studentId) => {
+  const now = new Date();
+
+  const sessions = await ExamSession.find({
+    student: studentId,
+    active: true,
+    endTime: { $lt: now }
+  });
+
+  for (const session of sessions) {
+    try {
+      console.log("⏰ Auto expiring:", session._id);
+
+      // detect type
+      const mcqExam = await Exam.findById(session.exam);
+      const compilerExam = await CompilerExam.findById(session.exam);
+
+      // =========================
+      // MCQ
+      // =========================
+      if (mcqExam) {
+        await finalizeExam(session._id, studentId, "timeout");
+      }
+
+      // =========================
+      // COMPILER
+      // =========================
+      else if (compilerExam) {
+        // 🔥 THIS TRIGGERS your block:
+        // if(reason === "time")
+        await endCompilerExam(
+        {
+          body: {
+            examId: compilerExam._id,
+            reason: "time",
+            violations: {}
+          },
+          user: { _id: studentId }
+        },
+        {
+          status: () => ({ json: () => {} }), // mock express safely
+          json: () => {}
+        }
+      );
+
+      }
+
+      session.active = false;
+      await session.save();
+
+    } catch (err) {
+      console.error("Auto finalize error:", err);
+    }
+  }
+};
+
 
 
 export const getStudentDashboard = async (req, res) => {
@@ -20,7 +80,7 @@ export const getStudentDashboard = async (req, res) => {
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
-
+    await autoFinalizeExpiredSessions(student._id);
     // Step 2 — Fetch exams assigned to this student
     const allExams = await Exam.find({
       createdBy: adminId,

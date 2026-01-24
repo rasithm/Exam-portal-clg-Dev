@@ -59,9 +59,9 @@ export const generateCertificatePDF = async (req, res) => {
     const META_START_Y = 520;
 
     const PHOTO_X = 430;
-    const PHOTO_Y = 565;
+    const PHOTO_Y = 575;
 
-    const QR_X = 505;
+    const QR_X = 500;
     const QR_Y = 565;
 
 
@@ -133,8 +133,8 @@ doc.text(
     if (student.avatarUrl?.startsWith("http")) {
   const img = await fetchImageBuffer(student.avatarUrl);
   doc.image(img, PHOTO_X, PHOTO_Y, {
-    width: 70,
-    height: 70,
+    width: 60,
+    height: 60,
   });
 }
 
@@ -146,8 +146,8 @@ doc.text(
 const qr = await QRCode.toDataURL(qrUrl);
 
 doc.image(qr, QR_X, QR_Y, {
-  width: 70,
-  height: 70,
+  width: 80,
+  height: 80,
 });
 
 

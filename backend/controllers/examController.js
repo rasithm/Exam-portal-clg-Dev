@@ -449,15 +449,55 @@ export const listExams = async (req, res) => {
   }
 };
 
+// ✅ AUTO EXPIRE SESSION HELPER
+const autoExpireSession = async (session) => {
+  if (!session || !session.active) return;
+
+  const now = new Date();
+
+  if (session.endTime && now > session.endTime) {
+    session.active = false;
+    await session.save();
+  }
+};
+
+
 export const startExam = async (req, res) => {
   try {
     const student = req.user._id;
     const exam = req.params.examId;
 
     // ✅ 1. Check if already active for this exam
-    const existingSameExam = await ExamSession.findOne({ student, exam, active: true });
+    // const existingSameExam = await ExamSession.findOne({ student, exam, active: true });
+    // if (existingSameExam) {
+    //   console.log("✅ Reusing active session:", existingSameExam._id);
+    //   return res.status(200).json({
+    //     message: "Resumed existing session",
+    //     sessionId: existingSameExam._id,
+    //     startTime: existingSameExam.startTime,
+    //     endTime: existingSameExam.endTime,
+    //   });
+    // }
+    // ✅ Check if active session exists
+    let existingSameExam = await ExamSession.findOne({ student, exam, active: true });
+
+    if (existingSameExam) {
+      const now = new Date();
+
+      // 🔥 AUTO EXPIRE CHECK
+      if (existingSameExam.endTime && now > existingSameExam.endTime) {
+        console.log("⏰ Session expired automatically → deactivating");
+
+        existingSameExam.active = false;
+        await existingSameExam.save();
+
+        existingSameExam = null; // allow new session
+      }
+    }
+
     if (existingSameExam) {
       console.log("✅ Reusing active session:", existingSameExam._id);
+
       return res.status(200).json({
         message: "Resumed existing session",
         sessionId: existingSameExam._id,
@@ -465,6 +505,7 @@ export const startExam = async (req, res) => {
         endTime: existingSameExam.endTime,
       });
     }
+
 
     // ✅ 2. Prevent multiple active exams
     const otherExamActive = await ExamSession.findOne({ student, active: true });
@@ -524,6 +565,14 @@ export const getExam = async (req, res) => {
 
     const session = await ExamSession.findOne({ student, exam: examId });
     if (!session) return res.status(403).json({ message: "No active session found" });
+
+    const now = new Date();
+    if (session.endTime && now > session.endTime) {
+      session.active = false;
+      await session.save();
+
+      return res.status(410).json({ message: "Session expired (time limit reached)" });
+    }
 
     const attempt = await ExamAttempt.findOne({
       student,
@@ -808,7 +857,7 @@ const getCorrectOptionText = (q) => {
 
 
 
-const finalizeExam = async (sessionId, studentId, reason) => {
+export const finalizeExam = async (sessionId, studentId, reason) => {
   const session = await ExamSession.findById(sessionId);
   if (!session) throw new Error("Session not found");
 

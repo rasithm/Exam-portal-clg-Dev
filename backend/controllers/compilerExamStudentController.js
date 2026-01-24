@@ -295,7 +295,7 @@ export const manualSubmit = async (req, res) => {
 
 export const endCompilerExam = async (req, res) => {
   try {
-    const { examId, reason = "manual",violations = {} } = req.body;
+    let { examId, reason = "manual",violations = {} } = req.body;
     if (typeof reason !== "string") reason = "manual";
     const studentId = req.user._id;
 
