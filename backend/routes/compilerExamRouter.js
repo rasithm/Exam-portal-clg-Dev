@@ -1,4 +1,5 @@
 // routes/compilerExamRoutes.js
+import CompilerExam from "../models/CompilerExam.js";
 import express from 'express';
 import { protect } from "../middlewares/auth.js";
 import {
@@ -15,5 +16,9 @@ router.post('/create',protect(["admin"]), createExamWithQuestions);
 // router.post('/:examId/questions',protect(["admin"]), addCompilerQuestion);
 router.get('/student', protect(["student"]), getStudentCompilerExams);
 
+router.get("/list", protect(["admin"]), async (req, res) => {
+  const exams = await CompilerExam.find({ createdBy: req.user._id }).lean();
+  res.json(exams);
+});
 
 export default router;

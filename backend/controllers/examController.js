@@ -441,7 +441,7 @@ export const listExams = async (req, res) => {
   try {
     const exams = await Exam.find({ createdBy: req.user._id })
       .populate("createdBy", "email")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 }).select("+generateCertificate");
     res.json(exams);
   } catch (err) {
     console.error("Error fetching exams:", err);

@@ -104,12 +104,23 @@ const ExamReport: React.FC = () => {
       if (!examId) return;
       try {
         setLoading(true);
-        const res = await fetch(
-          `${API_BASE}/api/student/exams/${examId}/student-report`,
-          {
-            credentials: "include",
-          }
-        );
+        // const res = await fetch(
+        //   `${API_BASE}/api/student/exams/${examId}/student-report`,
+        //   {
+        //     credentials: "include",
+        //   }
+        // );
+        const params = new URLSearchParams(window.location.search);
+        const studentId = params.get("studentId");
+
+        const endpoint = studentId
+          ? `${API_BASE}/api/admin/reports/${examId}/student/${studentId}/report-data`
+          : `${API_BASE}/api/student/exams/${examId}/student-report`;
+
+        const res = await fetch(endpoint, {
+          credentials: "include",
+        });
+
 
         if (!res.ok) {
           const errJson = await res.json().catch(() => ({}));

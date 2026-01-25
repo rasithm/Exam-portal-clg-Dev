@@ -17,7 +17,7 @@ router.get("/list", protect(["admin","creator"]), async (req, res) => {
     console.log("[/questions/list] collegeTag =", req.user.collegeTag, "user=", req.user.email);
     const sets = await QuestionSet.find(
       { collegeTag: req.user.collegeTag },
-      "fileName category subcategory"
+      "fileName category subcategory questions createdAt"
     );
     console.log("[/questions/list] sets count =", sets.length);
     res.json(sets);
@@ -26,6 +26,11 @@ router.get("/list", protect(["admin","creator"]), async (req, res) => {
     res.status(500).json({ message: "Failed to fetch question sets" });
   }
 });
+router.delete("/:id", protect(["admin"]), async (req, res) => {
+  await QuestionSet.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
+});
+
 
 router.post("/upload", async (req, res, next) => {
   try {

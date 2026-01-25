@@ -25,7 +25,7 @@ import CreateCompilerQuestion from "./pages/admin/CreateCompilerQuestion";
 import CompilerExam from "./pages/student/CompilerExam";
 import CompilerExamStudentResult from "./pages/student/CompilerExamStudentResult";
 import CompilerExamReport from "./pages/student/CompilerExamReport";
-
+import AdminStudentReportLoader from "./pages/admin/AdminStudentReportLoader";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -55,6 +55,7 @@ const App = () => (
           <Route path="/admin/exam/compiler/question/:id" element={<CreateCompilerQuestion />} />
           <Route path="/student/exam/compiler/:examId" element={<CompilerExam />} />
           <Route path="/student/compiler-exams/:examId/result" element={<CompilerExamStudentResult />} />
+          <Route path="/admin/report-view/:examId/:studentId"  element={<AdminStudentReportLoader />}/>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

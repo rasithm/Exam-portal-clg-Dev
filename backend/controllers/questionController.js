@@ -393,6 +393,3 @@ export const downloadTemplate = async (req, res) => {
     res.status(500).json({ message: "Template generation failed" });
   }
 };
-
-
-
