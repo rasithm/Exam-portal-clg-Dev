@@ -6,7 +6,9 @@ import xlsx from "xlsx"; // ⬅️ add this import
 import fs from 'fs';
 import bcrypt from 'bcrypt';
 import { getOnlineStudentsForAdmin } from '../sockets/socketManager.js';
-
+import Exam from '../models/Exam.js'
+import CompilerExam from '../models/CompilerExam.js';
+import ExamSession from '../models/ExamSession.js';
 /**
  * Create single student by admin
  * POST /api/admin/students
@@ -230,6 +232,30 @@ export const listStudents = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+export const getDashboardStats = async (req, res) => {
+  const adminId = req.user._id;
+
+  const mcq = await Exam.find({ createdBy: adminId });
+  const comp = await CompilerExam.find({ createdBy: adminId });
+
+  const now = new Date();
+
+  const all = [...mcq, ...comp];
+
+  const active = all.filter(e => new Date(e.endTime || e.endDateTime) > now).length;
+  const completed = all.length - active;
+
+  const sessions = await ExamSession.find();
+  const violations = sessions.reduce((s, v) => s + (v.violations || 0), 0);
+
+  res.json({
+    activeExams: active,
+    completedExams: completed,
+    violations
+  });
+};
+
 
 /**
  * GET /api/admin/students/export

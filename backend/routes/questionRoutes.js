@@ -18,7 +18,7 @@ router.get("/list", protect(["admin","creator"]), async (req, res) => {
     const sets = await QuestionSet.find(
       { collegeTag: req.user.collegeTag },
       "fileName category subcategory questions createdAt"
-    );
+    ).sort({createdAt : -1});
     console.log("[/questions/list] sets count =", sets.length);
     res.json(sets);
   } catch (err) {

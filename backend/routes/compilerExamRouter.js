@@ -17,7 +17,7 @@ router.post('/create',protect(["admin"]), createExamWithQuestions);
 router.get('/student', protect(["student"]), getStudentCompilerExams);
 
 router.get("/list", protect(["admin"]), async (req, res) => {
-  const exams = await CompilerExam.find({ createdBy: req.user._id }).lean();
+  const exams = await CompilerExam.find({ createdBy: req.user._id }).lean().sort({ createdAt: -1 });
   res.json(exams);
 });
 

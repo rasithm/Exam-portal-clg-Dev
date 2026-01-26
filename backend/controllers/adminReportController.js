@@ -69,6 +69,7 @@ export const getAllExamReportsSummary = async (req, res) => {
         completedDate: exam.endTime,
       });
     }
+    result.sort((a,b)=> new Date(b.completedDate) - new Date(a.completedDate));
 
     res.json(result);
   } catch (err) {

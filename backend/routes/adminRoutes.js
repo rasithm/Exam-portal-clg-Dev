@@ -9,7 +9,8 @@ import {
   listStudents,
   exportStudentsCSV,
   downloadTemplate , 
-  deleteStudent
+  deleteStudent,
+  getDashboardStats
 } from '../controllers/adminController.js';
 import {updateAdminPassword ,verifyAdminOtp , requestEmailVerification ,getAdminProfile  , updateAdminProfile } from "../controllers/adminProfileController.js"
 import { getNotifications, acceptQuestionFile, rejectQuestionFile } from '../controllers/notificationController.js';
@@ -28,6 +29,7 @@ router.post('/students/upload', protect(['admin']), upload.single('file'),upload
 // list students (paginated)
 router.get('/students', protect(['admin']),listStudents);
 
+router.get('/counts', protect(['admin']),getDashboardStats);
 // download exported CSV (admin's students)
 router.get('/students/export', protect(['admin']),exportStudentsCSV);
 

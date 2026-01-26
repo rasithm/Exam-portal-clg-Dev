@@ -265,6 +265,19 @@ const fetchReports = async () => {
     };
     fetchStats();
   }, []);
+  useEffect(() => {
+    const fetchStatsCount = async () => {
+      try {
+        
+        const res = await fetch(`${API_BASE}/api/admin/counts` , {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setStats(prev => ({ ...prev, activeExams: data.activeExams || 0 , completedExams : data.completedExams || 0, violations : data.violations || 0 }));
+      } catch(err) { console.error(err); }
+    };
+    fetchStatsCount();
+  }, []);
   const fetchStats = async () => {
       try {
         
@@ -273,6 +286,16 @@ const fetchReports = async () => {
         });
         const data = await res.json();
         setStats(prev => ({ ...prev, totalStudents: data.total || 0 }));
+      } catch(err) { console.error(err); }
+    };
+  const fetchStatsCount = async () => {
+      try {
+        
+        const res = await fetch(`${API_BASE}/api/admin/counts` , {
+          credentials: "include",
+        });
+        const data = await res.json();
+        setStats(prev => ({ ...prev, activeExams: data.activeExams || 0 , completedExams : data.completedExams || 0, violations : data.violations || 0 }));
       } catch(err) { console.error(err); }
     };
    const handleRefreshStudent = async () => {
