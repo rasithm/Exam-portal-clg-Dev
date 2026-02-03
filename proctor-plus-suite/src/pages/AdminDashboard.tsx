@@ -260,16 +260,38 @@ const fetchCertificates = async () => {
 
 const fetchReports = async () => {
   try {
+    setLoading(true); // ✅ start spinner
+
     const res = await fetch(`${API_BASE}/api/admin/reports/summary`, {
       credentials: "include",
     });
 
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(txt || "Failed to fetch reports");
+    }
+
     const data = await res.json();
+
     setReports(data || []);
-  } catch (err) {
+
+    toast({
+      title: "✅ Refreshed",
+      description: "Reports updated successfully",
+    });
+  } catch (err: any) {
     console.error(err);
+
+    toast({
+      title: "Error",
+      description: err.message || "Failed to load reports",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false); // ✅ stop spinner
   }
 };
+
 
 
 
@@ -1232,10 +1254,23 @@ const fetchReports = async () => {
 
               {/* Individual Exam Reports */}
               <Card className="shadow-card">
-                <CardHeader>
-                  <div>
+                <CardHeader className="flex flex-row">
+                  <div className="w-11/12">
                     <CardTitle>Individual Exam Reports</CardTitle>
                     <CardDescription>Download Excel for data visualization or PDF for printable reports</CardDescription>
+                  </div>
+                  <div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchReports()}
+                      disabled={loading}
+                    >
+                      <RefreshCcw
+                        className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`}
+                      />
+                      Refresh
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
