@@ -244,6 +244,11 @@ const fetchCertificates = async () => {
       ...prev,
       totalCertificates: safeData.total,
     }));
+
+    toast({
+      title: "✅ Refreshed",
+      description: "Certificate updated successfully",
+    });
   } catch (err) {
     console.error(err);
 
