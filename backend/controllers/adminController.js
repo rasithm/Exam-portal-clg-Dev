@@ -9,6 +9,8 @@ import { getOnlineStudentsForAdmin } from '../sockets/socketManager.js';
 import Exam from '../models/Exam.js'
 import CompilerExam from '../models/CompilerExam.js';
 import ExamSession from '../models/ExamSession.js';
+import ExamAttempt from "../models/ExamAttempt.js";
+import CompilerExamAttempt from "../models/CompilerExamAttempt.js";
 /**
  * Create single student by admin
  * POST /api/admin/students
@@ -233,28 +235,64 @@ export const listStudents = async (req, res) => {
   }
 };
 
+
+
 export const getDashboardStats = async (req, res) => {
-  const adminId = req.user._id;
+  try {
+    const adminId = req.user._id;
 
-  const mcq = await Exam.find({ createdBy: adminId });
-  const comp = await CompilerExam.find({ createdBy: adminId });
+    /* -----------------------------
+       Exams count
+    ----------------------------- */
+    const mcq = await Exam.find({ createdBy: adminId });
+    const comp = await CompilerExam.find({ createdBy: adminId });
 
-  const now = new Date();
+    const now = new Date();
+    const all = [...mcq, ...comp];
 
-  const all = [...mcq, ...comp];
+    const active = all.filter(e =>
+      new Date(e.endTime || e.endDateTime) > now
+    ).length;
 
-  const active = all.filter(e => new Date(e.endTime || e.endDateTime) > now).length;
-  const completed = all.length - active;
+    const completed = all.length - active;
 
-  const sessions = await ExamSession.find();
-  const violations = sessions.reduce((s, v) => s + (v.violations || 0), 0);
+    /* -----------------------------
+       Violations count (REAL)
+       count only auto-submitted due to violation
+    ----------------------------- */
 
-  res.json({
-    activeExams: active,
-    completedExams: completed,
-    violations
-  });
+    const mcqExamIds = mcq.map(e => e._id);
+    const compExamIds = comp.map(e => e._id);
+
+    const mcqViolations = await ExamAttempt.countDocuments({
+      reason: "violation",
+      examSessionId: {
+        $in: await ExamSession.find({ exam: { $in: mcqExamIds } })
+          .distinct("_id")
+      }
+    });
+
+    const compilerViolations = await CompilerExamAttempt.countDocuments({
+      reason: "violation",
+      exam: { $in: compExamIds }
+    });
+
+    const violations = mcqViolations + compilerViolations;
+
+    /* ----------------------------- */
+
+    res.json({
+      activeExams: active,
+      completedExams: completed,
+      violations
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Stats fetch failed" });
+  }
 };
+
 
 
 /**

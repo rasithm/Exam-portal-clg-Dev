@@ -137,6 +137,65 @@ const handleRefreshExams = async () => {
   }
 };
 
+const getRecentExams = () => {
+  const now = new Date();
+
+  const all = [
+    ...mcqExams.map(e => ({
+      ...e,
+      type: "MCQ",
+      start: e.startDateTime,
+      end: e.endDateTime
+    })),
+    ...compilerExams.map(e => ({
+      ...e,
+      type: "Compiler",
+      start: e.startTime,
+      end: e.endTime
+    }))
+  ];
+
+  const withStatus = all.map(e => {
+    const s = new Date(e.start);
+    const en = new Date(e.end);
+
+    let status = "completed";
+    if (now < s) status = "upcoming";
+    else if (now >= s && now <= en) status = "active";
+
+    return { ...e, status };
+  });
+
+  // newest first
+  withStatus.sort(
+    (a, b) =>
+      new Date(b.start).getTime() - new Date(a.start).getTime()
+  );
+
+
+  const pick = (status: string) =>
+    withStatus.find(e => e.status === status);
+
+  const selected: any[] = [];
+
+  const upcoming = pick("upcoming");
+  const active = pick("active");
+  const completed = pick("completed");
+
+  if (upcoming) selected.push(upcoming);
+  if (active) selected.push(active);
+  if (completed) selected.push(completed);
+
+  // fallback → fill remaining
+  for (const e of withStatus) {
+    if (selected.length >= 3) break;
+    if (!selected.includes(e)) selected.push(e);
+  }
+
+  return selected.slice(0, 3);
+};
+
+
 
 const fetchQuestionSets = async () => {
   try {
@@ -672,7 +731,7 @@ const fetchReports = async () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {[...mcqExams.slice(0, 2), ...compilerExams.slice(0, 1)].map((exam: any, index) => (
+                  {getRecentExams().map((exam: any, index) => (
                     <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
                       <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${exam.language ? 'bg-violet-100' : 'bg-blue-100'}`}>
