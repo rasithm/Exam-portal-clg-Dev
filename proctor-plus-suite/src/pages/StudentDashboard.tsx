@@ -615,7 +615,7 @@ const compilerAverage =
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              navigate(`/exam/completed/${cert.certificateId}`)
+                              navigate(`/exam/completed/${cert.certificateId}` , { state: { from: "student" ,examId: cert.id } })
                             }
                           >
                             View Certificate

@@ -18,6 +18,8 @@ import { Chart, registerables, ChartConfiguration } from "chart.js";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { baseUrl } from "@/constant/Url";
+import { useLocation } from "react-router-dom";
+
 const API_BASE = baseUrl || "http://localhost:5000";
 // Register Chart.js components
 Chart.register(...registerables);
@@ -116,6 +118,8 @@ const CompilerExamReport: React.FC = () => {
   // --- State Management ---
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pdfDownloaded, setPdfDownloaded] = useState(false);
+
   const cardRef = useRef<HTMLDivElement>(null);
 
   // --- Chart Refs ---
@@ -130,6 +134,10 @@ const CompilerExamReport: React.FC = () => {
   const cheatingPenalty = reportData ? reportData.proctoring.cheatingCount * 10 : 0;
   const finalPercentage = Math.max(0, percentage - cheatingPenalty);
   const isPassed = finalPercentage >= 50;
+
+  const location = useLocation();
+  const hideCertificate = location.state?.from === "report";
+
 
   // --- Fetch report data ---
   useEffect(() => {
@@ -260,6 +268,7 @@ const CompilerExamReport: React.FC = () => {
 
   // --- Handlers ---
   const handleDownloadPDF = async () => {
+    setPdfDownloaded(true);
     if (!cardRef.current) return;
     
     // Dynamic imports for PDF generation
@@ -632,11 +641,11 @@ const CompilerExamReport: React.FC = () => {
           </div>
 
           {/* Certificate Button */}
-          {isPassed && reportData.certificateEligible && (
+          {isPassed && reportData.certificateEligible && !hideCertificate && !pdfDownloaded &&(
             <div className="flex justify-center">
               <Button
                 onClick={() =>
-                  navigate(`/exam/completed/${reportData.certificateId}`, { state: { from: "student" } })
+                  navigate(`/exam/completed/${reportData.certificateId}`, { state: { from: "student" , examId: examId  } })
 
                 }
                 className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"

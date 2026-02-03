@@ -482,13 +482,18 @@ const formatAvg = (sec?: number) =>
                   <button
                     className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 transition-colors"
                     onClick={() => {
-                      if (examIdFromState) {
+                      if (!examIdFromState) return;
+
+                      if (result.examType === "compiler") {
+                        navigate(`/student/exam/compiler/${examIdFromState}/report`);
+                      } else {
                         navigate(`/student/exam/report/${examIdFromState}`);
                       }
                     }}
                   >
                     <FileCheck className="w-4 h-4" /> View Report
                   </button>
+
 
                   <button
                     className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-slate-800 text-white font-medium hover:bg-slate-900 transition-colors shadow-lg shadow-slate-900/10"

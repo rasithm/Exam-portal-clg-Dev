@@ -391,7 +391,7 @@ const CompilerExamStudentResult = () => {
       return;
     }
 
-    navigate(`/exam/completed/${data.certificateId}`, { replace: true });
+    navigate(`/exam/completed/${data.certificateId}`, { replace: true ,   state: { from: "student" , examId: examId  }   } );
   };
 
 

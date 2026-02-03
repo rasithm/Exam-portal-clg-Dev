@@ -1104,6 +1104,7 @@ export const getExamResult = async (req, res) => {
         questions: [],                // No detailed questions now
         reviewCompleted: true,
         certificateEligible: !!attempt.certificateEligible,
+        certificateId: attempt.certificateId || null
       });
     }
 
