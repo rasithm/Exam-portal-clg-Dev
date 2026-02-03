@@ -137,6 +137,62 @@ const handleRefreshExams = async () => {
   }
 };
 
+// const getRecentExams = () => {
+//   const now = new Date();
+
+//   const all = [
+//     ...mcqExams.map(e => ({
+//       ...e,
+//       type: "MCQ",
+//       start: e.startDateTime,
+//       end: e.endDateTime
+//     })),
+//     ...compilerExams.map(e => ({
+//       ...e,
+//       type: "Compiler",
+//       start: e.startTime,
+//       end: e.endTime
+//     }))
+//   ];
+
+//   const withStatus = all.map(e => {
+//     const s = new Date(e.start);
+//     const en = new Date(e.end);
+
+//     let status = "completed";
+//     if (now < s) status = "upcoming";
+//     else if (now >= s && now <= en) status = "active";
+
+//     return { ...e, status };
+//   });
+
+  
+//   withStatus.sort(
+//     (a, b) => new Date(b.start).getTime() - new Date(a.start).getTime()
+//   );
+
+//   const upcoming = withStatus.filter(e => e.status === "upcoming");
+//   const active = withStatus.filter(e => e.status === "active");
+//   const completed = withStatus.filter(e => e.status === "completed");
+
+//   const result: any[] = [];
+
+  
+//   if (upcoming[0]) result.push(upcoming[0]);
+//   if (active[0]) result.push(active[0]);
+//   if (completed[0]) result.push(completed[0]);
+
+  
+//   const pool = [...active.slice(1), ...upcoming.slice(1), ...completed.slice(1)];
+
+//   for (const e of pool) {
+//     if (result.length >= 3) break;
+//     result.push(e);
+//   }
+
+//   return result.slice(0, 3);
+// };
+
 const getRecentExams = () => {
   const now = new Date();
 
@@ -155,7 +211,7 @@ const getRecentExams = () => {
     }))
   ];
 
-  const withStatus = all.map(e => {
+  const exams = all.map(e => {
     const s = new Date(e.start);
     const en = new Date(e.end);
 
@@ -167,33 +223,46 @@ const getRecentExams = () => {
   });
 
   // newest first
-  withStatus.sort(
-    (a, b) =>
-      new Date(b.start).getTime() - new Date(a.start).getTime()
+  exams.sort(
+    (a, b) => new Date(b.start).getTime() - new Date(a.start).getTime()
   );
 
+  const upcoming = exams.filter(e => e.status === "upcoming");
+  const active = exams.filter(e => e.status === "active");
+  const completed = exams.filter(e => e.status === "completed");
 
-  const pick = (status: string) =>
-    withStatus.find(e => e.status === status);
+  const result: any[] = [];
 
-  const selected: any[] = [];
+  // ✅ PERFECT PRIORITY ENGINE
 
-  const upcoming = pick("upcoming");
-  const active = pick("active");
-  const completed = pick("completed");
-
-  if (upcoming) selected.push(upcoming);
-  if (active) selected.push(active);
-  if (completed) selected.push(completed);
-
-  // fallback → fill remaining
-  for (const e of withStatus) {
-    if (selected.length >= 3) break;
-    if (!selected.includes(e)) selected.push(e);
+  if (upcoming.length && active.length && completed.length) {
+    result.push(upcoming[0], active[0], completed[0]);
+  }
+  else if (!upcoming.length && active.length >= 2) {
+    result.push(active[0], active[1], completed[0]);
+  }
+  else if (!active.length && upcoming.length >= 2) {
+    result.push(upcoming[0], upcoming[1], completed[0]);
+  }
+  else if (!completed.length && upcoming.length >= 2) {
+    result.push(upcoming[0], upcoming[1], active[0]);
+  }
+  else if (active.length === 1) {
+    result.push(active[0], ...completed.slice(0, 2));
+  }
+  else if (upcoming.length === 1) {
+    result.push(upcoming[0], ...completed.slice(0, 2));
+  }
+  else {
+    // fallback
+    result.push(...exams.slice(0, 3));
   }
 
-  return selected.slice(0, 3);
+  return result.slice(0, 3);
 };
+
+
+
 
 
 
@@ -533,7 +602,10 @@ const fetchReports = async () => {
     }
   };
 
-  const getExamStatus = (start: string, end: string) => {
+  
+  const getExamStatus = (start?: string, end?: string) => {
+    if (!start || !end) return "completed";
+
     const now = new Date();
     const s = new Date(start);
     const e = new Date(end);
@@ -542,6 +614,7 @@ const fetchReports = async () => {
     if (now > e) return "completed";
     return "active";
   };
+
 
 
   
@@ -1001,9 +1074,10 @@ const fetchReports = async () => {
                                     <p className="text-xs text-muted-foreground">{exam.category} • {exam.subcategory}</p>
                                   </div>
                                 </div>
-                                <Badge className={`text-xs ${getStatusColor(getExamStatus(exam.startDateTime, exam.endDateTime))}`}>
+                                <Badge className={`text-xs ${getStatusColor(getExamStatus(exam.startTime, exam.endTime))}`}>
                                   {getExamStatus(exam.startDateTime, exam.endDateTime)}
                                 </Badge>
+
 
                               </div>
                               <div className="grid grid-cols-3 gap-2 text-xs">
@@ -1065,7 +1139,7 @@ const fetchReports = async () => {
                                   </div>
                                 </div>
                                 <Badge className={`text-xs ${getStatusColor(getExamStatus(exam.startDateTime, exam.endDateTime))}`}>
-                                  {getExamStatus(exam.startDateTime, exam.endDateTime)}
+                                  {getExamStatus(exam.startTime, exam.endTime)}
                                 </Badge>
 
                               </div>
