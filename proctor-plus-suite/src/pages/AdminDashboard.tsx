@@ -955,9 +955,14 @@ const fetchReports = async () => {
                         <Badge  variant={student.online === "active" ? "default" : "secondary"}>
                           {student.online ? "Active" : "Inactive"}
                         </Badge>
-                        <Button variant="outline" size="sm" 
-                        // onClick={() => window.openCreateStudentWithData(student)}
-                          >Edit</Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/admin/student/edit/${student.id}`)}
+                        >
+                          Edit
+                        </Button>
+
                         <Button 
                           variant="destructive" 
                           size="sm" 

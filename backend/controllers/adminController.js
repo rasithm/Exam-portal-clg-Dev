@@ -11,6 +11,7 @@ import CompilerExam from '../models/CompilerExam.js';
 import ExamSession from '../models/ExamSession.js';
 import ExamAttempt from "../models/ExamAttempt.js";
 import CompilerExamAttempt from "../models/CompilerExamAttempt.js";
+import nodemailer from "nodemailer";
 /**
  * Create single student by admin
  * POST /api/admin/students
@@ -387,5 +388,75 @@ export const downloadTemplate = async (req, res) => {
     res.status(500).json({ message: "Failed to generate template" });
   }
 };
+
+
+
+
+const transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_HOST,
+  port: process.env.EMAIL_PORT,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+
+export const getStudentById = async (req, res) => {
+  const student = await Student.findById(req.params.id).select("-password");
+  res.json(student);
+};
+
+
+export const updateStudentEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    const oldEmail = student.email;
+    const newEmail = email;
+
+    if (oldEmail === newEmail)
+      return res.json({ message: "Email unchanged" });
+
+    student.email = newEmail;
+    await student.save();
+
+    // 📩 Mail old email
+    if (oldEmail) {
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM,
+        to: oldEmail,
+        subject: "Email Address Updated",
+        html: `
+          <p>Hello ${student.name},</p>
+          <p>Your personal email has been changed to <b>${newEmail}</b>.</p>
+          <p>If this was not you, contact support immediately.</p>
+        `,
+      });
+    }
+
+    // 📩 Mail new email
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: newEmail,
+      subject: "Email Update Confirmation",
+      html: `
+        <p>Hello ${student.name},</p>
+        <p>Your email has been successfully updated from <b>${oldEmail || "N/A"}</b> to <b>${newEmail}</b>.</p>
+        <p>Welcome aboard 🚀</p>
+      `,
+    });
+
+    res.json({ message: "Email updated & notifications sent" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update email" });
+  }
+};
+
 
 

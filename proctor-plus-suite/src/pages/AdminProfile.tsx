@@ -56,6 +56,7 @@ const AdminProfile = () => {
   });
 
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -86,9 +87,10 @@ const AdminProfile = () => {
           ...prev,
           name: data.name || "",
           email: data.email || prev.email,
-          personalemail : data.personalemail || "",
-          phone_no: data.phone_no || "",
-          whatsapp_no: data.whatsapp_no || "",
+          personalemail : data.personalEmail || "",
+          phone_no: data.adminPhone_no || "",
+          whatsapp_no: data.adminWhatsapp_no || "",
+
           department: data.department || prev.department,
           adminId : data._id?.slice(-8) || prev._id?.slice(-8),
           
@@ -196,6 +198,7 @@ const AdminProfile = () => {
   // };
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
 
     const emailChanged = profileData.personalemail.trim().toLowerCase() !== originalEmail.trim().toLowerCase();
     console.log(originalEmail)
@@ -218,6 +221,11 @@ const AdminProfile = () => {
           requestId: json.requestId
         }));
 
+        // ⭐ store image separately
+        if (profileImageFile) {
+          sessionStorage.setItem("pendingProfileImage", profileImagePreview);
+        }
+
         navigate(`/reset/verify?role=admin&req=${json.requestId}`);
         return;
       }
@@ -225,36 +233,38 @@ const AdminProfile = () => {
       await submitProfileUpdate(profileData);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    }finally {
+      setSaving(false);
     }
   };
   const submitProfileUpdate = async (data: any) => {
-    const pending = sessionStorage.getItem("pendingAdminProfileUpdate");
-    if (pending) {
-      const data = JSON.parse(pending);
-      const formData = new FormData();
-      formData.append("name", data.name);
-      formData.append("phone_no", data.phone_no);
-      formData.append("whatsapp_no", data.whatsapp_no || "");
-      formData.append("personalEmail" , data.personalemail || "")
+  const formData = new FormData();
 
-      if(data.profileImageFile) formData.append("profileImage" , data.profileImageFile)
+  formData.append("name", data.name);
+  formData.append("phone_no", data.phone_no);
+  formData.append("whatsapp_no", data.whatsapp_no || "");
+  formData.append("personalEmail", data.personalemail || "");
 
-      const res = await fetch(`${API_BASE}/api/admin/profile`, {
-        method: "PUT",
-        credentials: "include",
-        body: formData
-      });
-
-      sessionStorage.removeItem("pendingAdminProfileUpdate");
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message);
-      toast({ title: "Profile Updated" });
-    }
+  if (profileImageFile) {
+    formData.append("profileImage", profileImageFile);
+  }
 
 
-    
-    
-  };
+  const res = await fetch(`${API_BASE}/api/admin/profile`, {
+    method: "PUT",
+    credentials: "include",
+    body: formData,
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message);
+
+  toast({ title: "Profile Updated" });
+  // window.location.reload();
+
+  setIsEditing(false); 
+};
+
 
 
 
@@ -275,6 +285,7 @@ const AdminProfile = () => {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     const { currentPassword, newPassword, confirmPassword } = passwordData;
 
     // Required validation
@@ -337,6 +348,8 @@ const AdminProfile = () => {
         description: err.message || "Unable to update password",
         variant: "destructive",
       });
+    } finally {
+      setSaving(true);
     }
   };
 
@@ -501,7 +514,10 @@ const AdminProfile = () => {
 
                       {isEditing && (
                         <div className="flex gap-3">
-                          <Button type="submit" variant="hero"><Save className="h-4 w-4 mr-2" /> Save Changes</Button>
+                          <Button type="submit" variant="hero" disabled={saving}>
+                            {saving ? "Saving..." : <> <Save className="h-4 w-4 mr-2" /> Save Changes </>}
+                          </Button>
+
                           <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
                         </div>
                       )}
@@ -599,8 +615,9 @@ const AdminProfile = () => {
                         </ul>
                       </div>
 
-                      <Button type="submit" variant="hero">
-                        <Lock className="h-4 w-4 mr-2" /> Update Password
+                      <Button type="submit" variant="hero" disabled={saving}>
+                        {saving ? "Updating" : <><Lock className="h-4 w-4 mr-2" /> Update Password</>  }
+                        
                       </Button>
                     </form>
 

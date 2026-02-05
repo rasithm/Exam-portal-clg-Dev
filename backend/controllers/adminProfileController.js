@@ -6,7 +6,8 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { sendOtpMail } from "../services/mailer.js";
 import PasswordResetRequest from "../models/PasswordResetRequest.js";
-
+import AdminEmailVerificationRequest from "../models/AdminEmailVerificationRequest.js";
+import cloudinary from "../config/cloudinary.js"; // adjust path
 const OTP_TTL = 10 * 60 * 1000; // 10 min
 
 // const transporter = nodemailer.createTransport({
@@ -47,27 +48,28 @@ export const getAdminProfile = async (req, res) => {
 export const requestEmailVerification = async (req, res) => {
   const { personalEmail } = req.body;
 
+  if (!personalEmail)
+    return res.status(400).json({ message: "Email required" });
+
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const otpHash = await bcrypt.hash(otp, 10);
 
-  const reqDoc = await PasswordResetRequest.create({
+  const doc = await AdminEmailVerificationRequest.create({
     admin: req.user._id,
     requestedEmail: personalEmail,
     otpHash,
-    otpExpiresAt
-    : new Date(Date.now() + 10 * 60000),
-    status: "otp_sent",
-    purpose: "admin-profile"
+    otpExpiresAt: new Date(Date.now() + 10 * 60000),
   });
 
   await sendOtpMail(
     personalEmail,
-    "ExamPortal Email Verification OTP",
-    `<p>Your verification code is <b>${otp}</b></p>`
+    "Admin Email Verification OTP",
+    `<p>Your OTP is <b>${otp}</b></p>`
   );
 
-  res.json({ message: "OTP sent", requestId: reqDoc._id });
+  res.json({ requestId: doc._id });
 };
+
 
 
 // export const verifyEmailOtp = async (req, res) => {
@@ -92,19 +94,31 @@ export const requestEmailVerification = async (req, res) => {
 export const verifyAdminOtp = async (req, res) => {
   const { requestId, otp } = req.body;
 
-  const reqDoc = await PasswordResetRequest.findById(requestId);
-  if (!reqDoc || reqDoc.status !== "otp_sent") return res.status(400).json({ message: "No OTP request" });
+  const doc = await AdminEmailVerificationRequest.findById(requestId);
 
-  if (new Date() > reqDoc.otpExpiresAt) return res.status(410).json({ message: "OTP expired" });
+  if (!doc) return res.status(400).json({ message: "Invalid request" });
 
-  const ok = await bcrypt.compare(String(otp), reqDoc.otpHash);
+  if (doc.status !== "otp_sent")
+    return res.status(400).json({ message: "Already verified" });
+
+  if (new Date() > doc.otpExpiresAt)
+    return res.status(410).json({ message: "OTP expired" });
+
+  const ok = await bcrypt.compare(otp, doc.otpHash);
   if (!ok) return res.status(401).json({ message: "Invalid OTP" });
 
-  reqDoc.status = "verified";
-  await reqDoc.save();
+  doc.status = "verified";
+  await doc.save();
 
-  return res.json({ message: "OTP verified", requestId });
+  // ✅ mark admin verified
+  await Admin.findByIdAndUpdate(doc.admin, {
+    personalEmailVerified: true,
+    personalEmail: doc.requestedEmail,
+  });
+
+  res.json({ message: "OTP verified" });
 };
+
 
 
 export const updateAdminPassword = async (req, res) => {
@@ -174,10 +188,7 @@ export const updateAdminProfile = async (req, res) => {
   const admin = await Admin.findById(req.user._id);
   if (!admin) return res.status(404).json({ message: "Admin not found" });
 
-  if (!admin.personalEmailVerified)
-    return res.status(403).json({ message: "Verify email first" });
-
-  const { name, phone_no, whatsapp_no  , personalEmail} = req.body;
+  const { name, phone_no, whatsapp_no, personalEmail } = req.body || {};
 
   if (!name || !phone_no)
     return res.status(400).json({ message: "Missing required fields" });
@@ -187,7 +198,19 @@ export const updateAdminProfile = async (req, res) => {
   admin.adminWhatsapp_no = whatsapp_no;
   if(personalEmail) admin.personalEmail = personalEmail;
 
-  if (req.file) admin.profileImage = req.file.path;
+ 
+
+
+
+  if (req.file) {
+    // await cloudinary.uploader.destroy(oldPublicId)
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "exam-portal/admins",
+    });
+
+    admin.profileImage = result.secure_url;
+  }
+
 
   await admin.save();
   res.json({ message: "Profile updated", admin });

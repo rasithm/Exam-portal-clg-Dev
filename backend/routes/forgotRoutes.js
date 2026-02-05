@@ -14,7 +14,7 @@ const router = express.Router();
 
 // student initiate reset (public; allow unauthenticated)
 router.post("/student/request", requestStudentReset);
-router.post("/admin/verify-otp", verifyAdminOtp);
+// router.post("/admin/verify-otp", verifyAdminOtp);
 
 // verify otp
 router.post("/student/verify-otp", verifyOtp);

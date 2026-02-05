@@ -56,7 +56,7 @@ const App = () => (
           <Route path="/student/exam/compiler/:examId" element={<CompilerExam />} />
           <Route path="/student/compiler-exams/:examId/result" element={<CompilerExamStudentResult />} />
           <Route path="/admin/report-view/:examId/:studentId"  element={<AdminStudentReportLoader />}/>
-
+          <Route path="/admin/student/edit/:id" element={<Profile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

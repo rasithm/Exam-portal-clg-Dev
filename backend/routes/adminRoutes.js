@@ -46,7 +46,13 @@ router.post("/verify-email/confirm", protect(["admin"]), verifyAdminOtp);
 router.get("/profile", protect(["admin"]), getAdminProfile);
 router.put("/profile/password", protect(["admin"]), updateAdminPassword);
 
-router.put("/profile", protect(["admin"]), updateAdminProfile);
+router.put("/profile", protect(["admin"]), upload.single("profileImage"), updateAdminProfile);
+
+import { updateStudentEmail, getStudentById } from "../controllers/adminController.js";
+
+router.get("/students/:id", protect(["admin"]), getStudentById);
+router.put("/students/:id/email", protect(["admin"]), updateStudentEmail);
+
 
 export default router;
 

@@ -20,8 +20,11 @@ const OtpVerification = () => {
   const [otp, setOtp] = useState("");
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [verifying, setVerifying] = useState(false);
+
 
   const handleVerify = async (e: React.FormEvent) => {
+    setVerifying(true);
     e.preventDefault();
     if (!otp) return toast({ title: "Enter OTP", variant: "destructive" });
 
@@ -29,11 +32,13 @@ const OtpVerification = () => {
       
 
       if (role === "admin") {
-        const res = await fetch(`${API}/api/forgot/admin/verify-otp`, {
+        const res = await fetch(`${API}/api/admin/verify-email/confirm`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ requestId, otp })
         });
+
 
         const json = await res.json();
         if (!res.ok) throw new Error(json.message);
@@ -45,6 +50,13 @@ const OtpVerification = () => {
         formData.append("phone_no", pending.phone_no);
         formData.append("whatsapp_no", pending.whatsapp_no || "");
         formData.append("personalEmail", pending.personalemail);
+        const imageData = sessionStorage.getItem("pendingProfileImage");
+
+        if (imageData) {
+          const blob = await fetch(imageData).then(r => r.blob());
+          formData.append("profileImage", blob, "profile.png");
+        }
+
 
         await fetch(`${API}/api/admin/profile`, {
           method: "PUT",
@@ -52,7 +64,7 @@ const OtpVerification = () => {
           body: formData
         });
 
-        sessionStorage.removeItem("pendingAdminProfileUpdate");
+        
         toast({ title: "Profile Updated" });
         navigate("/admin/profile");
       }
@@ -78,6 +90,8 @@ const OtpVerification = () => {
     } catch (err: any) {
       console.error(err);
       toast({ title: "Error", description: err.message || "Server error", variant: "destructive" });
+    }finally {
+      setVerifying(false);
     }
   };
 
@@ -97,7 +111,10 @@ const OtpVerification = () => {
               <Label>OTP</Label>
               <Input value={otp} onChange={(e) => setOtp(e.target.value)} maxLength={6} />
             </div>
-            <Button type="submit" className="w-full">Verify OTP</Button>
+            <Button type="submit" className="w-full" disabled={verifying}>
+              {verifying ? "Verifying..." : "Verify OTP"}
+            </Button>
+
           </form>
         </CardContent>
       </Card>

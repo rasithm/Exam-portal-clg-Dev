@@ -19,8 +19,9 @@ import {
   Save,
   Eye,
   EyeOff,
-  Upload
+  Upload , Loader2
 } from "lucide-react";
+import { useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
 const API_BASE = baseUrl || "http://localhost:5000";
@@ -55,6 +56,7 @@ const Profile = () => {
   });
 
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false); 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -63,11 +65,16 @@ const Profile = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   
+  
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
     confirm: false,
   });
+
+  const { id } = useParams();
+  const isAdminEdit = !!id;
+
 
 
   // --- fetch profile once ---
@@ -75,9 +82,17 @@ const Profile = () => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE}/api/student/profile`, {
+        // const res = await fetch(`${API_BASE}/api/student/profile`, {
+        //   credentials: "include",
+        // });
+        const url = isAdminEdit
+          ? `${API_BASE}/api/admin/students/${id}`
+          : `${API_BASE}/api/student/profile`;
+
+        const res = await fetch(url, {
           credentials: "include",
         });
+
         if (!res.ok) throw new Error("Failed to fetch profile");
         const data = await res.json();
 
@@ -117,7 +132,8 @@ const Profile = () => {
       }
     };
     fetchProfile();
-  }, [toast]);
+  }, [toast, id]);
+
 
   // --- image input (preview + save File object) ---
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,12 +150,42 @@ const Profile = () => {
   // --- profile update ---
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true)
+
 
     // client-side validation
-    if (!profileData.name?.trim() || !profileData.email?.trim() || !profileData.dateOfBirth) {
-      toast({ title: "Validation", description: "Name, email and date of birth are required", variant: "destructive" });
-      return;
+    // ================= ADMIN MODE =================
+    if (isAdminEdit) {
+      if (!emailRegex.test(profileData.email)) {
+        toast({
+          title: "Validation",
+          description: "Invalid email format",
+          variant: "destructive",
+        });
+        return;
+      }
     }
+    // ================= STUDENT MODE =================
+    else {
+      if (!profileData.name?.trim() || !profileData.email?.trim() || !profileData.dateOfBirth) {
+        toast({
+          title: "Validation",
+          description: "Name, email and date of birth are required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!phoneRegex.test(String(profileData.phone_no))) {
+        toast({
+          title: "Validation",
+          description: "Phone number must be 10 digits",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     if (!emailRegex.test(profileData.email)) {
       toast({ title: "Validation", description: "Invalid email format", variant: "destructive" });
       return;
@@ -165,10 +211,24 @@ const Profile = () => {
       formData.append("leetcode", profileData.leetcode || "");
       if (profileImageFile) formData.append("profileImage", profileImageFile);
 
-      const res = await fetch(`${API_BASE}/api/student/profile`, {
+      // const res = await fetch(`${API_BASE}/api/student/profile`, {
+      //   method: "PUT",
+      //   body: formData,
+      //   credentials: "include",
+      // });
+      const endpoint = isAdminEdit
+        ? `${API_BASE}/api/admin/students/${id}/email`
+        : `${API_BASE}/api/student/profile`;
+
+      const body = isAdminEdit
+        ? JSON.stringify({ email: profileData.email })
+        : formData;
+
+      const res = await fetch(endpoint, {
         method: "PUT",
-        body: formData,
         credentials: "include",
+        headers: isAdminEdit ? { "Content-Type": "application/json" } : undefined,
+        body,
       });
 
       const resJson = await res.json();
@@ -186,6 +246,8 @@ const Profile = () => {
     } catch (err: any) {
       console.error("Update error:", err);
       toast({ title: "Error", description: err.message || "Failed to update", variant: "destructive" });
+    } finally {
+      setSaving(true)
     }
   };
 
@@ -282,7 +344,7 @@ const Profile = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center  ">
             <div className="flex items-center justify-start gap-4">
-              <Button variant="outline" size="sm" onClick={() => navigate("/student/dashboard")}>
+              <Button variant="outline" size="sm" onClick={() => navigate(isAdminEdit ? "/admin/dashboard" : "/student/dashboard")}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Button>
@@ -292,6 +354,12 @@ const Profile = () => {
               </div>
             </div>
             <Badge variant="secondary" className="capitalize">{profileData.role}</Badge>
+            {isAdminEdit && (
+              <Badge variant="destructive" className="ml-4">
+                Admin Edit Mode
+              </Badge>
+            )}
+
           </div>
         </div>
       </header>
@@ -352,12 +420,12 @@ const Profile = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label htmlFor="name">Full Name</Label>
-                          <Input id="name" value={profileData.name} onChange={(e) => setProfileData(p => ({ ...p, name: e.target.value }))} disabled={!isEditing} />
+                          <Input id="name" value={profileData.name} onChange={(e) => setProfileData(p => ({ ...p, name: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                          <Input id="dateOfBirth" type="date" value={profileData.dateOfBirth} onChange={(e) => setProfileData(p => ({ ...p, dateOfBirth: e.target.value }))} disabled={!isEditing} />
+                          <Input id="dateOfBirth" type="date" value={profileData.dateOfBirth} onChange={(e) => setProfileData(p => ({ ...p, dateOfBirth: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         <div className="space-y-2">
@@ -367,42 +435,42 @@ const Profile = () => {
 
                         <div className="space-y-2">
                           <Label htmlFor="phone">Student Phone Number</Label>
-                          <Input id="phone" value={profileData.phone_no} onChange={(e) => setProfileData(p => ({ ...p, phone_no: e.target.value }))} disabled={!isEditing} />
+                          <Input id="phone" value={profileData.phone_no} onChange={(e) => setProfileData(p => ({ ...p, phone_no: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
-                          <Input id="whatsappNumber" value={profileData.whatsapp_no} onChange={(e) => setProfileData(p => ({ ...p, whatsapp_no: e.target.value }))} disabled={!isEditing} />
+                          <Input id="whatsappNumber" value={profileData.whatsapp_no} onChange={(e) => setProfileData(p => ({ ...p, whatsapp_no: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="collegeName">College Name</Label>
-                          <Input id="collegeName" value={profileData.collegeName} onChange={(e) => setProfileData(p => ({ ...p, collegeName: e.target.value }))} disabled={!isEditing} />
+                          <Input id="collegeName" value={profileData.collegeName} onChange={(e) => setProfileData(p => ({ ...p, collegeName: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="academicYear">Academic Year</Label>
-                          <Input id="academicYear" value={profileData.academicYear} onChange={(e) => setProfileData(p => ({ ...p, academicYear: e.target.value }))} disabled={!isEditing} />
+                          <Input id="academicYear" value={profileData.academicYear} onChange={(e) => setProfileData(p => ({ ...p, academicYear: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="year">Year of Study</Label>
-                          <Input id="year" value={profileData.year} onChange={(e) => setProfileData(p => ({ ...p, year: e.target.value }))} disabled={!isEditing} />
+                          <Input id="year" value={profileData.year} onChange={(e) => setProfileData(p => ({ ...p, year: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="department">Department</Label>
-                          <Input id="department" value={profileData.department} onChange={(e) => setProfileData(p => ({ ...p, department: e.target.value }))} disabled={!isEditing} />
+                          <Input id="department" value={profileData.department} onChange={(e) => setProfileData(p => ({ ...p, department: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="github">GitHub</Label>
-                          <Input id="github" value={profileData.github} onChange={(e) => setProfileData(p => ({ ...p, github: e.target.value }))} disabled={!isEditing} />
+                          <Input id="github" value={profileData.github} onChange={(e) => setProfileData(p => ({ ...p, github: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         <div className="space-y-2">
                           <Label htmlFor="leetcode">LeetCode</Label>
-                          <Input id="leetcode" value={profileData.leetcode} onChange={(e) => setProfileData(p => ({ ...p, leetcode: e.target.value }))} disabled={!isEditing} />
+                          <Input id="leetcode" value={profileData.leetcode} onChange={(e) => setProfileData(p => ({ ...p, leetcode: e.target.value }))} disabled={isAdminEdit || !isEditing} />
                         </div>
 
                         {profileData.studentId && (
@@ -416,7 +484,20 @@ const Profile = () => {
 
                       {isEditing && (
                         <div className="flex gap-3">
-                          <Button type="submit" variant="hero"><Save className="h-4 w-4 mr-2" /> Save Changes</Button>
+                          <Button type="submit" variant="hero" disabled={saving}>
+                            {saving ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="h-4 w-4 mr-2" />
+                                Save Changes
+                              </>
+                            )}
+                          </Button>
+
                           <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
                         </div>
                       )}
