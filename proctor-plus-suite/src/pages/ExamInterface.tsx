@@ -349,7 +349,7 @@ const ExamInterface = () => {
 
 
   useEffect(() => {
-    if (warningCount >= 3 && !examSubmitted) {
+    if (warningCount >= 5 && !examSubmitted) {
       alert("Multiple focus changes detected! Your exam will be auto-submitted.");
       handleAutoSubmit();  // uses submitToServer + reason (see note below)
     }
@@ -525,6 +525,8 @@ const ExamInterface = () => {
 
   const handleManualSubmit = async () => {
     if (!examData || !examData.questions) return;
+    if (examSubmitted) return;
+
 
     const unanswered = examData.questions.filter((q) => !answers[q._id]);
 

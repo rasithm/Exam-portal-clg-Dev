@@ -360,7 +360,8 @@ useEffect(() => {
         case "certifications":
           return category.includes("cert") || category.includes("certificate");
         case "coding":
-          return upcomingExams.filter((exam) => exam.isCompiler);
+          return exam.isCompiler === true;
+
 
         default:
           return true;
