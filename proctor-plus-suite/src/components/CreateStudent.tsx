@@ -25,7 +25,7 @@ import { error } from "console";
 
 
 const CreateStudent = () => {
-  const API_BASE = baseUrl || "http://localhost:5000/";
+  const API_BASE = baseUrl || "http://localhost:5000";
 
   const [open, setOpen] = useState(false);
   const [studentData, setStudentData] = useState({
@@ -58,6 +58,9 @@ const CreateStudent = () => {
   const [activeTab, setActiveTab] = useState<"single" | "bulk">("single");
   const [file, setFile] = useState<File | null>(null);
   const { toast } = useToast();
+  const [creating, setCreating] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
   // export const openCreateStudentWithData = (student) => {
   //   setStudentData(student);
   //   setOpen(true);
@@ -78,6 +81,7 @@ const CreateStudent = () => {
     // Generate random password if not provided
     const password = studentData.password || "ajce@123";
     
+    setCreating(true);
     // line ~54 inside handleCreateStudent()
     try {
       const res = await fetch(`${API_BASE}/api/admin/createStudents`, {
@@ -91,9 +95,10 @@ const CreateStudent = () => {
 
       const result = await res.json();
       toast({
-        title: "Student Created Successfully",
-        description: `${result.name} added with ID: ${result.studentId}`,
+       title: "Student Created",
+       description: `Roll No: ${result.student.rollNumber}`,
       });
+      window.dispatchEvent(new Event("students-updated"));
     } catch (err: any) {
       toast({
         title: "Error",
@@ -101,6 +106,8 @@ const CreateStudent = () => {
         variant: "destructive",
       });
       return;
+    } finally {
+      setCreating(false);
     }
 
 
@@ -129,6 +136,7 @@ const CreateStudent = () => {
       return;
     }
     // line ~89 inside handleBulkCreate()
+    setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -160,6 +168,8 @@ const CreateStudent = () => {
           description: `${result.createdCount || 0} students created successfully.`,
         });
       }
+      window.dispatchEvent(new Event("students-updated"));
+     
       // toast({
       //   title: "Bulk Import Successful",
       //   description: `${result.count} students created`,
@@ -171,6 +181,8 @@ const CreateStudent = () => {
         variant: "destructive",
       });
       return;
+    } finally {
+      setUploading(false);
     }
 
 
@@ -336,9 +348,9 @@ const CreateStudent = () => {
               </p>
             </div>
 
-            <Button onClick={handleCreateStudent} variant="hero" className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Student Account
+            <Button onClick={handleCreateStudent} disabled={creating} variant="hero" className="w-full">
+              
+              {creating ? "Creating..." : <><Plus className="h-4 w-4 mr-2" />Create Student Account </>}
             </Button>
           </div>
         ) : (
@@ -405,8 +417,8 @@ const CreateStudent = () => {
             </div>
 
             <Button onClick={handleBulkCreate} variant="hero" className="w-full">
-              <Upload className="h-4 w-4 mr-2" />
-              Create All Students
+              
+              {uploading ? "Uploading..." : <><Upload className="h-4 w-4 mr-2" /> Create All Students</> }
             </Button>
           </div>
         )}

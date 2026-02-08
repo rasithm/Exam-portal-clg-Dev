@@ -15,6 +15,7 @@ import {
   getStudentReportCard,
 } from "../controllers/examController.js";
 
+
 const router = express.Router();
 
 // ✅ MATCHING FRONTEND ROUTES

@@ -6,13 +6,13 @@ import {
 createExamWithQuestions , getStudentCompilerExams 
 
 } from '../controllers/compilerExamControllerU.js';
-
+import {requireVerifiedAdmin} from '../middlewares/requireVerifiedAdmin.js'
 
 
 const router = express.Router();
 
 
-router.post('/create',protect(["admin"]), createExamWithQuestions);
+router.post('/create',protect(["admin"]), requireVerifiedAdmin,createExamWithQuestions);
 // router.post('/:examId/questions',protect(["admin"]), addCompilerQuestion);
 router.get('/student', protect(["student"]), getStudentCompilerExams);
 

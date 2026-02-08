@@ -13,9 +13,9 @@ const studentSchema = new mongoose.Schema({
   phone_no: { type: String, required: true },
   profileImage: { type: String, default: "" },
   isProfileUpdated: { type: Boolean, default: false },
-  dateOfBirth: { type: String, required: true },
-  collegeName: { type: String, required: true },
-  academicYear: { type: String, required: true },
+  dateOfBirth: { type: String, default: ""  },
+  collegeName: { type: String, default: ""  },
+  academicYear: { type: String, default: ""  },
   github: { type: String, default: "" },
   leetcode: { type: String, default: "" },
   domain: {

@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 
-import { Upload, FileSpreadsheet, Plus, Users, Download } from "lucide-react";
+                
+import { Upload, FileSpreadsheet, Plus, Users, Download ,Loader2} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
 
@@ -57,7 +58,9 @@ const CreateExam = () => {
   });
   const [questionSets, setQuestionSets] = useState<any[]>([]);
 
-  
+  const [importLoading, setImportLoading] = useState(false);
+const [createLoading, setCreateLoading] = useState(false);
+
 
 
   const categories = {
@@ -89,7 +92,7 @@ const CreateExam = () => {
     formData.append("sharedAdmins", importData.sharedAdmins);
     formData.append("notes", importData.notes);
     formData.append("file", file);
-
+    setImportLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/admin/questions/import`, {
         method: "POST", credentials: "include", body: formData
@@ -120,6 +123,8 @@ const CreateExam = () => {
       setFile(null);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    }  finally {
+      setImportLoading(false);
     }
   };
 
@@ -276,7 +281,7 @@ const CreateExam = () => {
     };
 
 
-
+    setCreateLoading(true);
     try {
       console.log("[CreateExam] payload =>", payload);
       const res = await fetch(`${API_BASE}/api/admin/exams/create`, {
@@ -325,6 +330,8 @@ const CreateExam = () => {
         description: err.message || "Something went wrong while creating exam.",
         variant: "destructive",
       });
+    } finally {
+      setCreateLoading(false);
     }
   };
 
@@ -408,9 +415,18 @@ const CreateExam = () => {
               <Button variant="outline" onClick={() => document.getElementById("importFileInput")?.click()}>
                 <FileSpreadsheet className="h-4 w-4 mr-2" /> Choose File
               </Button>
-              <Button variant="hero" onClick={handleImportQuestions}>
-                <Upload className="h-4 w-4 mr-2" /> Upload & Import
+              <Button
+                variant="hero"
+                onClick={handleImportQuestions}
+                disabled={importLoading}
+              >
+                {importLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Importing...</>  : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" /> Upload & Import
+                  </>
+                )}
               </Button>
+
               <Button variant="outline" onClick={async () => {
                 const res = await fetch(`${API_BASE}/api/admin/questions/template`, { credentials: "include" });
                 const blob = await res.blob();
@@ -613,9 +629,20 @@ const CreateExam = () => {
             </div>
 
 
-            <Button onClick={handleCreateExam} variant="hero" className="w-full">
-              <Plus className="h-4 w-4 mr-2" /> Create Exam
+            <Button
+              onClick={handleCreateExam}
+              variant="hero"
+              className="w-full"
+              disabled={createLoading}
+            >
+              {createLoading ? <> <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating Exam...</> : (
+
+                <>
+                  <Plus className="h-4 w-4 mr-2" /> Create Exam
+                </>
+              )}
             </Button>
+
           </div>
         )}
       </DialogContent>

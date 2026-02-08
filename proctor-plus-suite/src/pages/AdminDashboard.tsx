@@ -49,8 +49,13 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [recentStudents, setRecentStudents] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [loading, setLoading] = useState(false);
+  // const [loading, setLoading] = useState(false);
+  const [loadingExams, setLoadingExams] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [loadingCertificates, setLoadingCertificates] = useState(false);
+  const [loadingReports, setLoadingReports] = useState(false);
 
+  
   const [examData, setExamData] = useState([]);
   const [students, setStudents] = useState([]);
   const [QuestionData, setQuestionData] = useState([]);
@@ -116,26 +121,90 @@ const AdminDashboard = () => {
   }
 };
 
+// const handleRefreshExams = async () => {
+//   setLoading(true);
+//   try {
+//     await Promise.all([
+//       fetchMcqExams(),
+//       fetchCompilerExams(),
+//       fetchQuestionSets(),
+
+//     ]);
+
+//     toast({
+//       title: "✅ Refreshed",
+//       description: "Exam list updated successfully",
+//     });
+//   } catch (err) {
+//     console.error("Error refreshing exams:", err);
+//   } finally {
+//     setLoading(false);
+//   }
+// };
 const handleRefreshExams = async () => {
-  setLoading(true);
-  try {
+  setLoadingExams(true);
+
+  await Promise.all([
+    fetchMcqExams(),
+    fetchCompilerExams(),
+    fetchQuestionSets()
+  ]);
+
+  setLoadingExams(false);
+
+  toast({
+    title: "Updated",
+    description: "Exams refreshed"
+  });
+};
+
+const handleRefreshStudent = async () => {
+  setLoadingStudents(true);
+
+  await fetchStudents();
+
+
+  setLoadingStudents(false);
+
+  toast({
+    title: "Updated",
+    description: "Students refreshed"
+  });
+};
+
+const handleRefreshCertificates = async () => {
+  setLoadingCertificates(true);
+  await fetchCertificates();
+  setLoadingCertificates(false);
+};
+
+const handleRefreshReports = async () => {
+  setLoadingReports(true);
+  await fetchReports();
+  setLoadingReports(false);
+};
+
+useEffect(() => {
+  const load = async () => {
     await Promise.all([
+      fetchStudents(),
+      fetchStatsCount(),
       fetchMcqExams(),
       fetchCompilerExams(),
-      fetchQuestionSets(),
-
+      fetchCertificates(),
+      fetchReports(),
+      fetchQuestionSets()
     ]);
+  };
+  load();
+}, []);
 
-    toast({
-      title: "✅ Refreshed",
-      description: "Exam list updated successfully",
-    });
-  } catch (err) {
-    console.error("Error refreshing exams:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+useEffect(() => {
+  const refresh = () => fetchStudents();
+  window.addEventListener("students-updated", refresh);
+  return () => window.removeEventListener("students-updated", refresh);
+}, []);
+
 
 // const getRecentExams = () => {
 //   const now = new Date();
@@ -288,8 +357,7 @@ const fetchQuestionSets = async () => {
 
 const fetchCertificates = async () => {
   try {
-    setLoading(true);
-
+     setLoadingCertificates(true);
     const res = await fetch(`${API_BASE}/api/admin/certificates/summary`, {
       credentials: "include",
     });
@@ -327,14 +395,14 @@ const fetchCertificates = async () => {
       variant: "destructive",
     });
   } finally {
-    setLoading(false);
+    setLoadingCertificates(false);
   }
 };
 
 
 const fetchReports = async () => {
   try {
-    setLoading(true); // ✅ start spinner
+    setLoadingReports(true); // ✅ start spinner
 
     const res = await fetch(`${API_BASE}/api/admin/reports/summary`, {
       credentials: "include",
@@ -362,7 +430,7 @@ const fetchReports = async () => {
       variant: "destructive",
     });
   } finally {
-    setLoading(false); // ✅ stop spinner
+    setLoadingReports(false); // ✅ stop spinner
   }
 };
 
@@ -370,36 +438,62 @@ const fetchReports = async () => {
 
 
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/admin/students` , {
-          credentials: "include",
-        });
-        const data = await res.json();
-        setRecentStudents(data.students || []);
-        console.log(data.students)
-      } catch (err) {
-        console.error("Failed to fetch students", err);
-      }
-    };
-    fetchStudents();
-  }, []);
-  useEffect(() => {
-    fetchMcqExams();
-    fetchCompilerExams();
-    fetchQuestionSets();
-  }, []);
+  // useEffect(() => {
+  //   const fetchStudents = async () => {
+  //     try {
+  //       const res = await fetch(`${API_BASE}/api/admin/students` , {
+  //         credentials: "include",
+  //       });
+  //       const data = await res.json();
+  //       setRecentStudents(data.students || []);
+  //       console.log(data.students)
+  //     } catch (err) {
+  //       console.error("Failed to fetch students", err);
+  //     }
+  //   };
+  //   fetchStudents();
+  // }, []);
+
+  const fetchStudents = async () => {
+  try {
+    setLoadingStudents(true);
+
+    const res = await fetch(`${API_BASE}/api/admin/students`, {
+      credentials: "include",
+    });
+
+    const data = await res.json();
+
+    setRecentStudents(data.students || []);
+
+    // also update stats automatically
+    setStats(prev => ({ ...prev, totalStudents: data.total || 0 }));
+
+  } catch (err) {
+    console.error("Failed to fetch students", err);
+  } finally {
+    setLoadingStudents(false);
+  }
+};
 
 
-  useEffect(() => {
-    fetchCertificates();
+  
 
-  }, []);
+  // useEffect(() => {
+  //   fetchMcqExams();
+  //   fetchCompilerExams();
+  //   fetchQuestionSets();
+  // }, []);
 
-  useEffect(() => {
-  fetchReports();
-}, []);
+
+  // useEffect(() => {
+  //   fetchCertificates();
+
+  // }, []);
+
+//   useEffect(() => {
+//   fetchReports();
+// }, []);
 
 
 
@@ -453,13 +547,14 @@ const fetchReports = async () => {
         setStats(prev => ({ ...prev, activeExams: data.activeExams || 0 , completedExams : data.completedExams || 0, violations : data.violations || 0 }));
       } catch(err) { console.error(err); }
     };
-   const handleRefreshStudent = async () => {
-      await fetchStats();
-      toast({
-        title: "🔁 Refreshed",
-        description: "Students list updated",
-      });
-    };
+
+  //  const handleRefreshStudent = async () => {
+  //     await fetchStats();
+  //     toast({
+  //       title: "🔁 Refreshed",
+  //       description: "Students list updated",
+  //     });
+  //   };
 
     const handleDeleteStudent = async (studentId: string, name: string) => {
       if (!window.confirm(`Are you sure you want to delete ${name}?`)) return;
@@ -824,8 +919,8 @@ const fetchReports = async () => {
                       <CardTitle className="text-lg">Recent Exams</CardTitle>
                       <CardDescription>Latest examination activities</CardDescription>
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleRefreshExams} disabled={loading}>
-                      <RefreshCcw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+                    <Button variant="outline" size="sm" onClick={handleRefreshExams} disabled={loadingExams}>
+                      <RefreshCcw className={`h-4 w-4 mr-1.5 ${loadingExams ? "animate-spin" : ""}`} />
                       Refresh
                     </Button>
                   </div>
@@ -838,7 +933,7 @@ const fetchReports = async () => {
                           {exam.language ? <Code className="h-4 w-4 text-violet-600" /> : <BookOpen className="h-4 w-4 text-blue-600" />}
                         </div>
                         <div>
-                          <p className="font-medium text-card-foreground text-sm">{exam.title || exam.fileName}</p>
+                          <p className="font-medium text-card-foreground text-sm capitalize">{exam.title || exam.examName}</p>
                           <p className="text-xs text-muted-foreground">
                             {exam.language || exam.category} • {exam.questionCount} Questions
                           </p>
@@ -894,7 +989,7 @@ const fetchReports = async () => {
                 {recentStudents.map((student) => (
                   <div key={student.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div>
-                      <p className="font-medium text-card-foreground">{student.name}</p>
+                      <p className="font-medium text-card-foreground capitalize">{student.name}</p>
                       <p className="text-sm text-muted-foreground">{student.rollNumber} • {student.email}</p>
                     </div>
                     <Badge variant={student.online === "active" ? "default" : "secondary"}>
@@ -928,10 +1023,10 @@ const fetchReports = async () => {
                       variant="outline"
                       className="flex-1 flex items-center gap-2"
                       onClick={handleRefreshStudent}
-                        disabled={loading}
+                        disabled={loadingStudents}
                           >
-                                <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                                {loading ? "Refreshing..." : "Refresh"}
+                                <RefreshCcw className={`h-4 w-4 ${loadingStudents ? "animate-spin" : ""}`} />
+                                {loadingStudents ? "Refreshing..." : "Refresh"}
                               </Button>
                     <CreateStudent />
                   </div>
@@ -947,7 +1042,7 @@ const fetchReports = async () => {
                           <Users className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium text-card-foreground">{student.name}</p>
+                          <p className="font-medium text-card-foreground capitalize">{student.name}</p>
                           <p className="text-sm text-muted-foreground">{student.rollNumber} • {student.email}</p>
                         </div>
                       </div>
@@ -1047,11 +1142,11 @@ const fetchReports = async () => {
                         <Button
                           variant="outline"
                           onClick={handleRefreshExams}
-                          disabled={loading}
+                          disabled={loadingExams}
                           className="mr-2 h-13"
                         >
-                          <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                          {loading ? "Refreshing..." : "Refresh"}
+                          <RefreshCcw className={`h-4 w-4 mr-2 ${loadingExams ? "animate-spin" : ""}`} />
+                          {loadingExams ? "Refreshing..." : "Refresh"}
                         </Button>
                         <Button variant="hero" className="mr-2 h-13" onClick={() => navigate("/admin/exam/create/compiler")}>
                           <Plus className="h-4 w-4 mr-2"  />
@@ -1075,8 +1170,8 @@ const fetchReports = async () => {
                                     <BookOpen className="h-4 w-4 text-blue-600" />
                                   </div>
                                   <div>
-                                    <p className="font-semibold text-card-foreground text-sm">{exam.fileName}</p>
-                                    <p className="text-xs text-muted-foreground">{exam.category} • {exam.subcategory}</p>
+                                    <p className="font-semibold text-card-foreground text-sm text-start capitalize">{exam.examName}</p>
+                                    <p className="text-xs text-muted-foreground text-start">{exam.fileName} • {exam.category} • {exam.subcategory}</p>
                                   </div>
                                 </div>
                                 <Badge className={`text-xs ${getStatusColor(getExamStatus(exam.startTime, exam.endTime))}`}>
@@ -1139,8 +1234,8 @@ const fetchReports = async () => {
                                     <Code className="h-4 w-4 text-violet-600" />
                                   </div>
                                   <div>
-                                    <p className="font-semibold text-card-foreground text-sm">{exam.title}</p>
-                                    <p className="text-xs text-muted-foreground">{exam.language}</p>
+                                    <p className="font-semibold text-card-foreground text-sm text-start capitalize">{exam.title}</p>
+                                    <p className="text-xs text-muted-foreground text-start">{exam.language}</p>
                                   </div>
                                 </div>
                                 <Badge className={`text-xs ${getStatusColor(getExamStatus(exam.startDateTime, exam.endDateTime))}`}>
@@ -1200,11 +1295,11 @@ const fetchReports = async () => {
                         <Button
                           variant="outline"
                           onClick={handleRefreshExams}
-                          disabled={loading}
+                          disabled={loadingExams}
                           className="mr-2 h-13"
                         >
-                          <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                          {loading ? "Refreshing..." : "Refresh"}
+                          <RefreshCcw className={`h-4 w-4 mr-2 ${loadingExams ? "animate-spin" : ""}`} />
+                          {loadingExams ? "Refreshing..." : "Refresh"}
                         </Button>
 
                       </div>
@@ -1347,11 +1442,11 @@ const fetchReports = async () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => fetchReports()}
-                      disabled={loading}
+                      onClick={() => handleRefreshReports()}
+                      disabled={loadingReports}
                     >
                       <RefreshCcw
-                        className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`}
+                        className={`h-4 w-4 mr-1.5 ${loadingReports ? "animate-spin" : ""}`}
                       />
                       Refresh
                     </Button>
@@ -1483,11 +1578,11 @@ const fetchReports = async () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchCertificates}
-                    disabled={loading}
+                    onClick={() => handleRefreshCertificates()}
+                    disabled={loadingCertificates}
                   >
                     <RefreshCcw
-                      className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`}
+                      className={`h-4 w-4 mr-1.5 ${loadingCertificates ? "animate-spin" : ""}`}
                     />
                     Refresh
                   </Button>

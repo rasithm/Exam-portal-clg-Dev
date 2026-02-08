@@ -20,11 +20,11 @@ const upload = multer({ dest: 'uploads/' });
 const router = express.Router();
 
 // create single student
-router.post('/createStudents', protect(['admin']),createStudent);
+router.post('/createStudents', protect(['admin']), requireVerifiedAdmin,createStudent);
 
-router.delete('/students/:id', protect(['admin']),deleteStudent);
+router.delete('/students/:id', protect(['admin']),requireVerifiedAdmin,deleteStudent);
 // upload students CSV (multipart) - strict validation
-router.post('/students/upload', protect(['admin']), upload.single('file'),uploadStudentsCSV);
+router.post('/students/upload', protect(['admin']),requireVerifiedAdmin, upload.single('file'),uploadStudentsCSV);
 
 // list students (paginated)
 router.get('/students', protect(['admin']),listStudents);
@@ -50,8 +50,8 @@ router.put("/profile", protect(["admin"]), upload.single("profileImage"), update
 
 import { updateStudentEmail, getStudentById } from "../controllers/adminController.js";
 
-router.get("/students/:id", protect(["admin"]), getStudentById);
-router.put("/students/:id/email", protect(["admin"]), updateStudentEmail);
+router.get("/students/:id", protect(["admin"]), requireVerifiedAdmin,getStudentById);
+router.put("/students/:id/email", protect(["admin"]), requireVerifiedAdmin,updateStudentEmail);
 
 
 export default router;

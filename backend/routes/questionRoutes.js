@@ -6,10 +6,11 @@ import { protect } from "../middlewares/auth.js";
 import { importQuestions,  downloadTemplate } from "../controllers/questionController.js";
 import { io } from "../server.js";  // import initialized socket instance
 import QuestionSet from "../models/QuestionSet.js";
+import { requireVerifiedAdmin } from "../middlewares/requireVerifiedAdmin.js"
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-router.post("/import", protect(["admin"]), upload.single("file"), importQuestions);
+router.post("/import", protect(["admin"]), upload.single("file"), requireVerifiedAdmin ,importQuestions);
 // router.get("/list", protect(["admin"]), listQuestionSets);
 router.get("/template", protect(["admin","creator"]), downloadTemplate);
 router.get("/list", protect(["admin","creator"]), async (req, res) => {
@@ -26,7 +27,7 @@ router.get("/list", protect(["admin","creator"]), async (req, res) => {
     res.status(500).json({ message: "Failed to fetch question sets" });
   }
 });
-router.delete("/:id", protect(["admin"]), async (req, res) => {
+router.delete("/:id", protect(["admin"]), requireVerifiedAdmin,async (req, res) => {
   await QuestionSet.findByIdAndDelete(req.params.id);
   res.json({ success: true });
 });
