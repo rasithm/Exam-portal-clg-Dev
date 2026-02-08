@@ -23,11 +23,11 @@ import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
 import { error } from "console";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-
+import { useNavigate } from "react-router-dom";
 
 const CreateStudent = () => {
   const API_BASE = baseUrl || "http://localhost:5000";
-
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [studentData, setStudentData] = useState({
     name: "",
@@ -92,10 +92,18 @@ const CreateStudent = () => {
         credentials: "include",
         body: JSON.stringify({ ...studentData, password }),
       });
-
-      if (!res.ok) throw new Error("Failed to create student");
-
       const result = await res.json();
+      if (result.message === "Verify personal email first") {
+        navigate("/admin/profile");
+        throw new Error("Initially Update Complete Profile")
+      }
+      if (!res.ok) {
+        throw new Error(result.message || "Failed to create student");
+      }
+
+      // if (!res.ok) throw new Error("Failed to create student");
+      
+      
       toast({
        title: "Student Created",
        description: `Roll No: ${result.student.rollNumber}`,
@@ -104,7 +112,7 @@ const CreateStudent = () => {
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.message || "Failed to create student",
+        description: err.message || "Failed to create students",
         variant: "destructive",
       });
       return;
@@ -148,9 +156,13 @@ const CreateStudent = () => {
         credentials: "include",
         body: formData,
       });
-
-      if (!res.ok) throw new Error("Failed to import students");
       const result = await res.json();
+      if (result.message === "Verify personal email first") {
+        navigate("/admin/profile");
+        throw new Error("Initially Update Complete Profile")
+      }
+      if (!res.ok) throw new Error( result.message ||"Failed to import students");
+      
 
       if (result.failedCount > 0) {
         toast({

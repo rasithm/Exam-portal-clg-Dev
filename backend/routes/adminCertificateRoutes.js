@@ -18,8 +18,19 @@ router.get("/summary", protect(["admin"]), async (req, res) => {
        ONLY CERTIFICATE ENABLED EXAMS
     =============================== */
 
-    const mcqExams = await Exam.find({ generateCertificate: true }).lean();
-    const compilerExams = await CompilerExam.find({ generateCertificate: true }).lean();
+    // const mcqExams = await Exam.find({ generateCertificate: true }).lean();
+    // const compilerExams = await CompilerExam.find({ generateCertificate: true }).lean();
+    const adminId = req.user._id;
+
+    const mcqExams = await Exam.find({
+      createdBy: adminId,
+      generateCertificate: true
+    }).lean();
+
+    const compilerExams = await CompilerExam.find({
+      createdBy: adminId,
+      generateCertificate: true
+    }).lean();
 
     const map = {};
 
@@ -117,6 +128,17 @@ router.get("/summary", protect(["admin"]), async (req, res) => {
 router.get("/:examId/zip", protect(["admin"]), async (req, res) => {
   const { examId } = req.params;
 
+  const adminId = req.user._id;
+
+  // verify exam belongs to this admin
+  const exam =
+    (await Exam.findOne({ _id: examId, createdBy: adminId })) ||
+    (await CompilerExam.findOne({ _id: examId, createdBy: adminId }));
+
+  if (!exam)
+    return res.status(403).json({ message: "Unauthorized exam access" });
+
+
   const baseUrl = process.env.BASE_URL || `http://localhost:5000`;
 
   // const mcq = await ExamAttempt.find({ certificateEligible: true, certificateId: { $exists: true } });
@@ -131,6 +153,7 @@ const mcq = await ExamAttempt.find({
 })
   .populate({
     path: "examSessionId",
+    match: { exam: { $in: mcqExams.map(e => e._id) } },
     populate: { path: "exam" },
   })
   .lean();
@@ -138,6 +161,7 @@ const mcq = await ExamAttempt.find({
 // Compiler
 const compiler = await CompilerExamAttempt.find({
   certificateId: { $exists: true },
+  exam: { $in: compilerExams.map(e => e._id) }
 })
   .populate("exam")
   .lean();

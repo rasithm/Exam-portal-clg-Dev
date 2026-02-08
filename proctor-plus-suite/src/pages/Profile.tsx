@@ -37,23 +37,43 @@ const Profile = () => {
   const [profileImagePreview, setProfileImagePreview] = useState<string>(""); // preview URL / base64 for UI
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null); // actual File to upload
   
+  // const [profileData, setProfileData] = useState<any>({
+  //   name: userType === "admin" ? "Dr. Sarah Johnson" : "John Smith",
+  //   email: userType === "admin" ? "sarah.johnson@college.edu" : "john@college.edu",
+  //   phone_no: userType === "admin" ? "+15551234567" : "9876543210", // use phone_no naming
+  //   whatsapp_no: userType === "student" ? "9876543210" : "",
+  //   department: userType === "admin" ? "Computer Science Department" : "Computer Science",
+  //   joinDate: userType === "admin" ? "2020-08-15" : "2023-09-01",
+  //   studentId: userType === "student" ? "CS2024001" : undefined,
+  //   registerNo: userType === "student" ? "REG2024CS001" : undefined,
+  //   role: userType === "admin" ? "Administrator" : "Student",
+  //   parentsName: userType === "student" ? "Robert & Mary Smith" : "",
+  //   dateOfBirth: userType === "student" ? "2005-03-15" : "",
+  //   parentsNumber: userType === "student" ? "1112223333" : "",
+  //   collegeName: userType === "student" ? "AJCE" : "",
+  //   academicYear: userType === "student" ? "2024-2025" : "",
+  //   year: userType === "student" ? "2" : ""
+  // });
   const [profileData, setProfileData] = useState<any>({
-    name: userType === "admin" ? "Dr. Sarah Johnson" : "John Smith",
-    email: userType === "admin" ? "sarah.johnson@college.edu" : "john@college.edu",
-    phone_no: userType === "admin" ? "+15551234567" : "9876543210", // use phone_no naming
-    whatsapp_no: userType === "student" ? "9876543210" : "",
-    department: userType === "admin" ? "Computer Science Department" : "Computer Science",
-    joinDate: userType === "admin" ? "2020-08-15" : "2023-09-01",
-    studentId: userType === "student" ? "CS2024001" : undefined,
-    registerNo: userType === "student" ? "REG2024CS001" : undefined,
+    name: "",
+    email: "",
+    phone_no: "",
+    whatsapp_no: "",
+    department: "",
+    joinDate: "",
+    studentId: "",
+    registerNo: "",
     role: userType === "admin" ? "Administrator" : "Student",
-    parentsName: userType === "student" ? "Robert & Mary Smith" : "",
-    dateOfBirth: userType === "student" ? "2005-03-15" : "",
-    parentsNumber: userType === "student" ? "1112223333" : "",
-    collegeName: userType === "student" ? "AJCE" : "",
-    academicYear: userType === "student" ? "2024-2025" : "",
-    year: userType === "student" ? "2" : ""
+    parentsName: "",
+    dateOfBirth: "",
+    parentsNumber: "",
+    collegeName: "",
+    academicYear: "",
+    year: "",
+    github: "",
+    leetcode: ""
   });
+
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false); 
@@ -353,7 +373,10 @@ const Profile = () => {
                 <p className="text-muted-foreground">Manage your account information and preferences</p>
               </div>
             </div>
-            <Badge variant="secondary" className="capitalize">{profileData.role}</Badge>
+            {!isAdminEdit && (
+              <Badge variant="secondary" className="capitalize">{profileData.role}</Badge>
+            
+            )}
             {isAdminEdit && (
               <Badge variant="destructive" className="ml-4">
                 Admin Edit Mode

@@ -14,11 +14,11 @@ import { Separator } from "@/components/ui/separator";
 import { Upload, FileSpreadsheet, Plus, Users, Download ,Loader2} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
-
+import { useNavigate } from "react-router-dom";
 const CreateExam = () => {
   const API_BASE = baseUrl || "http://localhost:5000";
   const { toast } = useToast();
-
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"import" | "create">("import");
   const [qsMode, setQsMode] = useState("single"); // "single" or "multiple"
@@ -98,6 +98,11 @@ const [createLoading, setCreateLoading] = useState(false);
         method: "POST", credentials: "include", body: formData
       });
       const result = await res.json();
+      
+      if (result.message === "Verify personal email first") {
+        navigate("/admin/profile");
+        throw new Error("Initially Update Complete Profile")
+      }
 
       if (!res.ok) throw new Error(result.message || "Import failed");
 
@@ -293,6 +298,12 @@ const [createLoading, setCreateLoading] = useState(false);
       });
 
       const result = await res.json();
+
+      
+      if (result.message === "Verify personal email first") {
+        navigate("/admin/profile");
+        throw new Error("Initially Update Complete Profile")
+      }
 
       if (!res.ok) throw new Error(result.message || "Exam creation failed");
 

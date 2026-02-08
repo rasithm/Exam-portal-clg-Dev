@@ -45,6 +45,12 @@ export const createStudent = async (req, res) => {
       return res.status(400).json({ message: "Validation failed", errors: validationErrors });
     }
 
+    // check duplicate roll number (per admin)
+    const exists = await Student.findOne({ admin: adminId, rollNumber: studentId.trim() });
+    if (exists) {
+      return res.status(409).json({ message: "Student with this Register Number already exists" });
+    }
+
 
     const hashed = await bcrypt.hash(password || `pass${Math.random().toString(36).slice(2, 8)}`, 10);
 
@@ -64,7 +70,9 @@ export const createStudent = async (req, res) => {
     res.json({ message: 'Student created', student: { id: st._id, rollNumber: st.rollNumber } });
   } catch (err) {
     console.error('createStudent error', err);
-    if (err.code === 11000) return res.status(400).json({ message: 'Student with same roll number already exists' });
+    if (err.code === 11000)
+      return res.status(409).json({ message: "Student with this Register Number already exists" });
+
     res.status(500).json({ message: 'Internal server error' });
   }
 };
