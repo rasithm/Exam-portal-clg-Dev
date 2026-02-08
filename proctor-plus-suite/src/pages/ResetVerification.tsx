@@ -45,9 +45,19 @@ const ResetVerification = () => {
     }
 
     try {
-      const res = await fetch(`${API}/api/forgot/student/complete`, {
+      const role = query.get("role");
+
+      const endpoint =
+        role === "admin"
+          ? "/api/forgot/admin/complete"
+          : "/api/forgot/student/complete";
+
+      const res = await fetch(`${API}${endpoint}`, {
+
+      
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include", 
         body: JSON.stringify({ requestId, newPassword: password, oneTimeToken }),
       });
 

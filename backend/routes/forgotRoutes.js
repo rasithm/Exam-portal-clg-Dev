@@ -6,7 +6,7 @@ import {
   completeReset,
   listEmailAssignRequests,
   adminApproveEmailAssign,
-  requestAdminReset , verifyAdminOtp
+  requestAdminReset , verifyAdminOtp , completeAdminReset
 } from "../controllers/forgotController.js";
 import { protect } from "../middlewares/auth.js";
 
@@ -29,6 +29,9 @@ router.get("/admin/pending-email-requests", protect(["admin"]), listEmailAssignR
 router.post("/admin/answer-email-request", protect(["admin"]), adminApproveEmailAssign);
 
 router.post("/admin/request", requestAdminReset);
+
+router.post("/admin/verify-otp", verifyAdminOtp);
+router.post("/admin/complete", completeAdminReset);
 
 
 export default router;

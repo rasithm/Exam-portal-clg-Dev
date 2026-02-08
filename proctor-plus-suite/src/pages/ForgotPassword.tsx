@@ -33,7 +33,7 @@ const ForgotPassword = () => {
     if (!res.ok) return toast({ title: "Error", description: json.message, variant: "destructive" });
 
     toast({ title: "OTP Sent" });
-    navigate(`/reset/verify?role=admin`);
+    navigate(`/reset/verify?role=admin&type=forgot&req=${json.requestId}`);
   };
 
 
@@ -58,18 +58,30 @@ const ForgotPassword = () => {
       }
 
       // If OTP sent: navigate to otp page
-      if (json.requestId && json.message && json.message.toLowerCase().includes("otp")) {
-        toast({ title: "OTP Sent", description: "Check your email" });
-        navigate(`/reset/verify?req=${json.requestId}`); // new verification page
+      // if (json.requestId && json.message && json.message.toLowerCase().includes("otp")) {
+      //   toast({ title: "OTP Sent", description: "Check your email" });
+      //   navigate(`/reset/verify?role=student&req=${json.requestId}`);
+      //   return;
+      // }
+
+      if (json.requestId) {
+        toast({ title: "OTP Sent" });
+        navigate(`/reset/verify?role=student&req=${json.requestId}`);
         return;
       }
 
+
       // Pending admin approval
-      if (json.requestId && json.message && json.message.toLowerCase().includes("admin")) {
-        toast({ title: "Pending Admin Approval", description: "Admin will review your request" });
-        // optionally show a "status" page - for now just message
+      if (json.noEmail) {
+        toast({
+          title: "No email assigned",
+          description: "Please request admin to assign an email first",
+        });
+
+        navigate("/forget-password/requestEmail");
         return;
       }
+
 
       toast({ title: "Success", description: json.message || "Request recorded" });
     } catch (err: any) {

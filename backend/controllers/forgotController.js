@@ -6,9 +6,10 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { sendOtpMail } from "../services/mailer.js";
+import Admin from "../models/Admin.js";
 
 const OTP_TTL_MIN = 10; // minutes
-const MAX_REQUESTS_WINDOW = 3; // max OTP sends per 30 minutes
+const MAX_REQUESTS_WINDOW = 5; // max OTP sends per 30 minutes
 const REQUEST_WINDOW_MIN = 30; // minutes
 
 // nodemailer transporter (use env)
@@ -38,76 +39,49 @@ const generateOTP = () => {
 export const requestStudentReset = async (req, res) => {
   try {
     const { regNo, email } = req.body;
-    if (!regNo || !email) return res.status(400).json({ message: "regNo and email required" });
 
     const student = await Student.findOne({ rollNumber: regNo });
     if (!student) return res.status(404).json({ message: "Student not found" });
 
-    // Rate-limit: count recent requests for this rollNumber
-    const windowStart = new Date(Date.now() - REQUEST_WINDOW_MIN * 60 * 1000);
-    const recentCount = await PasswordResetRequest.countDocuments({
-      rollNumber: regNo,
-      requestedAt: { $gte: windowStart },
-    });
-    if (recentCount >= MAX_REQUESTS_WINDOW) {
-      return res.status(429).json({ message: "Too many reset requests. Please wait and try later." });
-    }
+    const inputEmail = email.toLowerCase().trim();
 
-    // If student has an assigned email and it matches, go OTP flow
-    if (student.email && student.email.toLowerCase().trim() === String(email).toLowerCase().trim()) {
+    // ✅ student HAS email
+    if (student.email) {
+      if (student.email.toLowerCase().trim() !== inputEmail) {
+        return res.status(400).json({
+          message: "Email does not match registered email"
+        });
+      }
+
       const otp = generateOTP();
       const otpHash = await bcrypt.hash(otp, 10);
-      const expires = new Date(Date.now() + OTP_TTL_MIN * 60 * 1000);
 
       const reqDoc = await PasswordResetRequest.create({
         student: student._id,
         rollNumber: regNo,
-        requestedEmail: email.trim(),
+        requestedEmail: inputEmail,
         otpHash,
-        otpExpiresAt: expires,
+        otpExpiresAt: new Date(Date.now() + 10 * 60000),
         status: "otp_sent",
+        verified: false
       });
 
-      // send email
-      const link = `${process.env.FRONTEND_URL}/reset/verify?req=${reqDoc._id}`;
-      const html = `<p>Your password reset code is <strong>${otp}</strong>.</p>
-                    <p>It expires in ${OTP_TTL_MIN} minutes.</p>
-                    <p>If you didn't request this, ignore this message.</p>
-                    <p><small>Or click to verify: <a href="${link}">${link}</a></small></p>`;
+      await sendOtpMail(inputEmail, "OTP Code", `<b>${otp}</b>`);
 
-      await sendOtpMail(email.trim(), "ExamPortal Password Reset OTP", html);
-
-      return res.json({ message: "OTP sent to registered email", requestId: reqDoc._id });
+      return res.json({ requestId: reqDoc._id });
     }
 
-    // If student email missing or does not match -> create pending assignment request
-    const existingPending = await PasswordResetRequest.findOne({
-      rollNumber: regNo,
-      status: "pending_email_assign",
-      requestedEmail: email.trim(),
+    // ✅ NO EMAIL
+    return res.json({
+      noEmail: true
     });
 
-    if (existingPending) {
-      // Already pending: don't spam admin
-      return res.status(200).json({ message: "A request is already pending admin approval" });
-    }
-
-    const pending = await PasswordResetRequest.create({
-      student: student._id,
-      rollNumber: regNo,
-      requestedEmail: email.trim(),
-      status: "pending_email_assign",
-    });
-
-    // TODO: notify admins (via socket or DB notifications)
-    // Example: io?.emit("emailAssignRequest", { id: pending._id, rollNumber: regNo, email });
-
-    return res.json({ message: "Request recorded and forwarded to admin for approval", requestId: pending._id });
   } catch (err) {
-    console.error("requestStudentReset error", err);
-    return res.status(500).json({ message: "Server error" });
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 
 export const verifyOtp = async (req, res) => {
   try {
@@ -153,28 +127,38 @@ export const verifyOtp = async (req, res) => {
 export const completeReset = async (req, res) => {
   try {
     const { requestId, newPassword, oneTimeToken } = req.body;
-    if (!requestId || !newPassword || !oneTimeToken) return res.status(400).json({ message: "requestId, newPassword and token required" });
 
-    // verify token
-    try {
-      const decoded = jwt.verify(oneTimeToken, process.env.JWT_SECRET);
-      if (decoded.reqId !== requestId) return res.status(401).json({ message: "Invalid token" });
-    } catch (err) {
-      return res.status(401).json({ message: "Token invalid or expired" });
-    }
+    if (!requestId || !newPassword || !oneTimeToken)
+      return res.status(400).json({ message: "Missing data" });
 
+    // ✅ verify token first
+    const decoded = jwt.verify(oneTimeToken, process.env.JWT_SECRET);
+    if (decoded.reqId !== requestId)
+      return res.status(401).json({ message: "Invalid token" });
+
+    // ✅ fetch request doc FIRST
     const reqDoc = await PasswordResetRequest.findById(requestId);
-    if (!reqDoc) return res.status(404).json({ message: "Request not found" });
-    if (!reqDoc.verified) return res.status(400).json({ message: "Request not verified" });
-    if (reqDoc.used) return res.status(400).json({ message: "Request already used" });
 
-    // validate password strength on server side
-    if (newPassword.length < 8 || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      return res.status(400).json({ message: "Password must be >=8 characters and include lowercase and number" });
-    }
+    // ✅ now safe to log
+    console.log("requestId:", requestId);
+    console.log("doc:", reqDoc);
+
+    if (!reqDoc)
+      return res.status(404).json({ message: "Request not found" });
+
+    if (!reqDoc.verified)
+      return res.status(400).json({ message: "Request not verified" });
+
+    if (reqDoc.used)
+      return res.status(400).json({ message: "Already used" });
+
+    // password validation
+    if (newPassword.length < 8)
+      return res.status(400).json({ message: "Password too weak" });
 
     const student = await Student.findById(reqDoc.student);
-    if (!student) return res.status(404).json({ message: "Student not found" });
+    if (!student)
+      return res.status(404).json({ message: "Student not found" });
 
     student.password = await bcrypt.hash(newPassword, 10);
     await student.save();
@@ -183,15 +167,14 @@ export const completeReset = async (req, res) => {
     reqDoc.status = "completed";
     await reqDoc.save();
 
-    // optionally invalidate sessions (Session model)
-    // await Session.updateMany({ userId: student._id.toString(), role: 'student' }, { $set: { active: false } });
+    res.json({ message: "Password updated successfully" });
 
-    return res.json({ message: "Password updated successfully" });
   } catch (err) {
-    console.error("completeReset error", err);
-    return res.status(500).json({ message: "Server error" });
+    console.error("completeReset error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Admin endpoints
 export const listEmailAssignRequests = async (req, res) => {
@@ -247,51 +230,171 @@ export const adminApproveEmailAssign = async (req, res) => {
   }
 };
 
+// export const requestAdminReset = async (req, res) => {
+//   const { email, personalEmail } = req.body;
+
+//   const admin = await Admin.findOne({ email, personalEmail });
+//   if (!admin) return res.status(404).json({ message: "No matching admin" });
+
+//   const otp = generateOTP();
+//   const otpHash = await bcrypt.hash(otp, 10);
+
+//   await PasswordResetRequest.create({
+//     admin: admin._id,
+//     requestedEmail: personalEmail,
+//     otpHash,
+//     otpExpiresAt: new Date(Date.now() + 10 * 60000),
+//     status: "otp_sent",
+//   });
+
+//   await sendOtpMail(personalEmail, "Admin Password Reset OTP", `<p>Your OTP: ${otp}</p>`);
+//   res.json({ message: "OTP sent" });
+// };
+
 export const requestAdminReset = async (req, res) => {
-  const { email, personalEmail } = req.body;
+  try {
+    const { email, personalEmail } = req.body;
 
-  const admin = await Admin.findOne({ email, personalEmail });
-  if (!admin) return res.status(404).json({ message: "No matching admin" });
+    if (!email || !personalEmail)
+      return res.status(400).json({ message: "Both emails required" });
 
-  const otp = generateOTP();
-  const otpHash = await bcrypt.hash(otp, 10);
+    const admin = await Admin.findOne({
+      email: email.trim().toLowerCase(),
+      personalEmail: personalEmail.trim().toLowerCase(),
+    });
 
-  await PasswordResetRequest.create({
-    admin: admin._id,
-    requestedEmail: personalEmail,
-    otpHash,
-    otpExpiresAt: new Date(Date.now() + 10 * 60000),
-    status: "otp_sent",
-  });
+    if (!admin)
+      return res.status(404).json({ message: "No matching admin found" });
 
-  await sendOtpMail(personalEmail, "Admin Password Reset OTP", `<p>Your OTP: ${otp}</p>`);
-  res.json({ message: "OTP sent" });
+    const otp = generateOTP();
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    const reqDoc = await PasswordResetRequest.create({
+      admin: admin._id,
+      requestedEmail: personalEmail,
+      otpHash,
+      otpExpiresAt: new Date(Date.now() + OTP_TTL_MIN * 60 * 1000),
+      status: "otp_sent",
+    });
+
+    await sendOtpMail(
+      personalEmail,
+      "Admin Password Reset OTP",
+      `<p>Your OTP is <b>${otp}</b></p>`
+    );
+
+    res.json({
+      message: "OTP sent",
+      requestId: reqDoc._id,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
+
+// export const verifyAdminOtp = async (req, res) => {
+//   const { email, otp } = req.body;
+
+//   const reqDoc = await PasswordResetRequest.findOne({
+//     _id: requestId,
+//     purpose: "admin_profile",
+//     status: "otp_sent"
+//   });
+
+
+//   if (!reqDoc) return res.status(400).json({ message: "No OTP request" });
+
+//   if (new Date() > reqDoc.otpExpiresAt) return res.status(410).json({ message: "OTP expired" });
+
+//   const ok = await bcrypt.compare(String(otp), reqDoc.otpHash);
+//   if (!ok) return res.status(401).json({ message: "Invalid OTP" });
+
+//   const token = jwt.sign({ reqId: reqDoc._id.toString() }, process.env.JWT_SECRET, { expiresIn: "15m" });
+
+//   reqDoc.oneTimeToken = token;
+//   reqDoc.status = "verified";
+//   await reqDoc.save();
+
+//   return res.json({ message: "OTP verified", oneTimeToken: token, requestId: reqDoc._id });
+// };
 export const verifyAdminOtp = async (req, res) => {
-  const { email, otp } = req.body;
+  try {
+    const { requestId, otp } = req.body;
 
-  const reqDoc = await PasswordResetRequest.findOne({
-    _id: requestId,
-    purpose: "admin_profile",
-    status: "otp_sent"
-  });
+    const reqDoc = await PasswordResetRequest.findById(requestId);
 
+    if (!reqDoc)
+      return res.status(404).json({ message: "Request not found" });
 
-  if (!reqDoc) return res.status(400).json({ message: "No OTP request" });
+    if (reqDoc.status !== "otp_sent")
+      return res.status(400).json({ message: "Invalid state" });
 
-  if (new Date() > reqDoc.otpExpiresAt) return res.status(410).json({ message: "OTP expired" });
+    if (new Date() > reqDoc.otpExpiresAt)
+      return res.status(410).json({ message: "OTP expired" });
 
-  const ok = await bcrypt.compare(String(otp), reqDoc.otpHash);
-  if (!ok) return res.status(401).json({ message: "Invalid OTP" });
+    const ok = await bcrypt.compare(String(otp), reqDoc.otpHash);
 
-  const token = jwt.sign({ reqId: reqDoc._id.toString() }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    if (!ok)
+      return res.status(401).json({ message: "Invalid OTP" });
 
-  reqDoc.oneTimeToken = token;
-  reqDoc.status = "verified";
-  await reqDoc.save();
+    const token = jwt.sign(
+      { reqId: reqDoc._id.toString() },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
 
-  return res.json({ message: "OTP verified", oneTimeToken: token, requestId: reqDoc._id });
+    reqDoc.status = "verified";
+    reqDoc.oneTimeToken = token;
+
+    await reqDoc.save();
+
+    res.json({
+      message: "OTP verified",
+      oneTimeToken: token,
+      requestId: reqDoc._id,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 
+export const completeAdminReset = async (req, res) => {
+  try {
+    const { requestId, newPassword, oneTimeToken } = req.body;
+
+    if (!requestId || !newPassword || !oneTimeToken)
+      return res.status(400).json({ message: "Missing data" });
+
+    const decoded = jwt.verify(oneTimeToken, process.env.JWT_SECRET);
+
+    if (decoded.reqId !== requestId)
+      return res.status(401).json({ message: "Invalid token" });
+
+    const reqDoc = await PasswordResetRequest.findById(requestId);
+
+    if (!reqDoc || !reqDoc.admin)
+      return res.status(404).json({ message: "Invalid request" });
+
+    if (reqDoc.used)
+      return res.status(400).json({ message: "Already used" });
+
+    if (newPassword.length < 8)
+      return res.status(400).json({ message: "Password too weak" });
+
+    const admin = await Admin.findById(reqDoc.admin);
+
+    admin.password = await bcrypt.hash(newPassword, 10);
+    await admin.save();
+
+    reqDoc.used = true;
+    reqDoc.status = "completed";
+    await reqDoc.save();
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};

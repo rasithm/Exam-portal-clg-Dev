@@ -59,6 +59,7 @@ export const requestEmailVerification = async (req, res) => {
     requestedEmail: personalEmail,
     otpHash,
     otpExpiresAt: new Date(Date.now() + 10 * 60000),
+    status: "otp_sent",
   });
 
   await sendOtpMail(

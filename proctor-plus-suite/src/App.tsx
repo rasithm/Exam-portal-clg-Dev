@@ -26,6 +26,7 @@ import CompilerExam from "./pages/student/CompilerExam";
 import CompilerExamStudentResult from "./pages/student/CompilerExamStudentResult";
 import CompilerExamReport from "./pages/student/CompilerExamReport";
 import AdminStudentReportLoader from "./pages/admin/AdminStudentReportLoader";
+import StudentEmailRequest from "./pages/StudentEmailRequest";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/student/exam/report/:examId" element={<ExamReport />} />
           <Route path="/student/exam/compiler/:examId/report" element={<CompilerExamReport />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/forget-password/requestEmail" element={<StudentEmailRequest />} />
           <Route path="/reset/verify" element={<OtpVerification />} />
           <Route path="/reset/complete" element={<ResetVerification />} />
           <Route path="/admin/exam/create/compiler" element={<CreateCompilerExam />} />

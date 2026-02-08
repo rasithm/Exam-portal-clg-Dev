@@ -30,8 +30,19 @@ const OtpVerification = () => {
 
     try {
       
+      if (role === "admin" && query.get("type") === "forgot") {
+        // 🔹 ADMIN FORGOT PASSWORD FLOW
+        const res = await fetch(`${API}/api/forgot/admin/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId, otp }),
+        });
 
-      if (role === "admin") {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message);
+
+        navigate(`/reset/complete?role=admin&req=${requestId}&token=${encodeURIComponent(json.oneTimeToken)}`);
+      } else if (role === "admin") {
         const res = await fetch(`${API}/api/admin/verify-email/confirm`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -73,6 +84,7 @@ const OtpVerification = () => {
         const res = await fetch(`${API}/api/forgot/student/verify-otp`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ requestId, otp }),
         });
         const json = await res.json();
@@ -82,7 +94,7 @@ const OtpVerification = () => {
         // get oneTimeToken and navigate to ResetVerification
         const token = json.oneTimeToken;
         toast({ title: "OTP Verified", description: "Proceed to reset password" });
-        navigate(`/reset/complete?req=${requestId}&token=${encodeURIComponent(token)}`);
+        navigate(`/reset/complete?role=student&req=${requestId}&token=${encodeURIComponent(token)}`);
         
       }
       
