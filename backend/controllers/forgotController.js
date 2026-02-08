@@ -140,8 +140,8 @@ export const completeReset = async (req, res) => {
     const reqDoc = await PasswordResetRequest.findById(requestId);
 
     // ✅ now safe to log
-    console.log("requestId:", requestId);
-    console.log("doc:", reqDoc);
+    // console.log("requestId:", requestId);
+    // console.log("doc:", reqDoc);
 
     if (!reqDoc)
       return res.status(404).json({ message: "Request not found" });

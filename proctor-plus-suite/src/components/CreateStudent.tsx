@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
 import { error } from "console";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 
 const CreateStudent = () => {
@@ -60,6 +61,7 @@ const CreateStudent = () => {
   const { toast } = useToast();
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // export const openCreateStudentWithData = (student) => {
   //   setStudentData(student);
@@ -309,13 +311,25 @@ const CreateStudent = () => {
               
               <div className="space-y-2">
                 <Label htmlFor="password">Password (Optional)</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Auto-generated if empty"
-                  value={studentData.password}
-                  onChange={(e) => setStudentData(prev => ({ ...prev, password: e.target.value }))}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={studentData.password}
+                    onChange={(e) =>
+                      setStudentData(prev => ({ ...prev, password: e.target.value }))
+                    }
+                  />
+
+                  <button
+                    type="button"
+                    className="absolute right-3 top-2 text-muted-foreground"
+                    onClick={() => setShowPassword(p => !p)}
+                  >
+                    {showPassword ? <EyeOff size={20}/> : <Eye size={20}/>}
+                  </button>
+                </div>
+
               </div>
             </div>
 
@@ -348,10 +362,15 @@ const CreateStudent = () => {
               </p>
             </div>
 
-            <Button onClick={handleCreateStudent} disabled={creating} variant="hero" className="w-full">
-              
-              {creating ? "Creating..." : <><Plus className="h-4 w-4 mr-2" />Create Student Account </>}
+            <Button
+              onClick={handleCreateStudent}
+              disabled={creating}
+              variant="hero"
+              className="w-full"
+            >
+              {creating ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating..</> : "Create Student Account"}
             </Button>
+
           </div>
         ) : (
           <div className="space-y-4">

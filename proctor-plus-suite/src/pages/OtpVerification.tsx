@@ -21,7 +21,7 @@ const OtpVerification = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [verifying, setVerifying] = useState(false);
-
+  
 
   const handleVerify = async (e: React.FormEvent) => {
     setVerifying(true);

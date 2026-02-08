@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, ArrowLeft, Mail, Shield, User } from "lucide-react";
+import { GraduationCap, ArrowLeft, Mail, Shield, User ,Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
+
 const API = baseUrl || "http://localhost:5000";
 
 const ForgotPassword = () => {
@@ -17,23 +18,32 @@ const ForgotPassword = () => {
   const [studentId, setStudentId] = useState("");
   const [emailId, setEmailId] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
-  
+  const [studentLoading , setStudentLoading] = useState(false)
+  const [adminLoading , setAdminLoading] = useState(false)
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleAdminReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${API}/api/forgot/admin/request`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: adminEmail, personalEmail: adminPersonalEmail }),
-    });
+    setAdminLoading(true)
+    try{
+      const res = await fetch(`${API}/api/forgot/admin/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: adminEmail, personalEmail: adminPersonalEmail }),
+      });
 
-    const json = await res.json();
-    if (!res.ok) return toast({ title: "Error", description: json.message, variant: "destructive" });
+      const json = await res.json();
+      if (!res.ok) return toast({ title: "Error", description: json.message, variant: "destructive" });
 
-    toast({ title: "OTP Sent" });
-    navigate(`/reset/verify?role=admin&type=forgot&req=${json.requestId}`);
+      toast({ title: "OTP Sent" });
+      navigate(`/reset/verify?role=admin&type=forgot&req=${json.requestId}`);
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err.message || "Server error", variant: "destructive" });
+    } finally {
+      setAdminLoading(false)
+    }
   };
 
 
@@ -43,7 +53,7 @@ const ForgotPassword = () => {
       toast({ title: "Error", description: "Enter student ID and email", variant: "destructive" });
       return;
     }
-
+    setStudentLoading(true);
     try {
       const res = await fetch(`${API}/api/forgot/student/request`, {
         method: "POST",
@@ -87,6 +97,8 @@ const ForgotPassword = () => {
     } catch (err: any) {
       console.error(err);
       toast({ title: "Error", description: err.message || "Server error", variant: "destructive" });
+    } finally {
+      setStudentLoading(false);
     }
   };
 
@@ -211,8 +223,8 @@ const ForgotPassword = () => {
                     </p>
                   </div>
 
-                  <Button type="submit" variant="hero" className="w-full h-12">
-                    Send Reset Link
+                  <Button type="submit" variant="hero" className="w-full h-12 " disabled={adminLoading}>
+                    {adminLoading ? <> <Loader2 className="w-4 h-4 animate-spin" /> Sending Request</> : "Request Password Reset"}
                   </Button>
                 </form>
               </TabsContent>
@@ -243,13 +255,14 @@ const ForgotPassword = () => {
 
                   <div className="p-4 bg-warning-light rounded-lg">
                     <p className="text-sm text-warning-dark">
-                      <strong>Note:</strong> Students cannot reset passwords directly. 
+                      <strong>Note:</strong> Admin have not assign email. Student cannot reset passwords directly. 
                       Your request will be forwarded to the administrator who will assist you with password recovery.
                     </p>
                   </div>
 
-                  <Button type="submit" variant="secondary" className="w-full h-12" >
-                    Request Password Reset
+                  <Button type="submit" variant="secondary" className="w-full h-12" disabled={studentLoading}>
+                    {studentLoading ? <> <Loader2 className="w-4 h-4 animate-spin" /> Sending Request</> : "Request Password Reset"}
+                    
                   </Button>
                 </form>
               </TabsContent>

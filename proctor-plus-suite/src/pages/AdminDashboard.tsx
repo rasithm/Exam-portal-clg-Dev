@@ -28,6 +28,7 @@ import axios from "axios";
 import { useToast } from "@/hooks/use-toast";
 import { baseUrl } from "../constant/Url";
 import CreateCompilerExam from "./admin/CreateCompilerExam";
+
 // line ~25 after imports
 const API_BASE = baseUrl || "http://localhost:5000";
 
@@ -76,7 +77,7 @@ const AdminDashboard = () => {
 
 
 
-  
+  const [loggingOut, setLoggingOut] = useState(false);
   const [certificateExams, setCertificateExams] = useState<any[]>([]);
 
   const [selectedExamForReport, setSelectedExamForReport] = useState<string>("");
@@ -796,6 +797,10 @@ const fetchReports = async () => {
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </Button>
+              
+
+              
+
             </div>
             
           </div>

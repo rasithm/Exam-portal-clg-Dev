@@ -19,11 +19,11 @@ const CreatorSetup = () => {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
-
+  const [loading , setLoading] = useState(false)
   const handleSubmit = async(e: React.FormEvent) => {
     try{
       e.preventDefault();
-    
+      setLoading(true)
       if (formData.adminPassword !== formData.confirmPassword) {
         toast({
           title: "Error",
@@ -44,7 +44,7 @@ const CreatorSetup = () => {
 
       // Simulate API call
       const token = localStorage.getItem("creatorToken");
-
+      
       // Navigate to login page
       try {
         const res = await fetch(`${baseUrl}/api/creator/setup`, {
@@ -72,6 +72,8 @@ const CreatorSetup = () => {
     }catch(error){
       console.log(`Error : CreatorSetUp ${error}`);
       
+    }finally {
+      setLoading(false)
     }
   };
 
@@ -201,8 +203,8 @@ const CreatorSetup = () => {
                 />
               </div>
 
-              <Button type="submit" variant="hero" className="w-full h-12 text-lg">
-                Create Admin Account
+              <Button type="submit" variant="hero" className="w-full h-12 text-lg" disabled={loading}>
+                {loading ? "Creating Admin Account.." : "Create Admin Account"}
               </Button>
             </form>
           </CardContent>

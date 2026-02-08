@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, ArrowLeft, ShieldCheck, Lock, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { useLocation } from "react-router-dom";
 import { baseUrl } from "../constant/Url";
@@ -25,10 +26,14 @@ const ResetVerification = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isResetComplete, setIsResetComplete] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (loading) return;
+    setLoading(true);
     if (!requestId || !oneTimeToken) {
       toast({ title: "Invalid request", variant: "destructive" });
       return;
@@ -71,6 +76,8 @@ const ResetVerification = () => {
       navigate("/login");
     } catch (err: any) {
       toast({ title: "Error", description: "Server error", variant: "destructive" });
+    }finally {
+      setLoading(false);
     }
   };
 
@@ -146,35 +153,58 @@ const ResetVerification = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="password">New Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter new password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+
+                  <button
+                    type="button"
+                    className="absolute right-3 top-2 text-muted-foreground"
+                    onClick={() => setShowPassword(p => !p)}
+                  >
+                    {showPassword ? <EyeOff size={20}/> : <Eye size={20}/>}
+                  </button>
+                </div>
               </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="confirm">Confirm Password</Label>
-                <Input
-                  id="confirm"
-                  type="password"
-                  placeholder="Re-enter new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
+
+                <div className="relative">
+                  <Input
+                    id="confirm"
+                    type={showConfirm ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+
+                  <button
+                    type="button"
+                    className="absolute right-3 top-2 text-muted-foreground"
+                    onClick={() => setShowConfirm(p => !p)}
+                  >
+                    {showConfirm ? <EyeOff size={20}/> : <Eye size={20}/>}
+                  </button>
+                </div>
               </div>
+
 
               <div className="p-4 bg-muted/50 rounded-lg text-sm text-muted-foreground">
                 Make sure your password has at least 8 characters and includes a mix of uppercase, lowercase, and symbols.
               </div>
 
-              <Button type="submit" variant="hero" className="w-full h-12">
-                Reset Password
+              <Button type="submit" variant="hero" className="w-full h-12" disabled={loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset Password"}
               </Button>
+
             </form>
 
             <div className="mt-6 text-center">
