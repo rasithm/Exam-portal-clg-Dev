@@ -267,7 +267,7 @@ const Profile = () => {
       console.error("Update error:", err);
       toast({ title: "Error", description: err.message || "Failed to update", variant: "destructive" });
     } finally {
-      setSaving(true)
+      setSaving(false)
     }
   };
 
@@ -374,7 +374,7 @@ const Profile = () => {
               </div>
             </div>
             {!isAdminEdit && (
-              <Badge variant="secondary" className="capitalize">{profileData.role}</Badge>
+              <Badge variant="secondary" className="capitalize ml-4">{profileData.role}</Badge>
             
             )}
             {isAdminEdit && (
