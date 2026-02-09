@@ -288,6 +288,9 @@ const ExamReport: React.FC = () => {
     );
   };
 
+  const params = new URLSearchParams(location.search);
+  const isAdmin = params.get("adminPreview");
+
   // --- Loading / error states ---
   if (loading && !reportData) {
     return (
@@ -317,9 +320,16 @@ const ExamReport: React.FC = () => {
           <Shuffle className="w-4 h-4 mr-2" />
           Randomize Data
         </button> */}
-        <Button variant="outline" onClick={() => navigate("/student/dashboard")}>
-                Back to Dashboard
-        </Button>
+        
+
+<Button
+  variant="outline"
+  onClick={() => navigate(isAdmin ? "/admin/dashboard" : "/student/dashboard")}
+>
+  Back to Dashboard
+</Button>
+
+        
         <button
           onClick={handlePrint}
           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 text-sm font-medium transition-colors"

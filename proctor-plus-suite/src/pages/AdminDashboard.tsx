@@ -36,7 +36,17 @@ const API_BASE = baseUrl || "http://localhost:5000";
 
 // line ~44
 
-const socket = io(API_BASE);
+let socket: any = null;
+
+if (!socket) {
+  socket = io(API_BASE, {
+    transports: ["websocket"],
+    autoConnect: true,
+  });
+}
+
+
+
 
 const AdminDashboard = () => {
   // const [stats] = useState({
@@ -46,6 +56,8 @@ const AdminDashboard = () => {
   //   violations: 2
   // });
 // Dummy D
+
+
   const { toast } = useToast();
   const navigate = useNavigate();
   const [recentStudents, setRecentStudents] = useState<any[]>([]);
@@ -100,6 +112,13 @@ const AdminDashboard = () => {
   //     toast.error("Failed to fetch exams");
   //   }
   // };
+  
+useEffect(() => {
+  return () => {
+    if (socket?.connected) socket.disconnect();
+  };
+}, []);
+
 
 
   const fetchExams = async () => {
@@ -200,6 +219,8 @@ useEffect(() => {
   load();
 }, []);
 
+
+
 useEffect(() => {
   const refresh = () => fetchStudents();
   window.addEventListener("students-updated", refresh);
@@ -267,19 +288,20 @@ const getRecentExams = () => {
   const now = new Date();
 
   const all = [
-    ...mcqExams.map(e => ({
+    ...mcqExams.filter(Boolean).map(e => ({
       ...e,
       type: "MCQ",
       start: e.startDateTime,
       end: e.endDateTime
     })),
-    ...compilerExams.map(e => ({
+    ...compilerExams.filter(Boolean).map(e => ({
       ...e,
       type: "Compiler",
       start: e.startTime,
       end: e.endTime
     }))
   ];
+
 
   const exams = all.map(e => {
     const s = new Date(e.start);
@@ -358,7 +380,7 @@ const fetchQuestionSets = async () => {
 
 const fetchCertificates = async () => {
   try {
-     setLoadingCertificates(true);
+    //  setLoadingCertificates(true);
     const res = await fetch(`${API_BASE}/api/admin/certificates/summary`, {
       credentials: "include",
     });
@@ -480,21 +502,7 @@ const fetchReports = async () => {
 
   
 
-  // useEffect(() => {
-  //   fetchMcqExams();
-  //   fetchCompilerExams();
-  //   fetchQuestionSets();
-  // }, []);
-
-
-  // useEffect(() => {
-  //   fetchCertificates();
-
-  // }, []);
-
-//   useEffect(() => {
-//   fetchReports();
-// }, []);
+  
 
 
 
@@ -931,14 +939,14 @@ const fetchReports = async () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {getRecentExams().map((exam: any, index) => (
+                  {getRecentExams()?.filter(Boolean)?.map((exam : any, index) => (
                     <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${exam.language ? 'bg-violet-100' : 'bg-blue-100'}`}>
-                          {exam.language ? <Code className="h-4 w-4 text-violet-600" /> : <BookOpen className="h-4 w-4 text-blue-600" />}
+                        <div className={`p-2 rounded-lg ${exam &&  exam.language ? 'bg-violet-100' : 'bg-blue-100'}`}>
+                          {exam &&  exam.language ? <Code className="h-4 w-4 text-violet-600" /> : <BookOpen className="h-4 w-4 text-blue-600" />}
                         </div>
                         <div>
-                          <p className="font-medium text-card-foreground text-sm capitalize">{exam.title || exam.examName}</p>
+                          <p className="font-medium text-card-foreground text-sm capitalize">{exam?.title || exam?.examName}</p>
                           <p className="text-xs text-muted-foreground">
                             {exam.language || exam.category} • {exam.questionCount} Questions
                           </p>
@@ -1231,7 +1239,7 @@ const fetchReports = async () => {
                           Compiler Exams
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {compilerExams.map((exam) => (
+                          {compilerExams?.filter(Boolean).map((exam) => (
                             <div key={exam._id} className="p-4 rounded-xl border bg-gradient-to-br from-violet-50/50 to-white hover:shadow-md transition-shadow">
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center gap-2">
@@ -1667,7 +1675,7 @@ const fetchReports = async () => {
                     </h3>
 
                     <div className="space-y-3">
-                      {certificateExams.map((exam) => (
+                      {certificateExams.filter(e => e.count > 0)?.map((exam) => (
                         <div
                           key={exam.examId}
                           className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/30 transition"
@@ -1698,7 +1706,7 @@ const fetchReports = async () => {
                           </div>
 
                           {/* Right */}
-                          {exam.count > 0 ? <Button
+                          <Button
                             variant="outline"
                             size="sm"
                             onClick={() =>
@@ -1710,7 +1718,7 @@ const fetchReports = async () => {
                           >
                             <Download className="h-4 w-4 mr-1.5" />
                             Download All
-                          </Button> : "" }
+                          </Button> 
                           
                         </div>
                       ))}

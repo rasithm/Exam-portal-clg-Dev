@@ -310,13 +310,16 @@ const CompilerExamReport: React.FC = () => {
     );
   }
 
+  const params = new URLSearchParams(location.search);
+  const isAdmin = params.get("adminPreview");
+
   return (
     <div className="min-h-screen bg-slate-100 py-8">
       {/* Control Panel */}
       <div className="max-w-[210mm] mx-auto px-4 mb-6 flex justify-between items-center print:hidden">
         <Button
           variant="outline"
-          onClick={() => navigate("/student/dashboard")}
+          onClick={() => navigate(isAdmin ? "/admin/dashboard" : "/student/dashboard")}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />

@@ -15,7 +15,7 @@ router.get("/summary", protect(["admin"]), async (req, res) => {
   try {
 
     /* ===============================
-       ONLY CERTIFICATE ENABLED EXAMS
+       ONLY CERTIFICATE ENABLED EXAMs
     =============================== */
 
     // const mcqExams = await Exam.find({ generateCertificate: true }).lean();
@@ -105,9 +105,9 @@ router.get("/summary", protect(["admin"]), async (req, res) => {
     =============================== */
 
     const exams = Object.values(map)
-      .sort((a, b) =>
-        new Date(b.lastDate || 0) - new Date(a.lastDate || 0)
-      );
+    .filter(e => e.count > 0) // ⭐ ONLY REAL CERTIFICATES
+    .sort((a, b) => new Date(b.lastDate || 0) - new Date(a.lastDate || 0));
+
 
     res.json({
       total: exams.reduce((s, e) => s + e.count, 0),
@@ -153,7 +153,7 @@ const mcq = await ExamAttempt.find({
 })
   .populate({
     path: "examSessionId",
-    match: { exam: { $in: mcqExams.map(e => e._id) } },
+    // match: { exam: { $in: mcqExams.map(e => e._id) } },
     populate: { path: "exam" },
   })
   .lean();
@@ -161,7 +161,7 @@ const mcq = await ExamAttempt.find({
 // Compiler
 const compiler = await CompilerExamAttempt.find({
   certificateId: { $exists: true },
-  exam: { $in: compilerExams.map(e => e._id) }
+  // exam: { $in: compilerExams.map(e => e._id) }
 })
   .populate("exam")
   .lean();
