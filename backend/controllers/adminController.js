@@ -435,29 +435,154 @@ export const updateStudentEmail = async (req, res) => {
 
     // 📩 Mail old email
     if (oldEmail) {
+      // await transporter.sendMail({
+      //   from: process.env.EMAIL_FROM,
+      //   to: oldEmail,
+      //   subject: "Email Address Updated",
+      //   html: `
+      //     <p>Hello ${student.name},</p>
+      //     <p>Your personal email has been changed to <b>${newEmail}</b>.</p>
+      //     <p>If this was not you, contact support immediately.</p>
+      //   `,
+      // });
       await transporter.sendMail({
-        from: process.env.EMAIL_FROM,
-        to: oldEmail,
-        subject: "Email Address Updated",
-        html: `
-          <p>Hello ${student.name},</p>
-          <p>Your personal email has been changed to <b>${newEmail}</b>.</p>
-          <p>If this was not you, contact support immediately.</p>
-        `,
-      });
+  from: process.env.EMAIL_FROM,
+  to: oldEmail,
+  subject: "Your Email Address Has Been Changed – Exam Portal",
+  html: `
+  <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 25px; background:#ffffff;">
+    
+    <h2 style="color:#c0392b;">⚠️ Email Address Changed – Exam Portal</h2>
+    
+    <p>Dear ${student.name},</p>
+    
+    <p>
+      This is to inform you that your registered email address on 
+      <strong>Exam Portal</strong> has been changed by the Administrator.
+    </p>
+
+    <div style="background:#f8f9fa; padding:18px; border-radius:8px; margin:20px 0;">
+      <table width="100%" style="border-collapse: collapse;">
+        <tr>
+          <td><strong>👤 Student Name</strong></td>
+          <td>${student.name}</td>
+        </tr>
+        <tr>
+          <td><strong>📧 Old Email</strong></td>
+          <td>${oldEmail}</td>
+        </tr>
+        <tr>
+          <td><strong>📧 New Email</strong></td>
+          <td>${newEmail}</td>
+        </tr>
+        <tr>
+          <td><strong>🕒 Changed At</strong></td>
+          <td>${new Date().toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td><strong>👨‍💼 Changed By</strong></td>
+          <td>Administrator</td>
+        </tr>
+      </table>
+    </div>
+
+    <p>If you authorized this change, no action is needed.</p>
+
+    <div style="background:#fff3cd; padding:15px; border-radius:8px; margin:20px 0;">
+      <p style="margin:0;">
+        <strong>If you did NOT authorize this change, contact support immediately at:</strong><br>
+        📧 support@examportal.com<br>
+        📞 +91-XXXXXXXXXX
+      </p>
+    </div>
+
+    <p style="color:#c0392b;">
+      ⚠️ Note: This email address is no longer associated with your account.
+      All future communications will be sent to your new email address.
+    </p>
+
+    <p style="margin-top:30px;">
+      Regards,<br>
+      <strong>Exam Portal Support Team</strong>
+    </p>
+
+  </div>
+  `
+});
+
     }
 
     // 📩 Mail new email
+    // await transporter.sendMail({
+    //   from: process.env.EMAIL_FROM,
+    //   to: newEmail,
+    //   subject: "Email Update Confirmation",
+    //   html: `
+    //     <p>Hello ${student.name},</p>
+    //     <p>Your email has been successfully updated from <b>${oldEmail || "N/A"}</b> to <b>${newEmail}</b>.</p>
+    //     <p>Welcome aboard 🚀</p>
+    //   `,
+    // });
+    const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
-      to: newEmail,
-      subject: "Email Update Confirmation",
-      html: `
-        <p>Hello ${student.name},</p>
-        <p>Your email has been successfully updated from <b>${oldEmail || "N/A"}</b> to <b>${newEmail}</b>.</p>
-        <p>Welcome aboard 🚀</p>
-      `,
-    });
+  from: process.env.EMAIL_FROM,
+  to: newEmail,
+  subject: "Verify Your New Email Address – Exam Portal",
+  html: `
+  <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 25px; background:#ffffff;">
+    
+    <h2 style="color:#26aa61;">Verify Your New Email Address – Exam Portal</h2>
+    
+    <p>Dear ${student.name},</p>
+    
+    <p>
+      Your email address on <strong>Exam Portal</strong> has been updated by the Administrator.
+      Please verify your new email address to continue accessing your account.
+    </p>
+
+    <div style="background:#f4f6f8; padding:18px; border-radius:8px; margin:20px 0;">
+      <table width="100%" style="border-collapse: collapse;">
+        <tr>
+          <td><strong>👤 Student Name</strong></td>
+          <td>${student.name}</td>
+        </tr>
+        <tr>
+          <td><strong>📧 Old Email</strong></td>
+          <td>${oldEmail || "N/A"}</td>
+        </tr>
+        <tr>
+          <td><strong>📧 New Email</strong></td>
+          <td>${newEmail}</td>
+        </tr>
+        <tr>
+          <td><strong>🕒 Changed At</strong></td>
+          <td>${new Date().toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td><strong>👨‍💼 Changed By</strong></td>
+          <td>Administrator</td>
+        </tr>
+      </table>
+    </div>
+
+
+    <div style="background:#fff3cd; padding:15px; border-radius:8px; margin:20px 0;">
+      <p><strong>Important Notes:</strong></p>
+      <ul style="margin:5px 0 0 18px;">
+        <li>Until verified, your account access may be restricted</li>
+        <li>If you did not authorize this change, contact support immediately</li>
+      </ul>
+    </div>
+
+    <p style="margin-top:30px;">
+      Regards,<br>
+      <strong>Exam Portal Support Team</strong>
+    </p>
+
+  </div>
+  `
+});
+
 
     res.json({ message: "Email updated & notifications sent" });
   } catch (err) {

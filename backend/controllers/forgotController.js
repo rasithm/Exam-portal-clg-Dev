@@ -66,7 +66,44 @@ export const requestStudentReset = async (req, res) => {
         verified: false
       });
 
-      await sendOtpMail(inputEmail, "OTP Code", `<b>${otp}</b>`);
+      // await sendOtpMail(inputEmail, "OTP Code", `<b>${otp}</b>`);
+      await sendOtpMail(
+        inputEmail,
+        "Reset Your Password – Exam Portal",
+        `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          
+          <h2 style="color: #2c3e50;">Reset Your Password – Exam Portal</h2>
+          
+          <p>Hi ${student.name || "Student"},</p>
+          
+          <p>
+            We received a request to reset the password for your account associated with 
+            <strong>${inputEmail}</strong>.
+          </p>
+          
+          <p>Use the OTP below to reset your password:</p>
+          
+          <div style="background:#f4f6f8; padding:15px; text-align:center; border-radius:8px; margin:20px 0;">
+            <h1 style="letter-spacing:5px; color:#26aa61;">🔐 ${otp}</h1>
+          </div>
+          
+          <p>⏳ This OTP will expire in 30 minutes for security purposes.</p>
+          
+          <p>
+            If you didn't request a password reset, you can safely ignore this email.
+            Your password will remain unchanged.
+          </p>
+          
+          <p style="margin-top:30px;">
+            Regards,<br>
+            <strong>Exam Portal Team</strong>
+          </p>
+          
+        </div>
+        `
+      );
+
 
       return res.json({ requestId: reqDoc._id });
     }
@@ -277,11 +314,48 @@ export const requestAdminReset = async (req, res) => {
       status: "otp_sent",
     });
 
+    // await sendOtpMail(
+    //   personalEmail,
+    //   "Admin Password Reset OTP",
+    //   `<p>Your OTP is <b>${otp}</b></p>`
+    // );
     await sendOtpMail(
       personalEmail,
-      "Admin Password Reset OTP",
-      `<p>Your OTP is <b>${otp}</b></p>`
+      "Admin Password Reset Request – Exam Portal",
+      `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        
+        <h2 style="color:#c0392b;">Admin Password Reset Request – Exam Portal</h2>
+        
+        <p>Dear ${admin.name || "Administrator"},</p>
+        
+        <p>
+          A password reset request has been received for your Administrator account 
+          on <strong>Exam Portal</strong>.
+        </p>
+        
+        <p>Use the OTP below to reset your password:</p>
+        
+        <div style="background:#fff5f5; padding:15px; text-align:center; border-radius:8px; margin:20px 0;">
+          <h1 style="letter-spacing:5px; color:#e74c3c;">🔐 ${otp}</h1>
+        </div>
+        
+        <p>⏳ This OTP will expire in 15 minutes for security purposes.</p>
+        
+        <p>
+          If you did not request this reset, please immediately contact your 
+          system administrator or IT team, as your account may be at risk.
+        </p>
+        
+        <p style="margin-top:30px;">
+          Regards,<br>
+          <strong>Exam Portal System Team</strong>
+        </p>
+        
+      </div>
+      `
     );
+
 
     res.json({
       message: "OTP sent",

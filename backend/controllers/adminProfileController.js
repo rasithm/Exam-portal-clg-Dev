@@ -47,6 +47,7 @@ export const getAdminProfile = async (req, res) => {
 
 export const requestEmailVerification = async (req, res) => {
   const { personalEmail } = req.body;
+  const admin = await Admin.findById(req.user._id).select("-password");
 
   if (!personalEmail)
     return res.status(400).json({ message: "Email required" });
@@ -62,11 +63,46 @@ export const requestEmailVerification = async (req, res) => {
     status: "otp_sent",
   });
 
+  // await sendOtpMail(
+  //   personalEmail,
+  //   "Admin Email Verification OTP",
+  //   `<p>Your OTP is <b>${otp}</b></p>`
+  // );
   await sendOtpMail(
-    personalEmail,
-    "Admin Email Verification OTP",
-    `<p>Your OTP is <b>${otp}</b></p>`
-  );
+  personalEmail,
+  "Your OTP Code – Exam Portal",
+  `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    
+    <h2 style="color:#2c3e50;">Your OTP Code – Exam Portal</h2>
+    
+    <p>Dear ${admin.name || "Administrator"},</p>
+    
+    <p>Your One-Time Password (OTP) for <strong>Exam Portal</strong> is:</p>
+    
+    <div style="background:#eef6ff; padding:15px; text-align:center; border-radius:8px; margin:20px 0;">
+      <h1 style="letter-spacing:5px; color:#2980b9;">🔐 ${otp}</h1>
+    </div>
+    
+    <p>⏳ This OTP is valid for 10 minutes only.</p>
+    
+    <p>
+      Do not share this OTP with anyone, including our support team.
+    </p>
+    
+    <p>
+      If you did not request this OTP, please contact your IT team immediately.
+    </p>
+    
+    <p style="margin-top:30px;">
+      Regards,<br>
+      <strong>Exam Portal Team</strong>
+    </p>
+    
+  </div>
+  `
+);
+
 
   res.json({ requestId: doc._id });
 };
