@@ -13,7 +13,7 @@ import logo from "@/assets/logo.png";
 
 const DeveloperLogin = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  // const { login } = useAuth();
   const { toast } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +21,7 @@ const DeveloperLogin = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(username, password)) {
+    if (username && password) {
       navigate("/developer/dashboard");
     } else {
       toast({ title: "Invalid credentials", description: "Please check username and password.", variant: "destructive" });

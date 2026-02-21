@@ -25,7 +25,7 @@ const GRADIENT_OPTIONS = [
 
 const EditDevData = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  // const { isAuthenticated } = useAuth();
   const { data, update, reset } = usePortfolioData();
   const { toast } = useToast();
   const photoRef = useRef<HTMLInputElement>(null);
@@ -50,10 +50,10 @@ const EditDevData = () => {
   // new category name
   const [newCategoryName, setNewCategoryName] = useState("");
 
-  if (!isAuthenticated) {
-    navigate("/developer/login");
-    return null;
-  }
+  // if (!isAuthenticated) {
+  //   navigate("/developer/login");
+  //   return null;
+  // }
 
   // ── Photo upload ──────────────────────────────────────
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

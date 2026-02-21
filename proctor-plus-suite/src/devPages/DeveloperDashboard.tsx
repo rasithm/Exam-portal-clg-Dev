@@ -16,15 +16,15 @@ import logo from "@/assets/logo.png";
 
 const DeveloperDashboard = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  // const { isAuthenticated, logout } = useAuth();
   const { data } = usePortfolioData();
   const [search, setSearch] = useState("");
   const [filterCourse, setFilterCourse] = useState("");
 
-  if (!isAuthenticated) {
-    navigate("/developer/login");
-    return null;
-  }
+  // if (!isAuthenticated) {
+  //   navigate("/developer/login");
+  //   return null;
+  // }
 
   const { personalInfo } = data;
   const courses = [...new Set(mockStudents.map((s) => s.course))];
@@ -67,7 +67,7 @@ const DeveloperDashboard = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { logout(); navigate("/developer/login"); }}
+              onClick={() => {navigate("/developer/login"); }}
             >
               <LogOut className="mr-1.5 h-4 w-4" /> Logout
             </Button>
