@@ -1,0 +1,121 @@
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities; */
+
+/* ===============================
+   Developer Theme Wrapper
+================================= */
+
+.developer-theme {
+  --background: 210 20% 98%;
+  --foreground: 210 55% 15%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 210 55% 15%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 210 55% 15%;
+
+  --primary: 210 55% 23%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 127 66% 49%;
+  --secondary-foreground: 0 0% 100%;
+
+  --muted: 210 20% 93%;
+  --muted-foreground: 210 15% 45%;
+
+  --accent: 127 66% 49%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 210 20% 88%;
+  --input: 210 20% 88%;
+  --ring: 127 66% 49%;
+
+  --radius: 0.75rem;
+
+  font-family: 'Inter', sans-serif;
+
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* ===============================
+   Base Styling Inside Theme
+================================= */
+
+.developer-theme *,
+.developer-theme *::before,
+.developer-theme *::after {
+  border-color: hsl(var(--border));
+}
+
+.developer-theme h1,
+.developer-theme h2,
+.developer-theme h3,
+.developer-theme h4,
+.developer-theme h5,
+.developer-theme h6 {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ===============================
+   Tailwind Utility Overrides
+================================= */
+
+.developer-theme .bg-background {
+  background-color: hsl(var(--background)) !important;
+}
+
+.developer-theme .bg-card {
+  background-color: hsl(var(--card)) !important;
+}
+
+.developer-theme .bg-popover {
+  background-color: hsl(var(--popover)) !important;
+}
+
+.developer-theme .text-foreground {
+  color: hsl(var(--foreground)) !important;
+}
+
+.developer-theme .text-card-foreground {
+  color: hsl(var(--card-foreground)) !important;
+}
+
+.developer-theme .text-muted-foreground {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.developer-theme .border-border {
+  border-color: hsl(var(--border)) !important;
+}
+
+.developer-theme .ring-ring {
+  --tw-ring-color: hsl(var(--ring)) !important;
+}
+
+/* ===============================
+   Gradient Utility
+================================= */
+
+.developer-theme .text-gradient {
+  background: linear-gradient(
+    to right,
+    hsl(var(--primary)),
+    hsl(var(--accent))
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Smooth scroll only inside theme */
+.developer-theme {
+  scroll-behavior: smooth;
+}

@@ -27,6 +27,10 @@ import CompilerExamStudentResult from "./pages/student/CompilerExamStudentResult
 import CompilerExamReport from "./pages/student/CompilerExamReport";
 import AdminStudentReportLoader from "./pages/admin/AdminStudentReportLoader";
 import StudentEmailRequest from "./pages/StudentEmailRequest";
+import DeveloperDashboard from "./devPages/DeveloperDashboard";
+import DeveloperLogin from "./devPages/DeveloperLogin";
+import EditDevData from "./devPages/EditDevData";
+import DevIndex from "./devPages/DevIndex";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -59,6 +63,12 @@ const App = () => (
           <Route path="/student/compiler-exams/:examId/result" element={<CompilerExamStudentResult />} />
           <Route path="/admin/report-view/:examId/:studentId"  element={<AdminStudentReportLoader />}/>
           <Route path="/admin/student/edit/:id" element={<Profile />} />
+
+          <Route path="/developer" element={<DevIndex />} />
+          <Route path="/developer/login" element={<DeveloperLogin />} />
+          <Route path="/developer/dashboard" element={<DeveloperDashboard />} />
+          <Route path="/developer/edit" element={<EditDevData />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

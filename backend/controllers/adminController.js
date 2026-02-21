@@ -523,7 +523,7 @@ export const updateStudentEmail = async (req, res) => {
     //     <p>Welcome aboard 🚀</p>
     //   `,
     // });
-    const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+    // const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
     await transporter.sendMail({
   from: process.env.EMAIL_FROM,
   to: newEmail,
