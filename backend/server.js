@@ -29,11 +29,16 @@ import studentCompilerExamRouter from './routes/studentCompilerExamRouter.js'
 import adminCertificateRoutes from "./routes/adminCertificateRoutes.js";
 import adminReportRoutes from "./routes/adminReportRoutes.js";
 
+import developerRoutes from "./routes/developerRoutes.js";
+
+
 
 
 // import { initSocket } from "./sockets/socketManager.js";
 const app = express();
 const server = http.createServer(app);
+
+
 
 // Middlewares
 app.use(express.json({ limit: '5mb' }));
@@ -61,6 +66,8 @@ app.use("/api/admin/compilerExams", compilerExamRoutes);
 app.use("/api/student/compiler-exams", studentCompilerExamRouter);
 app.use("/api/admin/certificates", adminCertificateRoutes);
 app.use("/api/admin/reports", adminReportRoutes);
+
+app.use("/api/developer", developerRoutes);
 // basic health
 app.get('/api/health', (req,res) => res.json({ ok: true }));
 // Error handler (last middleware)

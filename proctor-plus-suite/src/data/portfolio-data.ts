@@ -1,10 +1,11 @@
+//C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\data\portfolio-data.ts
 export const personalInfo = {
   name: "Mohamed Rasith",
   title: "Software Engineer | Full Stack Developer | Full Stack Blockchain Dev | Freelancer",
   tagline: "Building decentralized & full-stack solutions with passion and precision.",
   email: "mohamedrasith134@gmail.com",
   github: "https://github.com/rasithm",
-  linkedin: "https://www.linkedin.com/in/mohamed-rasith",
+  linkedin: "https://www.linkedin.com/in/mohamed-rasith-6421542a6/",
   education: {
     degree: "B.Tech Information Technology",
     institution: "Mohamed Sathak A.J. College of Engineering, Chennai",

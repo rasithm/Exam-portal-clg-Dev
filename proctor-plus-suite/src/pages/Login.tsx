@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Shield, User } from "lucide-react";
+import { Code, GraduationCap, Shield, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff ,Loader2 } from "lucide-react";
 import { baseUrl } from "../constant/Url";
@@ -185,6 +185,16 @@ const Login = () => {
           </div>
 
           <div className="hidden lg:block space-y-4">
+            {/* <div className="flex items-center gap-3 p-4 rounded-xl bg-card shadow-card">
+              
+                <Code className="h-6 w-6 text-primary" />
+                <div>
+                  <p className="font-medium text-card-foreground">Developer Tools</p>
+                  <p className="text-sm text-muted-foreground">End-to-end encrypted authentication</p>
+                </div>
+              
+              
+            </div> */}
             <div className="flex items-center gap-3 p-4 rounded-xl bg-card shadow-card">
               <Shield className="h-6 w-6 text-primary" />
               <div>
@@ -192,6 +202,7 @@ const Login = () => {
                 <p className="text-sm text-muted-foreground">End-to-end encrypted authentication</p>
               </div>
             </div>
+            
           </div>
         </div>
 
