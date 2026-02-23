@@ -33,12 +33,33 @@ import EditDevData from "./devPages/EditDevData";
 import DevIndex from "./devPages/DevIndex";
 const queryClient = new QueryClient();
 
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+
+const RouteTracker = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const history = JSON.parse(localStorage.getItem("lastPages") || "[]");
+
+    const updated = [
+      location.pathname,
+      ...history.filter((p: string) => p !== location.pathname),
+    ].slice(0, 5);
+
+    localStorage.setItem("lastPages", JSON.stringify(updated));
+  }, [location]);
+
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <RouteTracker />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/setup" element={localStorage.getItem("creatorToken") ? <CreatorSetup/> : <Navigate to="/login"/>

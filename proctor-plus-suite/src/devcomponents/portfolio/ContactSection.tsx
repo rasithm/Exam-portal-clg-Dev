@@ -10,12 +10,21 @@ import { Label } from "@/devcomponents/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { usePortfolioData } from "@/hooks/usePortfolioData";
 
+// interface FormState {
+//   name: string;
+//   email: string;
+//   phone: string;
+//   subject: string;
+//   message: string;
+// }
 interface FormState {
   name: string;
   email: string;
-  phone: string;
-  subject: string;
+  pageUrl: string;
+  type: string;
+  otherType?: string;
   message: string;
+  screenshot?: string;
 }
 
 const ContactSection = () => {
@@ -33,18 +42,40 @@ const ContactSection = () => {
   const { data } = usePortfolioData();
 
   // Declare hooks FIRST
+  // const [form, setForm] = useState<FormState>({
+  //   name: "",
+  //   email: "",
+  //   phone: "",
+  //   subject: "",
+  //   message: "",
+  // });
+  const lastPages = JSON.parse(localStorage.getItem("lastPages") || "[]");
+
   const [form, setForm] = useState<FormState>({
     name: "",
     email: "",
-    phone: "",
-    subject: "",
+    pageUrl: lastPages[0] || window.location.href,
+    type: "Bug",
+    otherType: "",
     message: "",
   });
 
   const [errors, setErrors] = useState<Partial<FormState>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"contact" | "feedback">("contact");
 
   if (!data) return null;
+
+  const handleScreenshot = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setForm((p) => ({ ...p, screenshot: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const personalInfo = data.personalInfo || {};
   // const [errors, setErrors] = useState<Partial<FormState>>({});
@@ -58,8 +89,11 @@ const ContactSection = () => {
     if (!form.name.trim()) e.name = "Name is required";
     if (!form.email.trim()) e.email = "Email is required";
     else if (!emailRegex.test(form.email)) e.email = "Invalid email address";
-    if (form.phone && !phoneRegex.test(form.phone)) e.phone = "Enter a valid phone number";
-    if (!form.subject.trim()) e.subject = "Subject is required";
+    // if (form.phone && !phoneRegex.test(form.phone)) e.phone = "Enter a valid phone number";
+    // if (!form.subject.trim()) e.subject = "Subject is required";
+    if (form.type === "Other" && !form.otherType?.trim()) {
+      e.otherType = "Please specify feedback type";
+    }
     if (!form.message.trim()) e.message = "Message is required";
     else if (form.message.length < 10) e.message = "Message must be at least 10 characters";
     setErrors(e);
@@ -74,16 +108,30 @@ const ContactSection = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+
     setSubmitting(true);
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
-    toast({
-      title: "✅ Message Sent!",
-      description: "Thank you for reaching out. I'll get back to you soon!",
+
+    const payload = {
+      ...form,
+      type: form.type === "Other" ? form.otherType : form.type,
+      lastVisitedPages: JSON.parse(localStorage.getItem("lastPages") || "[]"),
+      screenSize: `${window.innerWidth}x${window.innerHeight}`,
+      deviceType: /Mobi|Android/i.test(navigator.userAgent)
+        ? "Mobile"
+        : "Desktop",
+      os: navigator.platform,
+      browser: navigator.userAgent,
+      timestamp: new Date(),
+    };
+
+    await fetch("http://localhost:5000/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
-    setForm({ name: "", email: "", phone: "", subject: "", message: "" });
-    setErrors({});
+
+    setSubmitting(false);
+    toast({ title: "Feedback Submitted Successfully!" });
   };
 
   const links = [
@@ -115,6 +163,7 @@ const ContactSection = () => {
         </p>
 
         <div className="grid md:grid-cols-5 gap-10">
+          
           {/* Form (wider column) */}
           <motion.form
             onSubmit={handleSubmit}
@@ -137,27 +186,53 @@ const ContactSection = () => {
                 {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="c-phone">Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="c-phone" type="tel" placeholder="+91 9876543210" className={`pl-9 ${errors.phone ? "border-destructive" : ""}`}
-                    value={form.phone} onChange={set("phone")} />
-                </div>
-                {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+                <Label htmlFor="c-subject">Page Name or Url <span className="text-destructive">*</span></Label>
+                <Input id="c-subject" placeholder="https://localhost:8080/developer" value={form.pageUrl} onChange={set("pageUrl")}
+                  className={errors.pageUrl ? "border-destructive focus-visible:ring-destructive" : ""} />
+                {errors.pageUrl && <p className="text-xs text-destructive">{errors.pageUrl}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="c-subject">Subject <span className="text-destructive">*</span></Label>
-                <Input id="c-subject" placeholder="Project / Collaboration" value={form.subject} onChange={set("subject")}
-                  className={errors.subject ? "border-destructive focus-visible:ring-destructive" : ""} />
-                {errors.subject && <p className="text-xs text-destructive">{errors.subject}</p>}
+                <Label htmlFor="c-phone">ScreenShort <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <div className="relative">
+                  {/* <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /> */}
+                  <input type="file" accept="image/*" onChange={handleScreenshot} />
+                </div>
+                {errors.screenshot && <p className="text-xs text-destructive">{errors.screenshot}</p>}
               </div>
+              <div className="space-y-1.5">
+                <Label>Feedback Type *</Label>
+                <select
+                  value={form.type}
+                  onChange={(e) => setForm(p => ({ ...p, type: e.target.value }))}
+                  className="w-full border rounded-md px-3 py-2"
+                >
+                  <option value="Bug">Bug</option>
+                  <option value="Feature Suggestion">Feature Suggestion</option>
+                  <option value="UI/UX Issue">UI/UX Issue</option>
+                  <option value="Performance">Performance</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              {form.type === "Other" && (
+                <div className="space-y-1.5">
+                  <Label>Please specify *</Label>
+                  <Input
+                    value={form.otherType}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, otherType: e.target.value }))
+                    }
+                    placeholder="Describe feedback type"
+                  />
+                </div>
+              )}
+              
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="c-message">Message <span className="text-destructive">*</span></Label>
               <Textarea
                 id="c-message"
-                placeholder="Tell me about your project, timeline, or questions..."
+                placeholder="Tell me about your feedback, bugs, or Improve Ux..."
                 rows={5}
                 value={form.message}
                 onChange={set("message")}

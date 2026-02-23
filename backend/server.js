@@ -31,7 +31,7 @@ import adminReportRoutes from "./routes/adminReportRoutes.js";
 
 import developerRoutes from "./routes/developerRoutes.js";
 
-
+import feedbackRoutes from "./routes/feedbackRoutes.js"
 
 
 // import { initSocket } from "./sockets/socketManager.js";
@@ -68,6 +68,7 @@ app.use("/api/admin/certificates", adminCertificateRoutes);
 app.use("/api/admin/reports", adminReportRoutes);
 
 app.use("/api/developer", developerRoutes);
+app.use("/api/feedback", feedbackRoutes);
 // basic health
 app.get('/api/health', (req,res) => res.json({ ok: true }));
 // Error handler (last middleware)
