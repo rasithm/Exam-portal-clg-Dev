@@ -1,6 +1,6 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\devcomponents\portfolio\AboutSection.tsx
 import { motion } from "framer-motion";
-import { getPortfolioData } from "@/hooks/usePortfolioData";
+import { usePortfolioData } from "@/hooks/usePortfolioData";
 import { GraduationCap, Award, Briefcase, Code2 } from "lucide-react";
 
 const fadeUp = {
@@ -9,10 +9,19 @@ const fadeUp = {
 };
 
 const AboutSection = () => {
-  const { personalInfo } = getPortfolioData();
+  const { data } = usePortfolioData();
+  if (!data) return null;
 
+  const { personalInfo, projects } = data;
+
+  // const stats = [
+  //   { icon: Code2, label: `${getPortfolioData().projects.length}+ Projects`, sub: "Full-Stack & Blockchain" },
+  //   { icon: Briefcase, label: "10+ Skills", sub: "Across domains" },
+  //   { icon: Award, label: "SIH'23", sub: "Participant" },
+  //   { icon: GraduationCap, label: "1st Prize", sub: "Sathakathon" },
+  // ];
   const stats = [
-    { icon: Code2, label: `${getPortfolioData().projects.length}+ Projects`, sub: "Full-Stack & Blockchain" },
+    { icon: Code2, label: `${projects.length}+ Projects`, sub: "Full-Stack & Blockchain" },
     { icon: Briefcase, label: "10+ Skills", sub: "Across domains" },
     { icon: Award, label: "SIH'23", sub: "Participant" },
     { icon: GraduationCap, label: "1st Prize", sub: "Sathakathon" },

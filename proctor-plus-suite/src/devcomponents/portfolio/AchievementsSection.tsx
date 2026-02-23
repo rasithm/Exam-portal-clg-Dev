@@ -1,9 +1,14 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\devcomponents\portfolio\AchievementsSection.tsx
 import { motion } from "framer-motion";
-import { getPortfolioData } from "@/hooks/usePortfolioData";
-
+// import { getPortfolioData } from "@/hooks/usePortfolioData";
+import { usePortfolioData } from "@/hooks/usePortfolioData";
 const AchievementsSection = () => {
-  const { achievements } = getPortfolioData();
+  // const { achievements } = getPortfolioData();
+
+  
+  const { data } = usePortfolioData();
+  if (!data) return null;
+  const { achievements } = data;
 
   return (
     <section id="achievements" className="py-24 px-6">

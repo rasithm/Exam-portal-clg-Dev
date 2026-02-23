@@ -1,11 +1,14 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\devcomponents\portfolio\ExperienceSection.tsx
 import { motion } from "framer-motion";
-import { getPortfolioData } from "@/hooks/usePortfolioData";
+// import { getPortfolioData } from "@/hooks/usePortfolioData";
 import { Briefcase } from "lucide-react";
+import { usePortfolioData } from "@/hooks/usePortfolioData";
 
 const ExperienceSection = () => {
-  const { experience } = getPortfolioData();
-
+  // const { experience } = getPortfolioData();
+  const { data } = usePortfolioData();
+  if (!data) return null;
+  const { experience } = data;
   return (
     <section id="experience" className="py-24 px-6 bg-muted/30">
       <div className="max-w-4xl mx-auto">

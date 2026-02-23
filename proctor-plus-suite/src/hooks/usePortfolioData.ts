@@ -1,5 +1,5 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\hooks\usePortfolioData.ts
-import { useState, useCallback } from "react";
+import { useState, useCallback , useEffect} from "react";
 import {
   personalInfo as defaultPersonalInfo,
   skills as defaultSkills,
@@ -7,6 +7,11 @@ import {
   experience as defaultExperience,
   achievements as defaultAchievements,
 } from "@/data/portfolio-data";
+
+
+import { baseUrl } from "@/constant/Url";
+
+const API_BASE = baseUrl || "http://localhost:5000";
 
 // ─── Types ───────────────────────────────────────────────
 export type PortfolioPersonalInfo = typeof defaultPersonalInfo & {
@@ -39,73 +44,120 @@ export type PortfolioAchievement = {
 
 export type PortfolioSkills = Record<string, string[]>;
 
-export interface PortfolioData {
-  personalInfo: PortfolioPersonalInfo;
-  skills: PortfolioSkills;
-  projects: PortfolioProject[];
-  experience: PortfolioExperience[];
-  achievements: PortfolioAchievement[];
-}
+
 
 // ─── Storage key ─────────────────────────────────────────
-const STORAGE_KEY = "rasith_portfolio_data";
+// const STORAGE_KEY = "rasith_portfolio_data";
 
-// ─── Defaults ────────────────────────────────────────────
-const defaultData: PortfolioData = {
-  personalInfo: { ...defaultPersonalInfo, photo: undefined },
-  skills: defaultSkills,
-  projects: defaultProjects,
-  experience: defaultExperience,
-  achievements: defaultAchievements,
-};
+// const defaultData: PortfolioData = {
+//   personalInfo: { ...defaultPersonalInfo, photo: undefined },
+//   skills: defaultSkills,
+//   projects: defaultProjects,
+//   experience: defaultExperience,
+//   achievements: defaultAchievements,
+// };
 
-function loadData(): PortfolioData {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return defaultData;
-    const parsed = JSON.parse(stored);
-    // Deep merge with defaults so new fields are always present
-    return {
-      personalInfo: { ...defaultData.personalInfo, ...parsed.personalInfo },
-      skills: parsed.skills ?? defaultData.skills,
-      projects: parsed.projects ?? defaultData.projects,
-      experience: parsed.experience ?? defaultData.experience,
-      achievements: parsed.achievements ?? defaultData.achievements,
-    };
-  } catch {
-    return defaultData;
-  }
-}
+// function loadData(): PortfolioData {
+//   try {
+//     const stored = localStorage.getItem(STORAGE_KEY);
+//     if (!stored) return defaultData;
+//     const parsed = JSON.parse(stored);
+    
+//     return {
+//       personalInfo: { ...defaultData.personalInfo, ...parsed.personalInfo },
+//       skills: parsed.skills ?? defaultData.skills,
+//       projects: parsed.projects ?? defaultData.projects,
+//       experience: parsed.experience ?? defaultData.experience,
+//       achievements: parsed.achievements ?? defaultData.achievements,
+//     };
+//   } catch {
+//     return defaultData;
+//   }
+// }
 
-function saveData(data: PortfolioData) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    // storage quota exceeded – silently fail
-  }
-}
+// function saveData(data: PortfolioData) {
+//   try {
+//     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+//   } catch {
+    
+//   }
+// }
 
 // ─── Hook ────────────────────────────────────────────────
-export function usePortfolioData() {
-  const [data, setData] = useState<PortfolioData>(loadData);
 
-  const update = useCallback((patch: Partial<PortfolioData>) => {
-    setData((prev) => {
-      const next = { ...prev, ...patch };
-      saveData(next);
-      return next;
+
+
+export interface PortfolioData {
+  personalInfo: any;
+  skills: Record<string, string[]>;
+  projects: any[];
+  experience: any[];
+  achievements: any[];
+}
+
+export function usePortfolioData() {
+  const [data, setData] = useState<PortfolioData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // FETCH
+  useEffect(() => {
+    const fetchPortfolio = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/developer/portfolio`, {
+          credentials: "include",
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message);
+        // setData(json);
+        setData({
+          personalInfo: json.personalInfo || {},
+          skills: json.skills || {},
+          projects: json.projects || [],
+          experience: json.experience || [],
+          achievements: json.achievements || [],
+        });
+      } catch (err) {
+        console.error("Portfolio fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPortfolio();
+  }, []);
+
+  // UPDATE
+  const update = useCallback(async (payload: Partial<PortfolioData>) => {
+    const res = await fetch(`${API_BASE}/api/developer/portfolio`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message);
+
+    // Re-fetch after update
+    const fresh = await fetch(`${API_BASE}/api/developer/portfolio`, {
+      credentials: "include",
+    });
+    const freshData = await fresh.json();
+    setData({
+      personalInfo: freshData.personalInfo || {},
+      skills: freshData.skills || {},
+      projects: freshData.projects || [],
+      experience: freshData.experience || [],
+      achievements: freshData.achievements || [],
     });
   }, []);
 
-  const reset = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setData(defaultData);
+  // RESET (alert only)
+  const reset = useCallback(async () => {
+    await fetch(`${API_BASE}/api/developer/reset`, {
+      method: "POST",
+      credentials: "include",
+    });
   }, []);
 
-  return { data, update, reset };
-}
-
-// ─── Singleton read (for sections that just need to read) ─
-export function getPortfolioData(): PortfolioData {
-  return loadData();
+  return { data, update, reset, loading };
 }

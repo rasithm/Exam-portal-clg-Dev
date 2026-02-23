@@ -1,7 +1,8 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\devcomponents\portfolio\SkillsSection.tsx
 import { motion } from "framer-motion";
-import { getPortfolioData } from "@/hooks/usePortfolioData";
+// import { getPortfolioData } from "@/hooks/usePortfolioData";
 import { Code2, Server, Blocks, Smartphone, Cloud, Wrench } from "lucide-react";
+import { usePortfolioData } from "@/hooks/usePortfolioData";
 
 const iconMap: Record<string, typeof Code2> = {
   Frontend: Code2,
@@ -13,7 +14,10 @@ const iconMap: Record<string, typeof Code2> = {
 };
 
 const SkillsSection = () => {
-  const { skills } = getPortfolioData();
+  // const { skills } = getPortfolioData();
+  const { data } = usePortfolioData();
+  if (!data) return null;
+  const { skills } = data;
 
   return (
     <section id="skills" className="py-24 px-6 bg-muted/30">

@@ -1,5 +1,5 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\devPages\DeveloperDashboard.tsx
-import { useState, useRef } from "react";
+import { useState, useRef , useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,23 +27,86 @@ const EditDevData = () => {
   const navigate = useNavigate();
   // const { isAuthenticated } = useAuth();
   const { data, update, reset } = usePortfolioData();
-  const { toast } = useToast();
+const { toast } = useToast();
+// const photoRef = useRef<HTMLInputElement>(null);
+
+// Safe defaults
+const defaultPersonal = {
+  name: "",
+  title: "",
+  tagline: "",
+  email: "",
+  github: "",
+  linkedin: "",
+  photo: "",
+  education: {
+    degree: "",
+    institution: "",
+    expected: "",
+  },
+  certification: {
+    title: "",
+    org: "",
+    duration: "",
+  },
+  objective: "",
+};
+
+// Initialize empty first
+const [info, setInfo] = useState(defaultPersonal);
+const [skills, setSkills] = useState<Record<string, string[]>>({});
+const [projects, setProjects] = useState<PortfolioProject[]>([]);
+const [experience, setExperience] = useState<PortfolioExperience[]>([]);
+const [achievements, setAchievements] = useState<PortfolioAchievement[]>([]);
+const [saving, setSaving] = useState(false);
+const [resetting, setResetting] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
 
   // ── Local editable state ──────────────────────────────
-  const [info, setInfo] = useState({ ...data.personalInfo });
-  const [skills, setSkills] = useState<Record<string, string[]>>(
-    JSON.parse(JSON.stringify(data.skills))
-  );
-  const [projects, setProjects] = useState<PortfolioProject[]>(
-    JSON.parse(JSON.stringify(data.projects))
-  );
-  const [experience, setExperience] = useState<PortfolioExperience[]>(
-    JSON.parse(JSON.stringify(data.experience))
-  );
-  const [achievements, setAchievements] = useState<PortfolioAchievement[]>(
-    JSON.parse(JSON.stringify(data.achievements))
-  );
+  // const [info, setInfo] = useState({ ...data.personalInfo });
+  // const [skills, setSkills] = useState<Record<string, string[]>>(
+  //   JSON.parse(JSON.stringify(data.skills))
+  // );
+  // const [projects, setProjects] = useState<PortfolioProject[]>(
+  //   JSON.parse(JSON.stringify(data.projects))
+  // );
+  // const [experience, setExperience] = useState<PortfolioExperience[]>(
+  //   JSON.parse(JSON.stringify(data.experience))
+  // );
+  // const [achievements, setAchievements] = useState<PortfolioAchievement[]>(
+  //   JSON.parse(JSON.stringify(data.achievements))
+  // );
+
+  // Wait until data loads
+
+
+// Default safe fallbacks
+const safePersonal = data?.personalInfo || {
+  name: "",
+  title: "",
+  tagline: "",
+  email: "",
+  github: "",
+  linkedin: "",
+  photo: "",
+  education: {
+    degree: "",
+    institution: "",
+    expected: "",
+  },
+  certification: {
+    title: "",
+    org: "",
+    duration: "",
+  },
+  objective: "",
+};
+
+// const [info, setInfo] = useState(safePersonal);
+// const [skills, setSkills] = useState<Record<string, string[]>>(data.skills || {});
+// const [projects, setProjects] = useState<PortfolioProject[]>(data.projects || []);
+// const [experience, setExperience] = useState<PortfolioExperience[]>(data.experience || []);
+// const [achievements, setAchievements] = useState<PortfolioAchievement[]>(data.achievements || []);
 
   // new-skill input per category
   const [newSkillInputs, setNewSkillInputs] = useState<Record<string, string>>({});
@@ -54,6 +117,35 @@ const EditDevData = () => {
   //   navigate("/developer/login");
   //   return null;
   // }
+  useEffect(() => {
+    if (!data) return;
+
+    setInfo({
+      ...defaultPersonal,
+      ...data.personalInfo,
+      education: {
+        ...defaultPersonal.education,
+        ...(data.personalInfo?.education || {}),
+      },
+      certification: {
+        ...defaultPersonal.certification,
+        ...(data.personalInfo?.certification || {}),
+      },
+    });
+
+    setSkills(data.skills || {});
+    setProjects(data.projects || []);
+    setExperience(data.experience || []);
+    setAchievements(data.achievements || []);
+  }, [data]);
+
+  if (!data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading portfolio...</p>
+      </div>
+    );
+  }
 
   // ── Photo upload ──────────────────────────────────────
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,16 +157,51 @@ const EditDevData = () => {
   };
 
   // ── Save all ──────────────────────────────────────────
-  const handleSave = () => {
-    update({ personalInfo: info, skills, projects, experience, achievements });
-    toast({ title: "✅ Portfolio Updated!", description: "Changes are live on your public page." });
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      await update({
+        personalInfo: info,
+        skills,
+        projects,
+        experience,
+        achievements,
+      });
+
+      toast({
+        title: "Portfolio Updated!",
+        description: "Changes saved successfully.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Update Failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleReset = () => {
-    if (!confirm("Reset all data to defaults? This cannot be undone.")) return;
-    reset();
-    toast({ title: "Data reset to defaults." });
-    navigate("/developer/dashboard");
+  const handleReset = async () => {
+    if (!confirm("Trigger security reset alert?")) return;
+
+    try {
+      setResetting(true);
+      await reset();
+
+      toast({
+        title: "Reset Alert Sent",
+        description: "Security notification email triggered.",
+      });
+    } catch {
+      toast({
+        title: "Reset Failed",
+        variant: "destructive",
+      });
+    } finally {
+      setResetting(false);
+    }
   };
 
   // ── Skills helpers ────────────────────────────────────
@@ -183,11 +310,25 @@ const EditDevData = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate("/developer/dashboard")}>
               <ArrowLeft className="mr-1.5 h-4 w-4" /> Dashboard
             </Button>
-            <Button variant="outline" size="sm" onClick={handleReset} className="text-destructive border-destructive/30 hover:bg-destructive/10">
-              <RotateCcw className="mr-1.5 h-4 w-4" /> Reset
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReset}
+              disabled={resetting}
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+            >
+              {resetting ? "Sending..." : (
+                <>
+                  <RotateCcw className="mr-1.5 h-4 w-4" /> Reset
+                </>
+              )}
             </Button>
-            <Button size="sm" onClick={handleSave} className="rounded-full">
-              <Save className="mr-1.5 h-4 w-4" /> Save All
+            <Button size="sm" onClick={handleSave} disabled={saving} className="rounded-full">
+              {saving ? "Saving..." : (
+                <>
+                  <Save className="mr-1.5 h-4 w-4" /> Save All
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -255,7 +396,7 @@ const EditDevData = () => {
                     <Input value={info.linkedin} onChange={(e) => setInfo((p) => ({ ...p, linkedin: e.target.value }))} />
                   </Field>
                   <Field label="Degree">
-                    <Input value={info.education.degree} onChange={(e) => setInfo((p) => ({ ...p, education: { ...p.education, degree: e.target.value } }))} />
+                    <Input value={info.education?.degree || ""} onChange={(e) => setInfo((p) => ({ ...p, education: { ...p.education, degree: e.target.value } }))} />
                   </Field>
                   <Field label="Institution">
                     <Input value={info.education.institution} onChange={(e) => setInfo((p) => ({ ...p, education: { ...p.education, institution: e.target.value } }))} />

@@ -1,13 +1,25 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\devcomponents\portfolio\ProjectsSection.tsx
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getPortfolioData } from "@/hooks/usePortfolioData";
+// import { getPortfolioData } from "@/hooks/usePortfolioData";
 import { ExternalLink, Github, X } from "lucide-react";
 import { Button } from "@/devcomponents/ui/button";
+import { usePortfolioData } from "@/hooks/usePortfolioData";
 
 const ProjectsSection = () => {
-  const { projects } = getPortfolioData();
+  // const { projects } = getPortfolioData();
+  // const { data } = usePortfolioData();
+  // if (!data) return null;
+  // const { projects } = data;
+  // const [selected, setSelected] = useState<number | null>(null);
+   const { data } = usePortfolioData();
+
+  // Always declare hooks FIRST
   const [selected, setSelected] = useState<number | null>(null);
+
+  if (!data) return null;
+
+  const projects = data.projects || [];
 
   return (
     <section id="projects" className="py-24 px-6">

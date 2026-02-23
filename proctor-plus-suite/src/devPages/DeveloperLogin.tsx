@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/dev
 import { Lock, User, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo.png";
+import { baseUrl } from "@/constant/Url";
+const API_BASE = baseUrl || "http://localhost:5000";
 
 const DeveloperLogin = () => {
   const navigate = useNavigate();
@@ -19,12 +21,31 @@ const DeveloperLogin = () => {
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username && password) {
+
+    try {
+      const res = await fetch(`${API_BASE}/api/developer/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username, password }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.message || "Login failed");
+      }
+
+      toast({ title: "Login Success" });
       navigate("/developer/dashboard");
-    } else {
-      toast({ title: "Invalid credentials", description: "Please check username and password.", variant: "destructive" });
+    } catch (err: any) {
+      toast({
+        title: "Login Failed",
+        description: err.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -85,7 +106,7 @@ const DeveloperLogin = () => {
               </Button>
             </form>
             <div className="mt-4 text-center">
-              <a href="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1">
+              <a href="/developer" className="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1">
                 <ArrowLeft size={12} /> Back to Portfolio
               </a>
             </div>

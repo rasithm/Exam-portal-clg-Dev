@@ -1,11 +1,16 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\devcomponents\portfolio\HeroSection.tsx
 import { motion } from "framer-motion";
 import { ArrowDown, Github, Mail, MapPin, Sparkles } from "lucide-react";
-import { getPortfolioData } from "@/hooks/usePortfolioData";
+// import { getPortfolioData } from "@/hooks/usePortfolioData";
 import { Button } from "@/devcomponents/ui/button";
+import { usePortfolioData } from "@/hooks/usePortfolioData";
 
 const HeroSection = () => {
-  const { personalInfo } = getPortfolioData();
+  // const { personalInfo } = getPortfolioData();
+  
+  const { data } = usePortfolioData();
+  if (!data) return null;
+  const { personalInfo } = data;
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -159,7 +164,7 @@ const HeroSection = () => {
                   >
                     {/* Initials */}
                     <span className="text-5xl md:text-6xl font-black text-white/90 tracking-widest select-none" style={{ fontFamily: "Space Grotesk" }}>
-                      {personalInfo.name.split(" ").map(n => n[0]).join("")}
+                      {personalInfo.name.split(" ").map(n => n[0]).join("") || "Mohamed Rasith"}
                     </span>
                     <span className="text-xs text-white/60 font-medium tracking-widest uppercase">Developer</span>
                   </div>

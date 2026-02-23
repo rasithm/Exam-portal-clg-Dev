@@ -1,5 +1,5 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\devPages\DeveloperDashboard.tsx
-import { useState } from "react";
+import { useState , useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,19 +13,32 @@ import {
 } from "@/devcomponents/ui/table";
 import { Search, LogOut, Users, ArrowLeft, Edit3, User } from "lucide-react";
 import logo from "@/assets/logo.png";
-
+import { baseUrl } from "@/constant/Url";
+const API_BASE = baseUrl || "http://localhost:5000";
 const DeveloperDashboard = () => {
   const navigate = useNavigate();
   // const { isAuthenticated, logout } = useAuth();
   const { data } = usePortfolioData();
   const [search, setSearch] = useState("");
   const [filterCourse, setFilterCourse] = useState("");
+  const [students, setStudents] = useState<any[]>([]);
 
   // if (!isAuthenticated) {
   //   navigate("/developer/login");
   //   return null;
   // }
-
+  useEffect(() => {
+    const checkAuth = async () => {
+      const res = await fetch(`${API_BASE}/api/developer/check-auth`, {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        navigate("/developer/login");
+      }
+    };
+    checkAuth();
+  }, []);
+  if (!data) return null;
   const { personalInfo } = data;
   const courses = [...new Set(mockStudents.map((s) => s.course))];
 
@@ -61,7 +74,7 @@ const DeveloperDashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/developer")}>
               <ArrowLeft className="mr-1.5 h-4 w-4" /> Portfolio
             </Button>
             <Button
@@ -106,16 +119,16 @@ const DeveloperDashboard = () => {
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h2 className="text-xl font-bold" style={{ fontFamily: "Space Grotesk" }}>
-                  {personalInfo.name}
+                  {personalInfo.name || "Mohamed Rasith"}
                 </h2>
                 <Badge variant="secondary" className="text-xs">Developer</Badge>
               </div>
               <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
-                {personalInfo.title}
+                {personalInfo.title || ""}
               </p>
               <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                <span>📧 {personalInfo.email}</span>
-                <span>🎓 {personalInfo.education.institution}</span>
+                <span>📧 {personalInfo.email || ""}</span>
+                <span>🎓 {personalInfo.education?.institution || "—"}</span>
               </div>
             </div>
 

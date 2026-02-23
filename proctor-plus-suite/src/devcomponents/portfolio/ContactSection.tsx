@@ -1,13 +1,14 @@
 //C:\Users\nazeer\Desktop\examPortal-!index\Exam-Portal\proctor-plus-suite\src\devcomponents\portfolio\ContactSection.tsx
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { getPortfolioData } from "@/hooks/usePortfolioData";
+// import { getPortfolioData } from "@/hooks/usePortfolioData";
 import { Mail, Github, Linkedin, Send, Phone } from "lucide-react";
 import { Button } from "@/devcomponents/ui/button";
 import { Input } from "@/devcomponents/ui/input";
 import { Textarea } from "@/devcomponents/ui/textarea";
 import { Label } from "@/devcomponents/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { usePortfolioData } from "@/hooks/usePortfolioData";
 
 interface FormState {
   name: string;
@@ -19,13 +20,35 @@ interface FormState {
 
 const ContactSection = () => {
   const { toast } = useToast();
-  const { personalInfo } = getPortfolioData();
+  // const { personalInfo } = getPortfolioData();
+  // const { data } = usePortfolioData();
+  // if (!data) return null;
+  // const { personalInfo } = data;
 
+  // const [form, setForm] = useState<FormState>({
+  //   name: "", email: "", phone: "", subject: "", message: "",
+  // });
+  
+  
+  const { data } = usePortfolioData();
+
+  // Declare hooks FIRST
   const [form, setForm] = useState<FormState>({
-    name: "", email: "", phone: "", subject: "", message: "",
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
   });
+
   const [errors, setErrors] = useState<Partial<FormState>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  if (!data) return null;
+
+  const personalInfo = data.personalInfo || {};
+  // const [errors, setErrors] = useState<Partial<FormState>>({});
+  // const [submitting, setSubmitting] = useState(false);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^[\d\s\-\+\(\)]{7,}$/;
@@ -68,7 +91,13 @@ const ContactSection = () => {
     { icon: Github, label: "GitHub", value: "github.com/rasithm", href: personalInfo.github },
     { icon: Linkedin, label: "LinkedIn", value: "Mohamed Rasith", href: personalInfo.linkedin },
   ];
-
+  if (!data) {
+    return (
+      <section className="py-24 px-6 text-center text-muted-foreground">
+        Loading contact section...
+      </section>
+    );
+  }
   return (
     <section id="contact" className="py-24 px-6 bg-muted/30">
       <div className="max-w-5xl mx-auto">
@@ -148,7 +177,7 @@ const ContactSection = () => {
                 </span>
               ) : (
                 <>
-                  <Send className="mr-2 h-4 w-4" /> Send Message
+                  <Send className="mr-2 h-4 w-4" /> Send Feedback
                 </>
               )}
             </Button>
@@ -181,7 +210,7 @@ const ContactSection = () => {
 
             {/* WhatsApp CTA */}
             <a
-              href={`https://wa.me/917358946134?text=Hello%20Rasith%2C%20I%20found%20your%20portfolio%20and%20would%20like%20to%20connect!`}
+              href={`https://wa.me/919344533082?text=Hello%20Rasith%2C%20I%20found%20your%20portfolio%20and%20would%20like%20to%20connect!`}
               target="_blank"
               rel="noreferrer"
               className="flex items-center justify-center gap-2 p-4 rounded-xl border border-green-500/30 bg-green-500/5 hover:bg-green-500/10 transition-all text-green-600 font-medium text-sm"

@@ -17,4 +17,7 @@ router.post("/portfolio", developerProtect, updatePortfolio);
 router.post("/reset", developerProtect, triggerResetAlert);
 router.get("/students", developerProtect, getStudentsForDeveloper);
 router.post("/createdeveloper" , createDeveloper)
+router.get("/check-auth", developerProtect, (req, res) => {
+  res.json({ ok: true });
+});
 export default router;
