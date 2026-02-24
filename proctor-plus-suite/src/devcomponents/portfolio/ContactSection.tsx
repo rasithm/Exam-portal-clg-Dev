@@ -10,6 +10,10 @@ import { Label } from "@/devcomponents/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { usePortfolioData } from "@/hooks/usePortfolioData";
 
+import { baseUrl } from "@/constant/Url";
+
+const API_BASE = baseUrl || "http://localhost:5000";
+
 // interface FormState {
 //   name: string;
 //   email: string;
@@ -124,7 +128,7 @@ const ContactSection = () => {
       timestamp: new Date(),
     };
 
-    await fetch("http://localhost:5000/api/feedback", {
+    await fetch(`${API_BASE}/api/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -132,6 +136,14 @@ const ContactSection = () => {
 
     setSubmitting(false);
     toast({ title: "Feedback Submitted Successfully!" });
+    setForm({
+     name: "",
+     email: "",
+     pageUrl: lastPages[0] || window.location.href,
+     type: "Bug",
+     otherType: "",
+     message: "",
+    })
   };
 
   const links = [

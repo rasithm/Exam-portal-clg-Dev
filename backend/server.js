@@ -48,6 +48,9 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
 }));
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 const limiter = rateLimit({ windowMs: 60*1000, max: 100 });
 app.use(limiter);
@@ -66,7 +69,6 @@ app.use("/api/admin/compilerExams", compilerExamRoutes);
 app.use("/api/student/compiler-exams", studentCompilerExamRouter);
 app.use("/api/admin/certificates", adminCertificateRoutes);
 app.use("/api/admin/reports", adminReportRoutes);
-
 app.use("/api/developer", developerRoutes);
 app.use("/api/feedback", feedbackRoutes);
 // basic health

@@ -101,12 +101,50 @@ export const updatePortfolio = async (req, res) => {
         `<p><b>${c.field}</b>: ${c.oldValue} → ${c.newValue}</p>`
       ).join("");
 
+      const clientIP =
+        req.headers["x-forwarded-for"]?.split(",")[0] ||
+        req.socket.remoteAddress ||
+        "Unknown";
+
+      const userAgent = req.headers["user-agent"] || "Unknown";
+
+      const parseUserAgent = (ua) => {
+        let os = "Unknown OS";
+        let browser = "Unknown Browser";
+        let device = "Desktop";
+
+        if (/Windows/i.test(ua)) os = "Windows";
+        if (/Mac/i.test(ua)) os = "MacOS";
+        if (/Linux/i.test(ua)) os = "Linux";
+        if (/Android/i.test(ua)) os = "Android";
+        if (/iPhone|iPad/i.test(ua)) os = "iOS";
+
+        if (/Chrome/i.test(ua)) browser = "Chrome";
+        if (/Firefox/i.test(ua)) browser = "Firefox";
+        if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+        if (/Edge/i.test(ua)) browser = "Edge";
+
+        if (/Mobi|Android/i.test(ua)) device = "Mobile";
+
+        return { os, browser, device };
+      };
+      const ua = req.headers["user-agent"] || "";
+      const { os, browser, device } = parseUserAgent(ua);
+
       await sendDeveloperMail(
-        "Portfolio Updated",
-        `<h3>Portfolio Modified</h3>
-         ${changeSummary}
-         <p>IP: ${req.ip}</p>
-         <p>Time: ${new Date().toLocaleString()}</p>`
+        "🔔 Portfolio Updated - Security Log",
+        `
+        <h3>Portfolio Modified</h3>
+        ${changeSummary}
+        <hr/>
+        <h4>System Identification</h4>
+        <p><b>IP Address:</b> ${clientIP}</p>
+        <p><b>Operating System:</b> ${os}</p>
+        <p><b>Browser:</b> ${browser}</p>
+        <p><b>Device Type:</b> ${device}</p>
+        <p><b>Full User-Agent:</b> ${ua}</p>
+        <p><b>Time:</b> ${new Date().toLocaleString()}</p>
+        `
       );
     }
 
@@ -121,11 +159,45 @@ export const updatePortfolio = async (req, res) => {
 // RESET ALERT ONLY
 export const triggerResetAlert = async (req, res) => {
   try {
+    const clientIP =
+        req.headers["x-forwarded-for"]?.split(",")[0] ||
+        req.socket.remoteAddress ||
+        "Unknown";
+
+      const userAgent = req.headers["user-agent"] || "Unknown";
+
+      const parseUserAgent = (ua) => {
+        let os = "Unknown OS";
+        let browser = "Unknown Browser";
+        let device = "Desktop";
+
+        if (/Windows/i.test(ua)) os = "Windows";
+        if (/Mac/i.test(ua)) os = "MacOS";
+        if (/Linux/i.test(ua)) os = "Linux";
+        if (/Android/i.test(ua)) os = "Android";
+        if (/iPhone|iPad/i.test(ua)) os = "iOS";
+
+        if (/Chrome/i.test(ua)) browser = "Chrome";
+        if (/Firefox/i.test(ua)) browser = "Firefox";
+        if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+        if (/Edge/i.test(ua)) browser = "Edge";
+
+        if (/Mobi|Android/i.test(ua)) device = "Mobile";
+
+        return { os, browser, device };
+      };
+      const ua = req.headers["user-agent"] || "";
+      const { os, browser, device } = parseUserAgent(ua);
     await sendDeveloperMail(
       "⚠️ RESET TRIGGERED - Developer Portfolio",
       `<p>Reset button was triggered.</p>
-       <p>IP: ${req.ip}</p>
-       <p>Time: ${new Date().toLocaleString()}</p>`
+        <h4>System Identification</h4>
+          <p><b>IP Address:</b> ${clientIP}</p>
+          <p><b>Operating System:</b> ${os}</p>
+          <p><b>Browser:</b> ${browser}</p>
+          <p><b>Device Type:</b> ${device}</p>
+          <p><b>Full User-Agent:</b> ${ua}</p>
+          <p><b>Time:</b> ${new Date().toLocaleString()}</p>`
     );
 
     res.json({ message: "Reset alert sent" });
