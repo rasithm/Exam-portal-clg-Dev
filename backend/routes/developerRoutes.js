@@ -5,7 +5,7 @@ import {
   getPortfolio,
   updatePortfolio,
   triggerResetAlert,
-  getStudentsForDeveloper , createDeveloper
+  getStudentsForDeveloper , createDeveloper , getAdminsForDeveloper , toggleAdminStatus
 } from "../controllers/developerController.js";
 import { developerProtect } from "../middlewares/developerAuth.js";
 
@@ -20,4 +20,6 @@ router.post("/createdeveloper" , createDeveloper)
 router.get("/check-auth", developerProtect, (req, res) => {
   res.json({ ok: true });
 });
+router.get("/admins", developerProtect, getAdminsForDeveloper);
+router.patch("/admin/:adminId/toggle", developerProtect, toggleAdminStatus);
 export default router;

@@ -11,7 +11,7 @@ import { Badge } from "@/devcomponents/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/devcomponents/ui/table";
-import { Search, LogOut, Users, ArrowLeft, Edit3, User } from "lucide-react";
+import { Search, LogOut, Users, ArrowLeft, Edit3, User , Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { baseUrl } from "@/constant/Url";
 const API_BASE = baseUrl || "http://localhost:5000";
@@ -21,8 +21,9 @@ const DeveloperDashboard = () => {
   const { data } = usePortfolioData();
   const [search, setSearch] = useState("");
   const [filterCourse, setFilterCourse] = useState("");
-  const [students, setStudents] = useState<any[]>([]);
-
+  // const [students, setStudents] = useState<any[]>([]);
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [loadingAdminId, setLoadingAdminId] = useState<string | null>(null);
   // if (!isAuthenticated) {
   //   navigate("/developer/login");
   //   return null;
@@ -38,6 +39,20 @@ const DeveloperDashboard = () => {
     };
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      const res = await fetch(`${API_BASE}/api/developer/admins`, {
+        credentials: "include"
+      });
+
+      const data = await res.json();
+      setAdmins(data); // rename later to admins
+    };
+
+    fetchAdmins();
+  }, []);
+
   if (!data) return null;
   const { personalInfo } = data;
   const courses = [...new Set(mockStudents.map((s) => s.course))];
@@ -147,10 +162,16 @@ const DeveloperDashboard = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Total Students", value: mockStudents.length },
-            { label: "Active", value: mockStudents.filter((s) => s.status === "Active").length },
-            { label: "Completed", value: mockStudents.filter((s) => s.status === "Completed").length },
-            { label: "Courses", value: courses.length },
+            { label: "Total Admins", value: admins.length },
+            { label: "Active Admins", value: admins.filter(a => a.isActive).length },
+            { label: "Disabled Admins", value: admins.filter(a => !a.isActive).length },
+            { label: "Recent (7 Days)", value: admins.filter(a => {
+                const created = new Date(a.createdAt);
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                return created > sevenDaysAgo;
+              }).length
+            }
           ].map((s, i) => (
             <motion.div
               key={s.label}
@@ -166,7 +187,7 @@ const DeveloperDashboard = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -186,7 +207,7 @@ const DeveloperDashboard = () => {
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
-        </div>
+        </div> */}
 
         {/* Table */}
         <motion.div
@@ -197,29 +218,96 @@ const DeveloperDashboard = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Course</TableHead>
-                <TableHead>Registered</TableHead>
+                <TableHead>Admin Name</TableHead>
+                <TableHead>Login Email</TableHead>
+                <TableHead>Personal Email</TableHead>
+                <TableHead>Created At</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{s.email}</TableCell>
-                  <TableCell>{s.course}</TableCell>
-                  <TableCell className="text-muted-foreground">{s.registeredAt}</TableCell>
-                  <TableCell>
-                    <Badge variant={statusColor(s.status) as any}>{s.status}</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filtered.length === 0 && (
+              {admins
+                .filter((admin) =>
+                  admin.name?.toLowerCase().includes(search.toLowerCase()) ||
+                  admin.email?.toLowerCase().includes(search.toLowerCase())
+                )
+                .map((admin) => (
+                  <TableRow key={admin._id}>
+                    <TableCell className="font-medium">
+                      {admin.name || "—"}
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground">
+                      {admin.email}
+                    </TableCell>
+
+                    <TableCell>
+                      {admin.personalEmail || "—"}
+                    </TableCell>
+
+                    <TableCell className="text-muted-foreground">
+                      {new Date(admin.createdAt).toLocaleDateString()}
+                    </TableCell>
+
+                    <TableCell>
+                      <motion.div
+                        key={admin.isActive ? "active" : "disabled"}
+                        initial={{ scale: 0.8 }}
+                        animate={{ scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Badge variant={admin.isActive ? "default" : "destructive"}>
+                          {admin.isActive ? "Active" : "Disabled"}
+                        </Badge>
+                      </motion.div>
+                    </TableCell>
+
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant={admin.isActive ? "destructive" : "default"}
+                        disabled={loadingAdminId === admin._id}
+                        onClick={async () => {
+                          try {
+                            setLoadingAdminId(admin._id);
+
+                            await fetch(
+                              `${API_BASE}/api/developer/admin/${admin._id}/toggle`,
+                              {
+                                method: "PATCH",
+                                credentials: "include",
+                              }
+                            );
+
+                            // Optimistic UI update (instant change)
+                            setAdmins(prev =>
+                              prev.map(a =>
+                                a._id === admin._id
+                                  ? { ...a, isActive: !a.isActive }
+                                  : a
+                              )
+                            );
+
+                          } catch (err) {
+                            console.error("Toggle failed");
+                          } finally {
+                            setLoadingAdminId(null);
+                          }
+                        }}
+                      >
+                        {loadingAdminId === admin._id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : admin.isActive ? "Disable" : "Enable"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+              {admins.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No students found
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    No admins found
                   </TableCell>
                 </TableRow>
               )}

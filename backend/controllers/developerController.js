@@ -6,6 +6,7 @@ import Portfolio from "../models/Portfolio.js";
 import Student from "../models/Student.js";
 import { sendDeveloperMail } from "../utils/sendDeveloperMail.js";
 import { findDifferences } from "../utils/diffChecker.js";
+import Admin from "../models/Admin.js";
 
 export const createDeveloper = async (req,res) => {
     const {username , email , password} = req.body;
@@ -214,5 +215,36 @@ export const getStudentsForDeveloper = async (req, res) => {
     res.json(students);
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch students" });
+  }
+};
+
+export const getAdminsForDeveloper = async (req, res) => {
+  try {
+    const admins = await Admin.find()
+      .select("-password")
+      .lean();
+
+    res.json(admins);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch admins" });
+  }
+};
+
+export const toggleAdminStatus = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    admin.isActive = !admin.isActive;
+    await admin.save();
+
+    res.json({
+      message: "Admin status updated",
+      isActive: admin.isActive
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update admin" });
   }
 };

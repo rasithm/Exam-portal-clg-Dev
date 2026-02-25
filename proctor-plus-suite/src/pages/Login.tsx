@@ -72,11 +72,39 @@ const Login = () => {
       
       const data = await res.json();
       
+      // if (!res.ok) {
+      //   if (data.message === "Admin not found") {
+      //     toast({ title: "Error", description: "Email is not registered", variant: "destructive" });
+      //   }
+      //   else if(data.status === 403){
+      //     toast({ title: "Error", description: "Admin account DeActivate", variant: "destructive" });
+      //   }
+      //    else {
+      //     toast({ title: "Error", description: "Email or password is invalid", variant: "destructive" });
+      //   }
+      //   return;
+      // }
       if (!res.ok) {
-        if (data.message === "Admin not found") {
-          toast({ title: "Error", description: "Email is not registered", variant: "destructive" });
-        } else {
-          toast({ title: "Error", description: "Email or password is invalid", variant: "destructive" });
+        if (res.status === 403) {
+          toast({
+            title: "Account Disabled",
+            description: "Your admin account has been disabled by developer.",
+            variant: "destructive",
+          });
+        } 
+        else if (res.status === 401) {
+          toast({
+            title: "Invalid Credentials",
+            description: "Email or password is incorrect.",
+            variant: "destructive",
+          });
+        } 
+        else {
+          toast({
+            title: "Login Failed",
+            description: data.message || "Something went wrong.",
+            variant: "destructive",
+          });
         }
         return;
       }
@@ -147,6 +175,7 @@ const Login = () => {
         }
         return;
       }
+      
 
       if (res.ok) {
         toast({ title: "Login Success", description: "Welcome Student" });

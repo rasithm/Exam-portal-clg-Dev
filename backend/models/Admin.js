@@ -6,7 +6,7 @@ const adminSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true }, // login email
   password: { type: String, required: true },
   collegeName: String,
-  
+  isActive: { type: Boolean, default: true },
   collegeTag: String,
   department: String,
   name : String,
