@@ -65,8 +65,7 @@ app.use("/api/student", protect(["student"]), studentRoutes);
 app.use("/api/student/exams", protect(["student"]), studentExamRoutes);
 app.use("/api/public/certificate", publicCertificateRoutes);
 app.use('/api/forgot', forgotRoutes);
-app.use("/api/admin/compilerExams", compilerExamRoutes);
-app.use("/api/student/compiler-exams", studentCompilerExamRouter);
+
 app.use("/api/admin/certificates", adminCertificateRoutes);
 app.use("/api/admin/reports", adminReportRoutes);
 app.use("/api/developer", developerRoutes);

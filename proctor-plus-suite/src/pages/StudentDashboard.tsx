@@ -480,7 +480,7 @@ const compilerAverage =
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="shadow-card">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -520,7 +520,7 @@ const compilerAverage =
             </CardContent>
           </Card>
 
-          <Card className="shadow-card">
+          {/* <Card className="shadow-card">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -532,15 +532,15 @@ const compilerAverage =
                 <BarChart3 className="h-8 w-8 text-secondary" />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         <Tabs defaultValue="tech" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="tech">Tech</TabsTrigger>
             <TabsTrigger value="nontech">Non-Tech</TabsTrigger>
             <TabsTrigger value="reexam">Re-Exam</TabsTrigger>
-            <TabsTrigger value="coding">Coding-Exam</TabsTrigger>
+            {/* <TabsTrigger value="coding">Coding-Exam</TabsTrigger> */}
             <TabsTrigger value="certifications">Certifications</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>

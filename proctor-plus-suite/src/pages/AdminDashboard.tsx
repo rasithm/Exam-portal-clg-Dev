@@ -1161,10 +1161,6 @@ const fetchReports = async () => {
                           <RefreshCcw className={`h-4 w-4 mr-2 ${loadingExams ? "animate-spin" : ""}`} />
                           {loadingExams ? "Refreshing..." : "Refresh"}
                         </Button>
-                        <Button variant="hero" className="mr-2 h-13" onClick={() => navigate("/admin/exam/create/compiler")}>
-                          <Plus className="h-4 w-4 mr-2"  />
-                          Create Compiler Exam
-                        </Button>
                         <CreateExam />
                       </div>
 
@@ -1233,7 +1229,7 @@ const fetchReports = async () => {
                       </div>
 
                       {/* Compiler Exams Section */}
-                      <div className="mt-6">
+                      {/* <div className="mt-6">
                         <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                           <Code className="h-4 w-4" />
                           Compiler Exams
@@ -1299,7 +1295,7 @@ const fetchReports = async () => {
                             </div>
                           ))}
                         </div>
-                      </div>
+                      </div> */}
                     </TabsContent>
 
                     <TabsContent value="files">
@@ -1615,7 +1611,7 @@ const fetchReports = async () => {
                 ) : (
                   <>
                     {/* ===== Top Stats ===== */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 
                       {/* TOTAL */}
                       <div className="p-5 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-200">
@@ -1652,7 +1648,7 @@ const fetchReports = async () => {
                       </div>
 
                       {/* COMPILER */}
-                      <div className="p-5 rounded-xl bg-gradient-to-br from-violet-50 to-violet-100/50 border border-violet-200">
+                      {/* <div className="p-5 rounded-xl bg-gradient-to-br from-violet-50 to-violet-100/50 border border-violet-200">
                         <div className="flex items-center gap-3">
                           <div className="p-3 rounded-xl bg-violet-200">
                             <Code className="h-6 w-6 text-violet-700" />
@@ -1666,7 +1662,7 @@ const fetchReports = async () => {
                             </p>
                           </div>
                         </div>
-                      </div>
+                      </div> */}
                     </div>
 
                     {/* ================= EXAM LIST ================= */}
