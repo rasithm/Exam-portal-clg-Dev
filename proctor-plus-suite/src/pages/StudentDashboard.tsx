@@ -447,6 +447,13 @@ const compilerAverage =
                 <User className="h-6 w-6 text-primary" onClick={() => navigate("/student/profile")} />
               </div>
               <Button variant="outline" 
+                onClick={() => navigate("/developer")}
+
+                >
+                <User className="h-6 w-6 text-primary"/>
+                Developer
+              </Button>
+              <Button variant="outline" 
                 onClick={async () => {
                   try {
                     const res = await fetch(`${API_BASE}/api/auth/student/logout`, {

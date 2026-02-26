@@ -12,7 +12,7 @@ import { developerProtect } from "../middlewares/developerAuth.js";
 const router = express.Router();
 
 router.post("/login", developerLogin);
-router.get("/portfolio", developerProtect, getPortfolio);
+router.get("/portfolio", getPortfolio);
 router.post("/portfolio", developerProtect, updatePortfolio);
 router.post("/reset", developerProtect, triggerResetAlert);
 router.get("/students", developerProtect, getStudentsForDeveloper);

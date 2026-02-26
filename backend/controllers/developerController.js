@@ -54,7 +54,7 @@ export const developerLogin = async (req, res) => {
 
 // GET PORTFOLIO
 export const getPortfolio = async (req, res) => {
-  const portfolio = await Portfolio.findOne({ developer: req.developer._id });
+  const portfolio = await Portfolio.findOne().lean();
 
   if (!portfolio) {
     return res.json({

@@ -103,9 +103,7 @@ export function usePortfolioData() {
   useEffect(() => {
     const fetchPortfolio = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/developer/portfolio`, {
-          credentials: "include",
-        });
+        const res = await fetch(`${API_BASE}/api/developer/portfolio`);
         const json = await res.json();
         if (!res.ok) throw new Error(json.message);
         // setData(json);

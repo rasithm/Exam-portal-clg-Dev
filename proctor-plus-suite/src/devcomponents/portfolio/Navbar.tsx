@@ -43,6 +43,12 @@ const Navbar = () => {
             </a>
           ))}
           <a
+            href="/login"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Back to Login
+          </a>
+          <a
             href="/developer/login"
             className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           >
